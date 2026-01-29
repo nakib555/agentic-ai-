@@ -111,9 +111,22 @@ const SpeechMemorySettings: React.FC<SpeechMemorySettingsProps> = ({
 
     return (
         <div className="space-y-6 pb-10">
-            <div className="mb-8">
-                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Voice & Memory</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Configure speech synthesis and long-term memory.</p>
+            {/* Header */}
+            <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                 <div className="flex items-center gap-4">
+                    <div className="p-3 bg-gradient-to-br from-pink-500 to-rose-600 rounded-2xl shadow-lg shadow-pink-500/20 text-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+                             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                             <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                             <line x1="12" y1="19" x2="12" y2="23" />
+                             <line x1="8" y1="23" x2="16" y2="23" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Speech & Memory</h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">Synthesis configuration & long-term retention.</p>
+                    </div>
+                </div>
             </div>
 
             {/* Warning if no models available */}
