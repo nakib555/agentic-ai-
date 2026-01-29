@@ -202,8 +202,14 @@ export const useChatHistory = () => {
       // Guard clause: Prevent updates with invalid/missing IDs
       if (!chatId) return;
 
-      // Optimistic update
+      // Optimistic update for the list
       updateLocalAndCache(old => (old || []).map(c => c.id === chatId ? { ...c, ...update } : c));
+      
+      // Force update to activeChat if this is the currently viewed session
+      // This ensures things like Model switches are reflected immediately in the UI
+      if (currentChatId === chatId) {
+          setActiveChat(prev => prev ? { ...prev, ...update } : null);
+      }
       
       // Fire and forget save (debouncing could be added here if needed, relying on backend handler)
       try {
@@ -215,7 +221,7 @@ export const useChatHistory = () => {
       } catch (e) {
           console.error("Failed to save chat property", e);
       }
-  }, [updateLocalAndCache]);
+  }, [updateLocalAndCache, currentChatId]);
 
   const updateChatTitle = useCallback((chatId: string, title: string) => updateChatProperty(chatId, { title }), [updateChatProperty]);
 
