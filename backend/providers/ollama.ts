@@ -86,7 +86,8 @@ const OllamaProvider: AIProvider = {
             const models: AppModel[] = (data.models || []).map((m: any) => ({
                 id: m.name, 
                 name: m.name,
-                description: m.details ? `${m.details.parameter_size} parameters | ${m.details.quantization_level}` : `Ollama Model (${m.name})`,
+                // Use raw model name as description instead of potentially missing parameter info
+                description: m.name || m.model, 
             }));
             
             const sorted = sortModelsByName(models);

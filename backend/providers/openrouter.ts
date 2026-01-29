@@ -128,18 +128,30 @@ const OpenRouterProvider: AIProvider = {
             const reader = response.body.getReader();
             const decoder = new TextDecoder("utf-8");
             let fullText = "";
+            let buffer = "";
 
             while (true) {
                 if (signal?.aborted) break;
                 const { done, value } = await reader.read();
-                if (done) break;
+                
+                if (value) {
+                    buffer += decoder.decode(value, { stream: true });
+                }
 
-                const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split("\n").filter(line => line.trim() !== "");
+                // Process complete lines only
+                const lines = buffer.split("\n");
+                
+                // If we are done, process everything. 
+                // If not done, keep the last segment in buffer as it might be incomplete.
+                const linesToProcess = done ? lines : lines.slice(0, -1);
+                buffer = done ? "" : lines[lines.length - 1];
 
-                for (const line of lines) {
-                    if (line.startsWith("data: ")) {
-                        const dataStr = line.replace("data: ", "");
+                for (const line of linesToProcess) {
+                    const trimmedLine = line.trim();
+                    if (!trimmedLine) continue;
+                    
+                    if (trimmedLine.startsWith("data: ")) {
+                        const dataStr = trimmedLine.replace("data: ", "");
                         if (dataStr === "[DONE]") break;
 
                         try {
@@ -149,9 +161,14 @@ const OpenRouterProvider: AIProvider = {
                                 fullText += delta;
                                 callbacks.onTextChunk(delta);
                             }
-                        } catch (e) { }
+                        } catch (e) {
+                             // Ignore parse errors for partial chunks (though buffering should prevent this)
+                             console.warn("OpenRouter stream parse warning:", e);
+                        }
                     }
                 }
+                
+                if (done) break;
             }
 
             callbacks.onComplete({ finalText: fullText });
