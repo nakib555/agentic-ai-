@@ -4,12 +4,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { AnimatePresence, motion as motionTyped } from 'framer-motion';
 import { Virtuoso } from 'react-virtuoso';
 import JSZip from 'jszip';
 import type { MemoryFile } from '../../hooks/useMemory';
 import { TabButton } from '../UI/TabButton';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogClose
+} from "../ui/dialog";
+import { X } from 'lucide-react';
 
 const motion = motionTyped as any;
 
@@ -51,7 +59,6 @@ const FileEditor: React.FC<{
     const [title, setTitle] = useState(file?.title || '');
     const [content, setContent] = useState(file?.content || '');
 
-    // Sync state when file prop changes (e.g. after first save of 'new' file)
     useEffect(() => {
         if (file) {
             setTitle(file.title);
@@ -236,7 +243,6 @@ export const MemoryModal: React.FC<MemoryModalProps> = ({ isOpen, onClose, memor
       return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isExportMenuOpen]);
 
-  // Sync memory files prop to local state
   useEffect(() => {
       setLocalFiles(memoryFiles);
   }, [memoryFiles]);
@@ -269,7 +275,7 @@ export const MemoryModal: React.FC<MemoryModalProps> = ({ isOpen, onClose, memor
           return [...prev, file];
       });
       setHasUnsavedChanges(true);
-      setEditingFile(file);
+      setEditingFile(null);
   };
 
   const handleFileDelete = (id: string) => {
@@ -345,28 +351,14 @@ export const MemoryModal: React.FC<MemoryModalProps> = ({ isOpen, onClose, memor
       }, 100);
   };
 
-  // We use createPortal to ensure the Memory Modal is always on top of the Settings Dialog
-  // and isolated from any focus traps or stacking context issues.
-  return createPortal(
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] flex items-center justify-center p-4 sm:p-6 overflow-hidden pointer-events-auto"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="memory-modal-title"
-          onClick={onClose}
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            className="bg-slate-50 dark:bg-[#09090b] w-full max-w-4xl h-[85vh] rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden relative z-[201]"
-          >
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="p-0 gap-0 w-[95vw] md:w-full max-w-4xl h-[90vh] md:h-[85vh] flex flex-col overflow-hidden bg-page rounded-2xl border border-border-default shadow-2xl focus:outline-none [&>button]:hidden">
+            <DialogHeader className="sr-only">
+                <DialogTitle>Memory Management</DialogTitle>
+                <DialogDescription>Manage persistent memory files and core context.</DialogDescription>
+            </DialogHeader>
+
             {editingFile ? (
                 <FileEditor 
                     file={editingFile === 'new' ? null : editingFile} 
@@ -382,19 +374,15 @@ export const MemoryModal: React.FC<MemoryModalProps> = ({ isOpen, onClose, memor
                             <Icons.MemoryChip />
                         </div>
                         <div>
-                            <h2 id="memory-modal-title" className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Memory Bank</h2>
+                            <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Memory Bank</h2>
                             <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
                                 Manage persistent knowledge
                             </p>
                         </div>
                     </div>
-                    <button 
-                        onClick={onClose} 
-                        className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
-                        aria-label="Close"
-                    >
+                    <DialogClose className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
                         <Icons.Close />
-                    </button>
+                    </DialogClose>
                 </div>
                 
                 {/* Tab Bar */}
@@ -552,13 +540,12 @@ export const MemoryModal: React.FC<MemoryModalProps> = ({ isOpen, onClose, memor
                     </div>
                     
                     <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
-                        <button 
-                            onClick={onClose}
+                        <DialogClose 
                             disabled={isSaving}
                             className="flex-1 sm:flex-initial px-5 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-colors disabled:opacity-50"
                         >
                             Close
-                        </button>
+                        </DialogClose>
                         {activeTab === 'files' && (
                             <button 
                                 onClick={handleSaveFiles}
@@ -588,10 +575,7 @@ export const MemoryModal: React.FC<MemoryModalProps> = ({ isOpen, onClose, memor
                 </div>
             </>
             )}
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>,
-    document.body
+        </DialogContent>
+    </Dialog>
   );
 };

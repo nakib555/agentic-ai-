@@ -73,40 +73,42 @@ export const useMessageForm = (
     } catch (e) { /* ignore */ }
   }, [inputValue, fileHandling.processedFiles.length]);
   
-  // Optimized Resize Logic
+  // Optimized Resize Logic with RAF to prevent forced synchronous reflow
   useLayoutEffect(() => {
     const element = inputRef.current;
     if (!element) return;
 
-    const currentLength = inputValue.length;
-    const isDeleting = currentLength < prevValueLength.current;
-    prevValueLength.current = currentLength;
+    const rafId = requestAnimationFrame(() => {
+        const currentLength = inputValue.length;
+        const isDeleting = currentLength < prevValueLength.current;
+        prevValueLength.current = currentLength;
 
-    // OPTIMIZATION: Only force 'auto' height if we are deleting text or the value is empty.
-    // If we are typing (adding text), the scrollHeight naturally grows, so we don't need to
-    // force a layout thrash by setting height to 'auto' first.
-    // This significantly reduces jank on mobile devices while typing.
-    if (isDeleting || currentLength === 0) {
-        element.style.height = 'auto';
-    }
-    
-    const scrollHeight = element.scrollHeight;
-    
-    const MAX_HEIGHT_PX = 120;
-    const SINGLE_LINE_THRESHOLD = 32; 
-    
-    const shouldBeExpanded = scrollHeight > SINGLE_LINE_THRESHOLD || fileHandling.processedFiles.length > 0;
-    if (isExpanded !== shouldBeExpanded) {
-        setIsExpanded(shouldBeExpanded);
-    }
-    
-    if (scrollHeight > MAX_HEIGHT_PX) {
-        element.style.height = `${MAX_HEIGHT_PX}px`;
-        element.style.overflowY = 'auto';
-    } else {
-        element.style.height = `${scrollHeight}px`;
-        element.style.overflowY = 'hidden';
-    }
+        // Reset to auto ONLY if deleting or empty to allow shrinkage.
+        // Doing this inside RAF batches the DOM write with the subsequent read.
+        if (isDeleting || currentLength === 0) {
+            element.style.height = 'auto';
+        }
+        
+        const scrollHeight = element.scrollHeight;
+        
+        const MAX_HEIGHT_PX = 120;
+        const SINGLE_LINE_THRESHOLD = 32; 
+        
+        const shouldBeExpanded = scrollHeight > SINGLE_LINE_THRESHOLD || fileHandling.processedFiles.length > 0;
+        if (isExpanded !== shouldBeExpanded) {
+            setIsExpanded(shouldBeExpanded);
+        }
+        
+        if (scrollHeight > MAX_HEIGHT_PX) {
+            element.style.height = `${MAX_HEIGHT_PX}px`;
+            element.style.overflowY = 'auto';
+        } else {
+            element.style.height = `${scrollHeight}px`;
+            element.style.overflowY = 'hidden';
+        }
+    });
+
+    return () => cancelAnimationFrame(rafId);
   }, [inputValue, fileHandling.processedFiles.length, isExpanded]);
 
   useEffect(() => {
