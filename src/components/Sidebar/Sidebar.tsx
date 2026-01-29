@@ -1,4 +1,3 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -8,11 +7,16 @@ import React, { useEffect, useCallback, useRef, Suspense, useState } from 'react
 import { motion as motionTyped, AnimatePresence, useDragControls } from 'framer-motion';
 const motion = motionTyped as any;
 import type { ChatSession } from '../../types';
+import { PanelLeftClose } from 'lucide-react';
 
-// Safe lazy load for SidebarContent
 const SidebarContent = React.lazy(() => 
     import('./SidebarContent').then(module => ({ default: module.SidebarContent }))
 );
+
+const mobileVariants = {
+    open: { x: '0%' },
+    closed: { x: '-100%' },
+};
 
 type SidebarProps = {
     isOpen: boolean;
@@ -33,12 +37,6 @@ type SidebarProps = {
     onUpdateChatTitle: (id: string, title: string) => void;
     onSettingsClick: () => void;
     isDesktop: boolean;
-};
-
-// Side Drawer Style for Mobile (Slides from Left)
-const mobileVariants = {
-    open: { x: '0%' },
-    closed: { x: '-100%' },
 };
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
@@ -95,7 +93,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
     const onDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: any) => {
         if (!isDesktop) {
-            // Close if dragged left sufficiently
             if (info.offset.x < -100 || (info.velocity.x < -300 && info.offset.x < 0)) {
                 setIsOpen(false);
             }
@@ -104,7 +101,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
     return (
         <aside className={`h-full flex-shrink-0 ${isDesktop ? 'relative z-20' : 'fixed inset-0 z-40 pointer-events-none'}`}>
-            {/* Mobile Backdrop */}
             <AnimatePresence>
                 {!isDesktop && isOpen && (
                     <motion.div 
@@ -119,7 +115,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 )}
             </AnimatePresence>
             
-            {/* Sidebar Content */}
             <motion.div
                 initial={false}
                 animate={isDesktop ? { width: isCollapsed ? 72 : width } : (isOpen ? 'open' : 'closed')}
@@ -131,7 +126,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     damping: 30,
                     mass: 0.8,
                 }}
-                // Enable X-axis dragging on mobile to close
                 drag={!isDesktop ? "x" : false}
                 dragListener={!isDesktop} 
                 dragControls={dragControls}
@@ -159,7 +153,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     className="p-3 flex flex-col h-full group min-h-0 relative"
                     style={{ 
                         userSelect: isResizing ? 'none' : 'auto',
-                        // Ensure base padding (12px) is added to safe area inset to prevent clipping on mobile
                         paddingBottom: !isDesktop ? 'calc(env(safe-area-inset-bottom) + 12px)' : '0.75rem', 
                         paddingTop: !isDesktop ? 'calc(env(safe-area-inset-top) + 12px)' : '0.75rem'
                     }}
@@ -189,7 +182,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </Suspense>
                 </div>
 
-                {/* Resize Handle */}
                 {isDesktop && !isCollapsed && (
                     <div
                         className="group absolute top-0 right-0 h-full z-50 w-4 cursor-col-resize flex justify-center hover:bg-transparent"
@@ -201,7 +193,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </div>
                 )}
                 
-                {/* Desktop Expand Button */}
                 {isDesktop && isCollapsed && (
                     <button
                         onClick={() => setIsCollapsed(false)}
@@ -209,7 +200,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         title="Expand sidebar"
                         aria-label="Expand sidebar"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        <PanelLeftClose className="w-4 h-4 rotate-180" />
                     </button>
                 )}
             </motion.div>

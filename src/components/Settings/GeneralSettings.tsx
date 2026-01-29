@@ -1,10 +1,13 @@
-
-
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Key, Globe, Layout, Link, Database, Trash2, Download, Activity, Terminal } from 'lucide-react';
 import { SettingItem } from './SettingItem';
 import { ThemeToggle } from '../Sidebar/ThemeToggle';
 import type { Theme } from '../../hooks/useTheme';
 import { SelectDropdown } from '../UI/SelectDropdown';
+import { toast } from 'sonner';
 
 type GeneralSettingsProps = {
   onClearAllChats: () => void;
@@ -31,12 +34,67 @@ const PROVIDER_OPTIONS = [
     { id: 'ollama', label: 'Ollama', desc: 'Local or Hosted Instance' }
 ];
 
+// Zod Schema for API Key Form
+const apiKeySchema = z.object({
+  key: z.string().min(1, "API Key is required").regex(/^sk-|^AIza/i, "Invalid API Key format (usually starts with sk- or AIza)"),
+});
+
+type ApiKeyFormData = z.infer<typeof apiKeySchema>;
+
+const ApiKeyForm = ({ label, value, placeholder, onSave, description }: { 
+    label: string, value: string, placeholder: string, onSave: (key: string) => Promise<void>, description?: string 
+}) => {
+    const { register, handleSubmit, formState: { errors, isSubmitting, isSubmitSuccessful } } = useForm<ApiKeyFormData>({
+        resolver: zodResolver(apiKeySchema),
+        defaultValues: { key: value }
+    });
+
+    const onSubmit = async (data: ApiKeyFormData) => {
+        await onSave(data.key);
+        // Toast handled by parent or hook, but we can do local feedback
+    };
+
+    return (
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-2 w-full">
+            <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest px-1">{label}</label>
+                <div className="flex gap-2 flex-wrap sm:flex-nowrap">
+                    <input
+                        {...register('key')}
+                        type="password"
+                        placeholder={placeholder}
+                        className={`w-full pl-4 pr-4 py-2.5 bg-slate-50 dark:bg-black/20 border rounded-xl text-sm font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 transition-all shadow-sm ${errors.key ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-200 dark:border-white/10 focus:ring-indigo-500/50 focus:border-indigo-500'}`}
+                    />
+                    <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/20 shadow-md disabled:opacity-50 min-w-[80px] flex items-center justify-center transition-all active:scale-95"
+                    >
+                        {isSubmitting ? (
+                            <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : isSubmitSuccessful ? (
+                            <Check className="h-4 w-4" />
+                        ) : (
+                            'Save'
+                        )}
+                    </button>
+                </div>
+                {errors.key && <p className="text-xs text-red-500 px-1">{errors.key.message}</p>}
+                {description && <p className="text-[11px] text-slate-500 dark:text-slate-500 px-1">{description}</p>}
+            </div>
+        </form>
+    );
+};
+
+// Simple icon wrapper for Lucid icons
+const Check = (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="20 6 9 17 4 12"/></svg>;
+
 const ActionButton = ({ 
-    icon, 
+    icon: Icon, 
     title, 
     onClick, 
     danger = false 
-}: { icon: React.ReactNode, title: string, onClick: () => void, danger?: boolean }) => (
+}: { icon: React.ElementType, title: string, onClick: () => void, danger?: boolean }) => (
     <button 
         onClick={onClick}
         className={`
@@ -51,97 +109,11 @@ const ActionButton = ({
             flex items-center justify-center w-8 h-8 rounded-xl transition-transform duration-300 group-hover:scale-110 flex-shrink-0
             ${danger ? 'bg-red-100 dark:bg-red-500/20' : 'bg-slate-100 dark:bg-white/10'}
         `}>
-            {icon}
+            <Icon className="w-4 h-4" />
         </div>
         <span className="truncate">{title}</span>
     </button>
 );
-
-const ApiKeyInput = ({ label, value, placeholder, onSave, buttonLabel, description, isPassword = true, suggestions = [] }: any) => {
-    const [inputValue, setInputValue] = useState(value);
-    const [isSaved, setIsSaved] = useState(false);
-    const [isSaving, setIsSaving] = useState(false);
-    const listId = React.useId();
-    
-    // Track mounted state to prevent state updates on unmounted component
-    const isMounted = useRef(true);
-    useEffect(() => {
-        isMounted.current = true;
-        return () => { isMounted.current = false; };
-    }, []);
-
-    useEffect(() => setInputValue(value), [value]);
-
-    const handleSave = async (e?: React.FormEvent) => {
-        e?.preventDefault();
-        if (isSaving) return;
-        setIsSaving(true);
-        try {
-            await onSave(inputValue);
-            if (isMounted.current) {
-                setIsSaved(true);
-                setTimeout(() => {
-                    if (isMounted.current) setIsSaved(false);
-                }, 2000);
-            }
-        } catch (e) {
-            console.error("Save failed", e);
-        } finally {
-            if (isMounted.current) setIsSaving(false);
-        }
-    };
-
-    return (
-        <form className="flex flex-col gap-2 w-full max-w-full" onSubmit={handleSave}>
-            {label && <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest px-1">{label}</label>}
-            <div className="flex gap-2 flex-wrap sm:flex-nowrap">
-                <div className="relative flex-1 group min-w-[200px] w-full sm:w-auto">
-                    <input
-                        type={isPassword ? "password" : "text"}
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        placeholder={placeholder}
-                        autoComplete={isPassword ? "new-password" : "url"}
-                        list={suggestions.length > 0 ? listId : undefined}
-                        className="w-full pl-4 pr-4 py-2.5 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600 shadow-sm"
-                    />
-                    {suggestions.length > 0 && (
-                        <datalist id={listId}>
-                            {suggestions.map((opt: string) => (
-                                <option key={opt} value={opt} />
-                            ))}
-                        </datalist>
-                    )}
-                </div>
-                <button
-                    type="submit"
-                    disabled={isSaving || !inputValue}
-                    className={`
-                        px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[80px] w-full sm:w-auto
-                        ${isSaved 
-                            ? 'bg-green-500 hover:bg-green-600 shadow-green-500/20' 
-                            : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/20'
-                        }
-                    `}
-                >
-                    {isSaving ? (
-                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                    ) : isSaved ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                            <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
-                        </svg>
-                    ) : (
-                        buttonLabel || 'Save'
-                    )}
-                </button>
-            </div>
-            {description && <p className="text-[11px] text-slate-500 dark:text-slate-500 px-1">{description}</p>}
-        </form>
-    );
-};
 
 const GeneralSettings: React.FC<GeneralSettingsProps> = ({ 
     onClearAllChats, onRunTests, onDownloadLogs, onShowDataStructure, onExportAllChats, 
@@ -158,78 +130,59 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
             <section className="space-y-6 w-full">
                 <div className="flex items-center gap-3 mb-2">
                     <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M12 2a10 10 0 0 1 10 10c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2Z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/></svg>
+                        <Key className="w-5 h-5" />
                     </div>
                     <h4 className="text-base font-bold text-slate-700 dark:text-slate-200">AI Provider</h4>
                 </div>
 
-                <div className="p-1 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/5 w-full sm:w-fit">
+                <div className="w-full sm:w-72">
                     <SelectDropdown
                         options={PROVIDER_OPTIONS}
                         value={provider}
                         onChange={(val) => onProviderChange(val as any)}
-                        className="w-full sm:w-64"
-                        triggerClassName="bg-white dark:bg-[#1e1e1e] border-transparent shadow-sm rounded-lg px-4 py-2"
+                        className="w-full"
                     />
                 </div>
 
                 {provider === 'gemini' && (
-                    <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300 w-full">
-                        <ApiKeyInput 
+                    <div className="animate-in fade-in slide-in-from-top-2 duration-300 w-full">
+                        <ApiKeyForm
                             label="Google Gemini API Key" 
                             value={apiKey} 
                             placeholder="sk-..." 
-                            onSave={(key: string) => onSaveApiKey(key, 'gemini')}
+                            onSave={(key) => onSaveApiKey(key, 'gemini')}
                             description="Required for Gemini models. Stored securely in your browser."
                         />
-                         <div className="text-[11px] text-slate-400">
-                            Don't have a key? <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-indigo-500 hover:underline">Get one from Google AI Studio</a>.
-                        </div>
                     </div>
                 )}
 
                 {provider === 'openrouter' && (
-                    <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300 w-full">
-                        <ApiKeyInput 
+                    <div className="animate-in fade-in slide-in-from-top-2 duration-300 w-full">
+                         <ApiKeyForm
                             label="OpenRouter API Key" 
                             value={openRouterApiKey} 
                             placeholder="sk-or-..." 
-                            onSave={(key: string) => onSaveApiKey(key, 'openrouter')}
-                            description="Required for OpenRouter. Stored securely in your browser."
+                            onSave={(key) => onSaveApiKey(key, 'openrouter')}
+                            description="Required for OpenRouter models."
                         />
-                         <div className="text-[11px] text-slate-400">
-                            Don't have a key? <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer" className="text-indigo-500 hover:underline">Get one from OpenRouter</a>.
-                        </div>
                     </div>
                 )}
                 
                 {provider === 'ollama' && (
-                    <div className="space-y-6 pt-2 animate-in fade-in slide-in-from-top-2 duration-300 w-full">
-                        <ApiKeyInput 
-                            label="Ollama Host URL" 
-                            value={ollamaHost || ''} 
-                            placeholder="http://localhost:11434" 
-                            onSave={(val: string) => onSaveOllamaHost && onSaveOllamaHost(val)}
-                            buttonLabel="Save Host"
-                            description="Enter the URL of your Ollama instance"
-                            isPassword={false}
-                            suggestions={[
-                                "http://localhost:11434",
-                                "http://127.0.0.1:11434"
-                            ]}
-                        />
-                        <ApiKeyInput 
-                            label="Auth Header (Optional)" 
-                            value={apiKey} // Reusing generic apiKey field for Ollama Auth if needed
-                            placeholder="Bearer token..." 
-                            onSave={(key: string) => onSaveApiKey(key, 'ollama')}
-                            buttonLabel="Save Key"
-                            description="Only needed if your Ollama instance requires authentication."
-                        />
-                         <div className="p-4 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-xs text-slate-600 dark:text-slate-400">
-                            <p className="font-bold mb-1">Note for Localhost:</p>
-                            <p>If running Ollama locally, you may need to configure CORS on your Ollama server or use a tunnel if accessing from a different device.</p>
-                            <code className="block mt-2 bg-slate-200 dark:bg-black/30 p-2 rounded">OLLAMA_ORIGINS="*" ollama serve</code>
+                     <div className="space-y-4 pt-2 animate-in fade-in slide-in-from-top-2 duration-300 w-full">
+                        {/* We use standard input for Ollama host as it's not a secret */}
+                        <div className="flex flex-col gap-2">
+                             <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest px-1">Ollama Host URL</label>
+                             <div className="flex gap-2">
+                                <input 
+                                    type="text" 
+                                    defaultValue={ollamaHost}
+                                    placeholder="http://localhost:11434"
+                                    onBlur={(e) => onSaveOllamaHost && onSaveOllamaHost(e.target.value)}
+                                    className="flex-1 pl-4 pr-4 py-2.5 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                                />
+                             </div>
+                             <p className="text-[11px] text-slate-500 px-1">Ensure your Ollama server allows CORS.</p>
                         </div>
                     </div>
                 )}
@@ -241,13 +194,12 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
             <section className="space-y-6 w-full">
                 <div className="flex items-center gap-3 mb-2">
                     <div className="p-2 rounded-lg bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/></svg>
+                        <Layout className="w-5 h-5" />
                     </div>
                     <h4 className="text-base font-bold text-slate-700 dark:text-slate-200">Appearance</h4>
                 </div>
 
                 <div className="space-y-4 w-full">
-                    {/* Explicitly allow wrapping for mobile */}
                     <SettingItem label="Theme Preference" description="Choose your preferred visual theme." wrapControls={true}>
                         <div className="w-full sm:w-auto min-w-[200px]">
                            <ThemeToggle theme={theme} setTheme={setTheme} variant="cards" />
@@ -255,26 +207,31 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
                     </SettingItem>
                 </div>
             </section>
-
-            <div className="h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-white/10 to-transparent w-full" />
             
+            <div className="h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-white/10 to-transparent w-full" />
+
             {/* Connectivity */}
             <section className="space-y-6 w-full">
                 <div className="flex items-center gap-3 mb-2">
                     <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M2 12h20"/><path d="M2 12l5-5"/><path d="M2 12l5 5"/><path d="M22 12l-5-5"/><path d="M22 12l-5 5"/><rect x="8" y="7" width="8" height="10" rx="2"/></svg>
+                        <Globe className="w-5 h-5" />
                     </div>
                     <h4 className="text-base font-bold text-slate-700 dark:text-slate-200">Connectivity</h4>
                 </div>
-                 <ApiKeyInput 
-                    label="Backend Server URL" 
-                    value={serverUrl} 
-                    placeholder="http://localhost:3001" 
-                    onSave={onSaveServerUrl}
-                    buttonLabel="Update"
-                    description="Override the default backend URL (e.g., for testing)."
-                    isPassword={false}
-                />
+                
+                <div className="flex flex-col gap-2">
+                     <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest px-1">Backend Server URL</label>
+                     <div className="flex gap-2">
+                        <input 
+                            type="text" 
+                            defaultValue={serverUrl}
+                            placeholder="http://localhost:3001"
+                            onBlur={(e) => onSaveServerUrl(e.target.value)}
+                            className="flex-1 pl-4 pr-4 py-2.5 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                        />
+                     </div>
+                     <p className="text-[11px] text-slate-500 px-1">Override the default backend URL (e.g., for testing).</p>
+                </div>
             </section>
 
             <div className="h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-white/10 to-transparent w-full" />
@@ -283,34 +240,34 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
             <section className="space-y-6 w-full">
                 <div className="flex items-center gap-3 mb-4">
                     <div className="p-2 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                        <Database className="w-5 h-5" />
                     </div>
                     <h4 className="text-base font-bold text-slate-700 dark:text-slate-200">Data & Maintenance</h4>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
                     <ActionButton 
-                        icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>}
+                        icon={Download}
                         title="Export All Data"
                         onClick={onExportAllChats}
                     />
                     <ActionButton 
-                        icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>}
+                        icon={Link}
                         title="Download Logs"
                         onClick={onDownloadLogs}
                     />
                     <ActionButton 
-                        icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>}
+                        icon={Activity}
                         title="Run Diagnostics"
                         onClick={onRunTests}
                     />
                     <ActionButton 
-                        icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>}
+                        icon={Terminal}
                         title="Debug Structure"
                         onClick={onShowDataStructure}
                     />
                      <ActionButton 
-                        icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>}
+                        icon={Trash2}
                         title="Clear All Chats"
                         onClick={onClearAllChats}
                         danger

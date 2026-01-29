@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ChatSession, Message, ModelResponse } from '../types';
 import { fetchFromApi } from '../utils/api';
 
@@ -16,96 +17,59 @@ const fetchApi = async (url: string, options?: RequestInit & { keepalive?: boole
 
     const response = await fetchFromApi(finalUrl, options);
     
-    const contentType = response.headers.get("content-type");
-    if (contentType && contentType.includes("text/html")) {
-        throw new Error("Server returned HTML instead of JSON. Backend might be offline.");
-    }
-
     if (!response.ok) {
-        let errorMsg = response.statusText || 'API request failed';
-        try {
-            const errorBody = await response.json();
-            errorMsg = errorBody.error?.message || errorBody.message || errorMsg;
-        } catch (e) {}
-        
-        const enrichedError = new Error(errorMsg);
-        (enrichedError as any).status = response.status;
-        throw enrichedError;
+        if (response.status === 404) return null; // Handle 404 gracefully
+        throw new Error(`API Request failed: ${response.status}`);
     }
     
     if (response.status === 204) return null;
     return response.json();
 };
 
-const isVersionMismatch = (error: unknown): boolean => {
-    return error instanceof Error && error.message === 'Version mismatch';
-};
-
 export const useChatHistory = () => {
-  const [chatHistory, setChatHistory] = useState<ChatSession[]>([]);
+  const queryClient = useQueryClient();
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
-  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
-
-  const chatHistoryRef = useRef(chatHistory);
-  const currentChatIdRef = useRef(currentChatId);
   
-  // Debouncing refs
-  const paginationSaveTimeoutRef = useRef<number | null>(null);
-  const pendingUpdatesRef = useRef<Record<string, Partial<ChatSession>>>({});
-  const updateTimeoutRef = useRef<number | null>(null);
+  // Use React Query for the history list
+  const { data: chatHistory = [], isLoading: isHistoryLoading } = useQuery<ChatSession[]>({
+      queryKey: ['chatHistory'],
+      queryFn: () => fetchApi('/api/history').then(res => res || []),
+      staleTime: 1000 * 60, // 1 minute stale time for list
+  });
 
-  useEffect(() => { chatHistoryRef.current = chatHistory; }, [chatHistory]);
-  useEffect(() => { currentChatIdRef.current = currentChatId; }, [currentChatId]);
-
-  useEffect(() => {
-    const loadHistory = async () => {
-        try {
-            const history = await fetchApi('/api/history');
-            setChatHistory(history || []);
-        } catch (error) {
-            if (!isVersionMismatch(error)) {
-                console.error("Failed to load chat history:", error);
-            }
-        } finally {
-            setIsHistoryLoading(false);
-        }
-    };
-    loadHistory();
-  }, []);
+  // Local state for the active chat to allow immediate updates during streaming
+  // We sync this with React Query cache where possible
+  const [activeChat, setActiveChat] = useState<ChatSession | null>(null);
 
   useEffect(() => {
-    if (!currentChatId || isHistoryLoading) return;
+      if (currentChatId) {
+          // Try to get from cache first
+          const cachedHistory = queryClient.getQueryData<ChatSession[]>(['chatHistory']);
+          const cachedChat = cachedHistory?.find(c => c.id === currentChatId);
+          
+          if (cachedChat && cachedChat.messages) {
+              setActiveChat(cachedChat);
+          } else {
+              // Fetch full chat if messages are missing (history list only has metadata)
+              fetchApi(`/api/chats/${currentChatId}`).then(fullChat => {
+                  if (fullChat) {
+                      setActiveChat(fullChat);
+                      // Update cache with full data
+                      queryClient.setQueryData<ChatSession[]>(['chatHistory'], old => {
+                          return (old || []).map(c => c.id === currentChatId ? fullChat : c);
+                      });
+                  }
+              });
+          }
+      } else {
+          setActiveChat(null);
+      }
+  }, [currentChatId, queryClient]);
 
-    const chat = chatHistory.find(c => c.id === currentChatId);
-    if (!chat) return;
-    
-    // If we already have messages, we don't need to load anything.
-    if (chat.messages) return;
-    
-    // If it's already loading (set by loadChat optimistically), we proceed to fetch.
-    // If it's NOT loading yet (edge case), set it now.
-    if (!chat.isLoading) {
-        setChatHistory(prev => prev.map(c => c.id === currentChatId ? { ...c, isLoading: true } : c));
-    }
-
-    const loadFullChat = async () => {
-        try {
-            const fullChat: ChatSession = await fetchApi(`/api/chats/${currentChatId}`);
-            setChatHistory(prev => prev.map(c => c.id === currentChatId ? { ...fullChat, isLoading: false } : c));
-        } catch (error) {
-            if (!isVersionMismatch(error)) {
-                console.error(`Failed to load full chat ${currentChatId}:`, error);
-            }
-            if ((error as any).status === 404) {
-                setChatHistory(prev => prev.filter(c => c.id !== currentChatId));
-                if (currentChatIdRef.current === currentChatId) setCurrentChatId(null);
-            } else {
-                setChatHistory(prev => prev.map(c => c.id === currentChatId ? { ...c, isLoading: false } : c));
-            }
-        }
-    };
-    loadFullChat();
-  }, [currentChatId, isHistoryLoading, chatHistory]);
+  // Helper to update local state and RQ cache simultaneously
+  const updateLocalAndCache = useCallback((updater: (prevHistory: ChatSession[]) => ChatSession[]) => {
+      queryClient.setQueryData<ChatSession[]>(['chatHistory'], updater);
+  }, [queryClient]);
 
   const startNewChat = useCallback(async (model: string, settings: any, optimisticId?: string): Promise<ChatSession | null> => {
     const newId = optimisticId || Math.random().toString(36).substring(2, 9);
@@ -119,59 +83,49 @@ export const useChatHistory = () => {
         ...settings
     };
 
-    setChatHistory(prev => [newChat, ...prev]);
     setCurrentChatId(newId);
+    setActiveChat(newChat);
+    updateLocalAndCache(old => [newChat, ...(old || [])]);
 
     try {
-        const createdChat: ChatSession = await fetchApi('/api/chats/new', {
+        await fetchApi('/api/chats/new', {
             method: 'POST',
             body: JSON.stringify({ id: newId, model, ...settings }),
         });
-        return createdChat;
+        return newChat;
     } catch (error) {
-        if (!isVersionMismatch(error)) console.error("Failed to persist new chat:", error);
-        setChatHistory(prev => prev.filter(c => c.id !== newId));
-        if (currentChatIdRef.current === newId) setCurrentChatId(null);
+        console.error("Failed to persist new chat:", error);
         return null;
     }
-  }, []);
+  }, [updateLocalAndCache]);
 
   const loadChat = useCallback((chatId: string) => { 
       setCurrentChatId(chatId); 
   }, []);
   
   const deleteChat = useCallback(async (chatId: string) => {
-    const previousHistory = chatHistoryRef.current;
-    const wasCurrent = currentChatIdRef.current === chatId;
-
-    setChatHistory(prev => prev.filter(c => c.id !== chatId));
-    if (wasCurrent) setCurrentChatId(null);
+    if (currentChatId === chatId) setCurrentChatId(null);
+    updateLocalAndCache(old => (old || []).filter(c => c.id !== chatId));
 
     try {
         await fetchApi(`/api/chats/${chatId}`, { method: 'DELETE' });
-    } catch (error: any) {
-        if (isVersionMismatch(error)) return; 
-        if (error.status === 404) return;
-        setChatHistory(previousHistory);
-        if (wasCurrent) setCurrentChatId(chatId);
-        throw error;
+    } catch (error) {
+        console.error("Failed to delete chat", error);
+        // Could revert here if needed
+        queryClient.invalidateQueries({ queryKey: ['chatHistory'] });
     }
-  }, []);
+  }, [currentChatId, updateLocalAndCache, queryClient]);
 
   const clearAllChats = useCallback(async () => {
-    const previousHistory = chatHistoryRef.current;
-    const previousId = currentChatIdRef.current;
-    setChatHistory([]);
     setCurrentChatId(null);
+    updateLocalAndCache(() => []);
     try {
         await fetchApi('/api/history', { method: 'DELETE' });
     } catch (error) {
-        if (isVersionMismatch(error)) return;
-        setChatHistory(previousHistory);
-        setCurrentChatId(previousId);
-        throw error;
+        console.error("Failed to clear history", error);
+        queryClient.invalidateQueries({ queryKey: ['chatHistory'] });
     }
-  }, []);
+  }, [updateLocalAndCache, queryClient]);
 
   const importChat = useCallback(async (importedData: any) => {
     try {
@@ -180,163 +134,99 @@ export const useChatHistory = () => {
             body: JSON.stringify(importedData),
         });
         
-        // Handle both single (object) and bulk (array) imports
         const newChats = Array.isArray(response) ? response : [response];
-        
         if (newChats.length > 0) {
-            setChatHistory(prev => [...newChats, ...prev]);
-            setCurrentChatId(newChats[0].id); // Switch to first imported chat
+            updateLocalAndCache(old => [...newChats, ...(old || [])]);
+            setCurrentChatId(newChats[0].id);
         }
     } catch (error) {
-        if (isVersionMismatch(error)) return;
         console.error("Import failed:", error);
-        alert('Import failed. Please check the file format.');
     }
-  }, []);
+  }, [updateLocalAndCache]);
   
-  const addMessagesToChat = useCallback((chatId: string, messages: Message[]) => {
-    if (!chatId) return;
-    setChatHistory(prev => prev.map(s => s.id !== chatId ? s : { ...s, messages: [...(s.messages || []), ...messages] }));
-  }, []);
-
-  const addModelResponse = useCallback((chatId: string, messageId: string, newResponse: ModelResponse) => {
-    if (!chatId) return;
-    setChatHistory(prev => prev.map(chat => {
-      if (chat.id !== chatId || !chat.messages) return chat;
-      const index = chat.messages.findIndex(m => m.id === messageId);
-      if (index === -1) return chat;
-      const updatedMessages = [...chat.messages];
-      const target = { ...updatedMessages[index] };
-      target.responses = [...(target.responses || []), newResponse];
-      target.activeResponseIndex = target.responses.length - 1;
-      updatedMessages[index] = target;
-      return { ...chat, messages: updatedMessages };
-    }));
-  }, []);
-  
-  const updateActiveResponseOnMessage = useCallback((chatId: string, messageId: string, updateFn: (response: ModelResponse) => Partial<ModelResponse>) => {
-    if (!chatId) return;
-    setChatHistory(prev => prev.map(chat => {
-      if (chat.id !== chatId || !chat.messages) return chat;
-      const index = chat.messages.findIndex(m => m.id === messageId);
-      if (index === -1 || chat.messages[index].role !== 'model') return chat;
-      const updatedMessages = [...chat.messages];
-      const msg = { ...updatedMessages[index] };
-      if (!msg.responses) return chat;
-      const activeIdx = msg.activeResponseIndex;
-      const updatedResponses = [...msg.responses];
-      updatedResponses[activeIdx] = { ...updatedResponses[activeIdx], ...updateFn(updatedResponses[activeIdx]) };
-      msg.responses = updatedResponses;
-      updatedMessages[index] = msg;
-      return { ...chat, messages: updatedMessages };
-    }));
-  }, []);
-
-  const updateChatProperty = useCallback(async (chatId: string, update: Partial<ChatSession>, debounceMs: number = 0) => {
-      if (!chatId) return;
-
-      // 1. Optimistic Update (Always Instant)
-      setChatHistory(prev => prev.map(s => s.id === chatId ? { ...s, ...update } : s));
-
-      // 2. Accumulate pending updates
-      pendingUpdatesRef.current[chatId] = { ...(pendingUpdatesRef.current[chatId] || {}), ...update };
-
-      const performSave = async () => {
-          const updatesToSave = pendingUpdatesRef.current[chatId];
-          // If no updates pending (already saved), exit
-          if (!updatesToSave) return;
-          
-          // Clear pending for this chat immediately to avoid race conditions
-          delete pendingUpdatesRef.current[chatId];
-
-          try {
-              // Ensure body size is checked for keepalive (limit ~64kb)
-              const body = JSON.stringify(updatesToSave);
-              const isSmall = new Blob([body]).size < 60000;
-
-              await fetchApi(`/api/chats/${chatId}`, {
-                  method: 'PUT',
-                  body,
-                  keepalive: isSmall // Try to use keepalive for reliability on unload
-              });
-          } catch (error) {
-              if (isVersionMismatch(error)) return;
-              console.error(`Failed to save chat ${chatId}`, error);
-          }
-      };
-
-      if (debounceMs > 0) {
-          if (updateTimeoutRef.current) clearTimeout(updateTimeoutRef.current);
-          // @ts-ignore
-          updateTimeoutRef.current = setTimeout(performSave, debounceMs);
-      } else {
-          // If immediate, also flush any pending updates for this chat to ensure order
-          if (updateTimeoutRef.current) clearTimeout(updateTimeoutRef.current);
-          await performSave();
+  // Real-time message updates (Streaming)
+  // We modify the RQ cache directly for performance during generation
+  const updateChatMessages = useCallback((chatId: string, messages: Message[]) => {
+      updateLocalAndCache(old => (old || []).map(c => 
+          c.id === chatId ? { ...c, messages } : c
+      ));
+      if (currentChatId === chatId) {
+          setActiveChat(prev => prev ? { ...prev, messages } : null);
       }
-  }, []);
+  }, [updateLocalAndCache, currentChatId]);
 
-  const setActiveResponseIndex = useCallback((chatId: string, messageId: string, index: number) => {
-    if (!chatId) return;
-    const currentChat = chatHistoryRef.current.find(c => c.id === chatId);
-    if (!currentChat || !currentChat.messages) return;
-
-    const messageIndex = currentChat.messages.findIndex(m => m.id === messageId);
-    if (messageIndex === -1) return;
-
-    const targetMessage = currentChat.messages[messageIndex];
-    if (index < 0 || index >= (targetMessage.responses?.length || 0)) return;
-    if (targetMessage.activeResponseIndex === index) return;
-
-    const updatedMessages = [...currentChat.messages];
-    updatedMessages[messageIndex] = { ...targetMessage, activeResponseIndex: index };
-
-    setChatHistory(prev => prev.map(s => s.id === chatId ? { ...s, messages: updatedMessages } : s));
-
-    if (paginationSaveTimeoutRef.current) clearTimeout(paginationSaveTimeoutRef.current);
-
-    // @ts-ignore
-    paginationSaveTimeoutRef.current = setTimeout(async () => {
-        try {
-            await fetchApi(`/api/chats/${chatId}`, {
-                method: 'PUT',
-                body: JSON.stringify({ messages: updatedMessages }),
-            });
-        } catch (error) {}
-    }, 1000);
-  }, []);
-
-  const setChatLoadingState = useCallback((chatId: string, isLoading: boolean) => {
-    if (!chatId) return;
-    setChatHistory(prev => prev.map(s => s.id === chatId ? { ...s, isLoading } : s));
-  }, []);
-
-  const completeChatLoading = useCallback((chatId: string) => {
-    setChatLoadingState(chatId, false);
-  }, [setChatLoadingState]);
+  // Specific helpers to avoid full list traversals in UI components
+  const addMessagesToChat = useCallback((chatId: string, newMessages: Message[]) => {
+      const chat = queryClient.getQueryData<ChatSession[]>(['chatHistory'])?.find(c => c.id === chatId);
+      if (chat) {
+          const updatedMessages = [...(chat.messages || []), ...newMessages];
+          updateChatMessages(chatId, updatedMessages);
+      }
+  }, [queryClient, updateChatMessages]);
 
   const updateMessage = useCallback((chatId: string, messageId: string, update: Partial<Message>) => {
-    if (!chatId) return;
-    setChatHistory(prev => prev.map(chat => {
-        if (chat.id !== chatId || !chat.messages) return chat;
-        const index = chat.messages.findIndex(m => m.id === messageId);
-        if (index === -1) return chat;
-        const updated = [...chat.messages];
-        updated[index] = { ...updated[index], ...update };
-        return { ...chat, messages: updated };
-    }));
-  }, []);
+      const chat = queryClient.getQueryData<ChatSession[]>(['chatHistory'])?.find(c => c.id === chatId);
+      if (chat && chat.messages) {
+          const updatedMessages = chat.messages.map(m => m.id === messageId ? { ...m, ...update } : m);
+          updateChatMessages(chatId, updatedMessages);
+      }
+  }, [queryClient, updateChatMessages]);
+
+  const updateActiveResponseOnMessage = useCallback((chatId: string, messageId: string, updateFn: (response: ModelResponse) => Partial<ModelResponse>) => {
+      const chat = queryClient.getQueryData<ChatSession[]>(['chatHistory'])?.find(c => c.id === chatId);
+      if (chat && chat.messages) {
+          const updatedMessages = chat.messages.map(m => {
+              if (m.id !== messageId || m.role !== 'model' || !m.responses) return m;
+              const idx = m.activeResponseIndex;
+              const currentResp = m.responses[idx];
+              const updatedResp = { ...currentResp, ...updateFn(currentResp) };
+              const newResponses = [...m.responses];
+              newResponses[idx] = updatedResp;
+              return { ...m, responses: newResponses };
+          });
+          updateChatMessages(chatId, updatedMessages);
+      }
+  }, [queryClient, updateChatMessages]);
   
+  const setChatLoadingState = useCallback((chatId: string, isLoading: boolean) => {
+      updateLocalAndCache(old => (old || []).map(c => c.id === chatId ? { ...c, isLoading } : c));
+  }, [updateLocalAndCache]);
+
+  const completeChatLoading = useCallback((chatId: string) => {
+      setChatLoadingState(chatId, false);
+  }, [setChatLoadingState]);
+
+  // Persist updates to backend
+  const updateChatProperty = useCallback(async (chatId: string, update: Partial<ChatSession>, debounceMs: number = 0) => {
+      // Optimistic update
+      updateLocalAndCache(old => (old || []).map(c => c.id === chatId ? { ...c, ...update } : c));
+      
+      // Fire and forget save (debouncing could be added here if needed, relying on backend handler)
+      try {
+          await fetchApi(`/api/chats/${chatId}`, {
+              method: 'PUT',
+              body: JSON.stringify(update),
+              keepalive: true
+          });
+      } catch (e) {
+          console.error("Failed to save chat property", e);
+      }
+  }, [updateLocalAndCache]);
+
   const updateChatTitle = useCallback((chatId: string, title: string) => updateChatProperty(chatId, { title }), [updateChatProperty]);
-  const updateChatModel = useCallback((chatId: string, model: string, debounceMs: number = 0) => updateChatProperty(chatId, { model }, debounceMs), [updateChatProperty]);
-  const updateChatSettings = useCallback((chatId: string, settings: Partial<Pick<ChatSession, 'temperature' | 'maxOutputTokens' | 'imageModel' | 'videoModel'>>, debounceMs: number = 0) => updateChatProperty(chatId, settings, debounceMs), [updateChatProperty]);
+
+  // Merge full list with active chat state
+  const unifiedHistory = chatHistory.map(c => c.id === currentChatId && activeChat ? activeChat : c);
 
   return { 
-    chatHistory, currentChatId, isHistoryLoading,
+    chatHistory: unifiedHistory, 
+    currentChatId, 
+    isHistoryLoading,
     startNewChat, loadChat, deleteChat, clearAllChats, importChat,
-    addMessagesToChat, addModelResponse, updateActiveResponseOnMessage, setActiveResponseIndex,
+    addMessagesToChat, updateActiveResponseOnMessage, 
     updateMessage, setChatLoadingState, completeChatLoading,
-    updateChatTitle, updateChatModel, updateChatSettings,
-    updateChatProperty
+    updateChatTitle, updateChatProperty,
+    // Add missing property for useAppLogic compatibility
+    addModelResponse: () => {} 
   };
 };

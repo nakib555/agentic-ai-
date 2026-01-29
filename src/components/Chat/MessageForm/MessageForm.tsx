@@ -1,11 +1,12 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { forwardRef, useState, Suspense } from 'react';
+import React, { forwardRef, useState, Suspense, useCallback } from 'react';
 import { AnimatePresence, motion as motionTyped } from 'framer-motion';
+import { useDropzone } from 'react-dropzone';
+import { Mic, Send, Paperclip, Sparkles, X, Plus } from 'lucide-react';
 import { useMessageForm } from './useMessageForm';
 import { UploadMenu } from './UploadMenu';
 import { VoiceVisualizer } from '../../UI/VoiceVisualizer';
@@ -17,7 +18,6 @@ import { AttachedFilePreview } from './AttachedFilePreview';
 
 const motion = motionTyped as any;
 
-// Lazy load the sidebar to avoid loading syntax highlighters immediately
 const FilePreviewSidebar = React.lazy(() => import('./FilePreviewSidebar').then(m => ({ default: m.FilePreviewSidebar })));
 
 type MessageFormProps = {
@@ -40,53 +40,33 @@ export const MessageForm = forwardRef<MessageFormHandle, MessageFormProps>((prop
     hasApiKey 
   } = props;
 
-  const [isDragging, setIsDragging] = useState(false);
-
   const logic = useMessageForm(
     (msg, files, options) => onSubmit(msg, files, { ...options, isThinkingModeEnabled: false }),
     isLoading,
     ref,
     props.messages,
-    false, // Permanently disable agent mode
+    false,
     hasApiKey
   );
+
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+      if (acceptedFiles.length > 0) {
+          logic.processAndSetFiles(acceptedFiles);
+      }
+  }, [logic]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+      onDrop,
+      noClick: true, // We have a separate attach button
+      noKeyboard: true
+  });
 
   const isGeneratingResponse = isLoading;
   const isSendDisabled = !logic.canSubmit || isAppLoading || backendStatus === 'offline';
   const hasFiles = logic.processedFiles.length > 0;
 
-  // --- Drag & Drop Handlers ---
-  const handleDragEnter = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-    setIsDragging(false);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      logic.processAndSetFiles(Array.from(e.dataTransfer.files));
-    }
-  };
-
   return (
-    <div className="w-full mx-auto max-w-4xl relative">
+    <div className="w-full mx-auto max-w-4xl relative" {...getRootProps()}>
       <VoiceVisualizer isRecording={logic.isRecording} />
 
       <AnimatePresence>
@@ -99,7 +79,6 @@ export const MessageForm = forwardRef<MessageFormHandle, MessageFormProps>((prop
         )}
       </AnimatePresence>
 
-      {/* Content Preview Sidebar (Desktop) / Modal (Mobile) */}
       <Suspense fallback={null}>
           <FilePreviewSidebar 
             isOpen={!!logic.previewFile}
@@ -108,6 +87,7 @@ export const MessageForm = forwardRef<MessageFormHandle, MessageFormProps>((prop
           />
       </Suspense>
 
+      {/* Hidden inputs managed by logic hook hooks, but we still need them for the menu */}
       <input
         type="file"
         ref={logic.fileInputRef}
@@ -116,35 +96,24 @@ export const MessageForm = forwardRef<MessageFormHandle, MessageFormProps>((prop
         multiple
         aria-hidden="true"
       />
-      <input
-        type="file"
-        ref={logic.folderInputRef}
-        onChange={logic.handleFileChange}
-        className="hidden"
-        multiple
-        {...({ webkitdirectory: "", directory: "" } as any)}
-        aria-hidden="true"
-      />
+      {/* Dropzone's input */}
+      <input {...getInputProps()} className="hidden" />
 
       <div 
         className={`
             relative bg-transparent border-2 transition-all duration-200 rounded-3xl overflow-hidden shadow-sm flex flex-col
-            ${isDragging 
+            ${isDragActive 
                 ? 'border-primary-main ring-4 ring-primary-subtle bg-primary-subtle scale-[1.01]' 
                 : logic.isFocused 
                     ? 'border-primary-main shadow-lg ring-2 ring-primary-subtle' 
                     : 'border-border-default hover:border-border-strong'
             }
         `}
-        onDragEnter={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
       >
         
         {/* Drop Indicator Overlay */}
         <AnimatePresence>
-            {isDragging && (
+            {isDragActive && (
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -152,18 +121,14 @@ export const MessageForm = forwardRef<MessageFormHandle, MessageFormProps>((prop
                     className="absolute inset-0 z-50 flex items-center justify-center bg-white/90 dark:bg-black/90 backdrop-blur-[2px] pointer-events-none"
                 >
                     <div className="text-center text-primary-main font-bold text-lg flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8 animate-bounce">
-                            <path d="M12 17V3"/>
-                            <path d="m6 11 6 6 6-6"/>
-                            <path d="M19 21H5"/>
-                        </svg>
+                        <Plus className="w-8 h-8 animate-bounce" />
                         Drop to attach
                     </div>
                 </motion.div>
             )}
         </AnimatePresence>
 
-        {/* File List Area - High Contrast */}
+        {/* File List Area */}
         <AnimatePresence>
             {hasFiles && (
                 <motion.div
@@ -171,11 +136,6 @@ export const MessageForm = forwardRef<MessageFormHandle, MessageFormProps>((prop
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     className="flex flex-nowrap overflow-x-auto gap-3 px-4 pb-3 pt-4 border-b border-border-subtle bg-input-sub scrollbar-hide"
-                    onWheel={(e: any) => {
-                        if (e.deltaY !== 0) {
-                            e.currentTarget.scrollLeft += e.deltaY;
-                        }
-                    }}
                 >
                     {logic.processedFiles.map(file => (
                         <AttachedFilePreview
@@ -193,8 +153,7 @@ export const MessageForm = forwardRef<MessageFormHandle, MessageFormProps>((prop
 
         {/* Text Input */}
         <div className="flex flex-col relative flex-1">
-            {/* Animated Placeholder Overlay */}
-            {!logic.inputValue && !isDragging && (
+            {!logic.inputValue && !isDragActive && (
                <div className="absolute inset-0 px-4 py-3 pointer-events-none select-none opacity-60 z-0 overflow-hidden">
                   <TextType 
                     text={logic.placeholder} 
@@ -228,26 +187,19 @@ export const MessageForm = forwardRef<MessageFormHandle, MessageFormProps>((prop
         {/* Bottom Toolbar */}
         <div className="flex items-center justify-between px-3 pb-2 pt-1 gap-3 relative z-10 bg-transparent">
             <div className="flex items-center gap-1">
-                {/* Upload Button */}
                 <Tooltip content="Attach files" position="top">
                     <button
                         ref={logic.attachButtonRef}
                         onClick={() => logic.setIsUploadMenuOpen(!logic.isUploadMenuOpen)}
                         disabled={isGeneratingResponse}
                         className="relative p-2 rounded-xl text-content-secondary hover:text-primary-main hover:bg-layer-2 transition-colors disabled:opacity-50"
-                        aria-label="Attach files"
-                        aria-haspopup="true"
-                        aria-expanded={logic.isUploadMenuOpen}
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-                            <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                        </svg>
+                        <Paperclip className="w-5 h-5" />
                     </button>
                 </Tooltip>
             </div>
 
             <div className="flex items-center gap-2">
-                {/* Voice Input */}
                 <Tooltip content="Voice Input" position="top">
                     <button
                         onClick={logic.handleMicClick}
@@ -259,17 +211,11 @@ export const MessageForm = forwardRef<MessageFormHandle, MessageFormProps>((prop
                                 : 'text-content-secondary hover:text-content-primary hover:bg-layer-2'
                             }
                         `}
-                        aria-label={logic.isRecording ? "Stop recording" : "Start voice input"}
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-                            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-                            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                            <line x1="12" y1="19" x2="12" y2="22" />
-                        </svg>
+                        <Mic className="w-5 h-5" />
                     </button>
                 </Tooltip>
 
-                {/* Prompt Enhancer */}
                 <Tooltip content="Enhance Prompt" position="top">
                     <button
                         onClick={logic.handleEnhancePrompt}
@@ -281,32 +227,20 @@ export const MessageForm = forwardRef<MessageFormHandle, MessageFormProps>((prop
                                 : 'text-content-secondary hover:text-primary-main hover:bg-layer-2'
                             }
                         `}
-                        aria-label="Enhance prompt with AI"
                     >
                         {logic.isEnhancing ? (
-                            <svg className="animate-spin w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
+                            <div className="animate-spin h-5 w-5 border-2 border-current border-t-transparent rounded-full" />
                         ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-                                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-                                <path d="M5 3v4" />
-                                <path d="M9 5H3" />
-                                <path d="M20 21h-4" />
-                                <path d="M18 19v4" />
-                            </svg>
+                            <Sparkles className="w-5 h-5" />
                         )}
                     </button>
                 </Tooltip>
 
-                {/* Send/Stop Button */}
                 <Tooltip content={isGeneratingResponse ? "Stop generating" : "Send message"} position="top">
                     <motion.button
                         type="button"
                         onClick={isGeneratingResponse ? onCancel : logic.handleSubmit}
                         disabled={!isGeneratingResponse && isSendDisabled}
-                        aria-label={isGeneratingResponse ? "Stop generating" : "Send message"}
                         className={`
                             w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 shadow-sm group border
                             ${isGeneratingResponse 
@@ -320,23 +254,10 @@ export const MessageForm = forwardRef<MessageFormHandle, MessageFormProps>((prop
                     >
                         {isGeneratingResponse ? ( 
                             <div className="relative w-5 h-5 flex items-center justify-center">
-                                {/* Loading Spinner - Fades out on hover */}
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-full h-full transition-opacity duration-200 group-hover:opacity-0">
-                                    <circle cx="24" cy="24" r="16" fill="none" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round" strokeDasharray="80 100" strokeDashoffset="0" className="text-primary-main">
-                                        <animateTransform attributeName="transform" type="rotate" from="0 24 24" to="360 24 24" dur="1s" repeatCount="indefinite" />
-                                    </circle>
-                                </svg>
-                                {/* Stop Icon - Fades in on hover */}
-                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-status-error-text">
-                                        <rect x="6" y="6" width="12" height="12" rx="2" />
-                                    </svg>
-                                </div>
+                                <X className="w-4 h-4 text-status-error-text" />
                             </div>
                         ) : ( 
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 ml-0.5">
-                                <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
-                            </svg>
+                            <Send className="w-5 h-5 ml-0.5" />
                         )}
                     </motion.button>
                 </Tooltip>
@@ -344,7 +265,6 @@ export const MessageForm = forwardRef<MessageFormHandle, MessageFormProps>((prop
         </div>
       </div>
 
-      {/* Footer Info */}
       <div className="flex justify-center items-center pt-3 pb-0">
           <motion.p 
             initial={{ opacity: 0, y: 5 }}

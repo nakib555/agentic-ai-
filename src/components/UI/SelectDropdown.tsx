@@ -1,14 +1,18 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useRef, useLayoutEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import { motion as motionTyped, AnimatePresence } from 'framer-motion';
+import React from 'react';
+import * as Select from '@radix-ui/react-select';
+import { Check, ChevronDown } from 'lucide-react';
+import { clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
-const motion = motionTyped as any;
+// Helper for merging Tailwind classes
+function cn(...inputs: (string | undefined | null | false)[]) {
+  return twMerge(clsx(inputs));
+}
 
 type SelectDropdownProps = {
     label?: string;
@@ -31,155 +35,66 @@ export const SelectDropdown: React.FC<SelectDropdownProps> = ({
     className = '',
     triggerClassName
 }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const selected = options.find(o => o.id === value) || options[0];
-    const containerRef = useRef<HTMLDivElement>(null);
-    const menuRef = useRef<HTMLDivElement>(null);
-    const selectedItemRef = useRef<HTMLButtonElement>(null);
-    const [coords, setCoords] = useState<{ top?: number; bottom?: number; left: number; width: number; maxHeight: number }>({ left: 0, width: 0, maxHeight: 300 });
-
-    const updatePosition = useCallback(() => {
-        if (containerRef.current) {
-            const rect = containerRef.current.getBoundingClientRect();
-            const windowHeight = window.innerHeight;
-            const spaceBelow = windowHeight - rect.bottom;
-            const spaceAbove = rect.top;
-            
-            // Prefer showing below, but flip to top if cramped (< 220px) and there is more space above
-            const showOnTop = spaceBelow < 220 && spaceAbove > spaceBelow;
-            
-            const padding = 8;
-            const maxHeight = showOnTop 
-                ? Math.min(spaceAbove - padding * 2, 300) 
-                : Math.min(spaceBelow - padding * 2, 300);
-
-            setCoords({
-                left: rect.left,
-                width: rect.width,
-                top: showOnTop ? undefined : rect.bottom + padding,
-                bottom: showOnTop ? windowHeight - rect.top + padding : undefined,
-                maxHeight: Math.max(100, maxHeight)
-            });
-        }
-    }, []);
-
-    // useLayoutEffect prevents visual glitch/jump by calculating position before paint
-    useLayoutEffect(() => {
-        if (isOpen) {
-            updatePosition();
-            
-            // Auto-scroll to selected item
-            if (selectedItemRef.current) {
-                // We use setTimeout to allow one frame for rendering menu items before scrolling
-                setTimeout(() => {
-                    selectedItemRef.current?.scrollIntoView({ block: 'center', behavior: 'instant' });
-                }, 0);
-            }
-
-            const handleClickOutside = (e: MouseEvent) => {
-                if (
-                    containerRef.current && !containerRef.current.contains(e.target as Node) &&
-                    menuRef.current && !menuRef.current.contains(e.target as Node)
-                ) {
-                    setIsOpen(false);
-                }
-            };
-
-            document.addEventListener('mousedown', handleClickOutside);
-            window.addEventListener('resize', updatePosition);
-            window.addEventListener('scroll', updatePosition, true);
-            
-            return () => {
-                document.removeEventListener('mousedown', handleClickOutside);
-                window.removeEventListener('resize', updatePosition);
-                window.removeEventListener('scroll', updatePosition, true);
-            };
-        }
-    }, [isOpen, updatePosition]);
-
-    const toggleOpen = () => {
-        if (disabled) return;
-        setIsOpen(prev => !prev);
-    };
-
     return (
-        <div className={`relative group flex flex-col gap-3 ${className}`} ref={containerRef}>
+        <div className={cn("flex flex-col gap-2", className)}>
             {label && (
-                <div className="flex items-center gap-2.5 px-1">
-                    {icon && <span className="flex-shrink-0">{icon}</span>}
-                    <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                <div className="flex items-center gap-2 px-1">
+                    {icon && <span className="flex-shrink-0 text-slate-500 dark:text-slate-400 scale-90">{icon}</span>}
+                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
                         {label}
                     </label>
                 </div>
             )}
             
-            <button
-                type="button"
-                onClick={toggleOpen}
-                disabled={disabled}
-                className={`
-                    w-full flex items-center justify-between transition-all text-left
-                    ${triggerClassName ? triggerClassName : `
-                        bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3.5
-                        ${isOpen ? 'ring-2 ring-indigo-500/20 border-indigo-500/50' : 'hover:border-indigo-300 dark:hover:border-indigo-500/30'}
-                    `}
-                    ${disabled ? 'opacity-60 cursor-not-allowed' : ''}
-                `}
-            >
-                <div className="flex flex-col gap-0.5 min-w-0">
-                    <span className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate">{selected?.label}</span>
-                    {selected?.desc && <span className="text-xs text-slate-500 dark:text-slate-500 font-medium truncate">{selected.desc}</span>}
-                </div>
-                <div className={`p-1 rounded-full bg-slate-200/50 dark:bg-white/10 transition-transform duration-200 flex-shrink-0 ml-2 ${isOpen ? 'rotate-180' : ''}`}>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-slate-500 dark:text-slate-400">
-                        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-                    </svg>
-                </div>
-            </button>
-
-            {createPortal(
-                <AnimatePresence>
-                    {isOpen && (
-                        <motion.div
-                            ref={menuRef}
-                            initial={{ opacity: 0, y: coords.bottom ? 5 : -5, scale: 0.98 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: coords.bottom ? 5 : -5, scale: 0.98 }}
-                            transition={{ duration: 0.1, ease: "easeOut" }}
-                            style={{ 
-                                position: 'fixed',
-                                top: coords.top,
-                                bottom: coords.bottom,
-                                left: coords.left,
-                                width: coords.width,
-                                zIndex: 99999
-                            }}
-                            className="bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-white/10 rounded-xl shadow-2xl overflow-hidden ring-1 ring-black/5"
-                        >
-                            <div 
-                                className="overflow-y-auto custom-scrollbar"
-                                style={{ maxHeight: coords.maxHeight }}
-                            >
-                                {options.map((opt) => (
-                                    <button
-                                        type="button"
-                                        key={opt.id}
-                                        ref={value === opt.id ? selectedItemRef : null}
-                                        onClick={() => { onChange(opt.id); setIsOpen(false); }}
-                                        className={`w-full flex flex-col items-start px-4 py-3 text-left transition-colors border-b border-gray-100 dark:border-white/5 last:border-0 ${value === opt.id ? 'bg-indigo-50/50 dark:bg-indigo-500/10' : 'hover:bg-slate-50 dark:hover:bg-white/5'}`}
-                                    >
-                                        <span className={`text-sm font-bold ${value === opt.id ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-200'}`}>
-                                            {opt.label}
-                                        </span>
-                                        {opt.desc && <span className="text-xs text-slate-500 dark:text-slate-500 mt-0.5 font-medium">{opt.desc}</span>}
-                                    </button>
-                                ))}
-                            </div>
-                        </motion.div>
+            <Select.Root value={value} onValueChange={onChange} disabled={disabled}>
+                <Select.Trigger 
+                    className={cn(
+                        "inline-flex items-center justify-between w-full px-4 py-3 rounded-xl text-sm transition-all outline-none",
+                        "bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10",
+                        "text-slate-700 dark:text-slate-200 font-medium",
+                        "hover:border-indigo-300 dark:hover:border-indigo-500/30 focus:ring-2 focus:ring-indigo-500/20",
+                        "data-[placeholder]:text-slate-400",
+                        disabled && "opacity-50 cursor-not-allowed",
+                        triggerClassName
                     )}
-                </AnimatePresence>,
-                document.body
-            )}
+                >
+                    <Select.Value placeholder="Select an option" />
+                    <Select.Icon className="text-slate-400 dark:text-slate-500">
+                        <ChevronDown className="h-4 w-4 opacity-70" />
+                    </Select.Icon>
+                </Select.Trigger>
+
+                <Select.Portal>
+                    <Select.Content 
+                        className="z-[9999] overflow-hidden bg-white dark:bg-[#1e1e1e] rounded-xl shadow-xl border border-gray-200 dark:border-white/10 ring-1 ring-black/5"
+                        position="popper"
+                        sideOffset={5}
+                    >
+                        <Select.Viewport className="p-1 max-h-[300px] overflow-y-auto custom-scrollbar">
+                            {options.map((opt) => (
+                                <Select.Item 
+                                    key={opt.id} 
+                                    value={opt.id}
+                                    className={cn(
+                                        "relative flex flex-col select-none rounded-lg pl-8 pr-4 py-2.5 text-sm outline-none cursor-pointer",
+                                        "data-[highlighted]:bg-slate-100 dark:data-[highlighted]:bg-white/10",
+                                        "data-[state=checked]:text-indigo-600 dark:data-[state=checked]:text-indigo-400"
+                                    )}
+                                >
+                                    <Select.ItemText>
+                                        <span className="font-semibold block truncate">{opt.label}</span>
+                                        {opt.desc && <span className="text-xs text-slate-500 dark:text-slate-400 block truncate mt-0.5">{opt.desc}</span>}
+                                    </Select.ItemText>
+                                    
+                                    <Select.ItemIndicator className="absolute left-2 top-3 inline-flex items-center justify-center">
+                                        <Check className="h-4 w-4" />
+                                    </Select.ItemIndicator>
+                                </Select.Item>
+                            ))}
+                        </Select.Viewport>
+                    </Select.Content>
+                </Select.Portal>
+            </Select.Root>
         </div>
     );
 };
