@@ -1,10 +1,12 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
 
 import React, { Suspense, useState, useEffect, useRef } from 'react';
-import { useAppLogic } from './useAppLogic';
+// Changed import to use the correct path if useAppLogic is in hooks/
+import { useAppLogic } from '../../hooks/useAppLogic';
 import { AppSkeleton } from '../UI/AppSkeleton';
 import { ChatSkeleton } from '../UI/ChatSkeleton';
 import {
