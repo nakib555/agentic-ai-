@@ -38,8 +38,9 @@ const PROVIDER_OPTIONS = [
 ];
 
 // Zod Schema for API Key Form
+// Removed strict regex to allow for diverse key formats (OpenRouter, Custom Proxies, etc.)
 const apiKeySchema = z.object({
-  key: z.string().min(1, "API Key is required").regex(/^sk-|^AIza/i, "Invalid API Key format (usually starts with sk- or AIza)"),
+  key: z.string().min(1, "API Key is required"),
 });
 
 type ApiKeyFormData = z.infer<typeof apiKeySchema>;
@@ -48,7 +49,7 @@ const ApiKeyForm = ({ label, value, placeholder, onSave, description }: {
     label: string, value: string, placeholder: string, onSave: (key: string) => Promise<void>, description?: string 
 }) => {
     const { register, handleSubmit, formState: { errors, isSubmitting, isSubmitSuccessful } } = useForm<ApiKeyFormData>({
-        // resolver: zodResolver(apiKeySchema), // Removed strict regex validation to allow diverse key formats
+        resolver: zodResolver(apiKeySchema), 
         defaultValues: { key: value }
     });
 
@@ -62,7 +63,7 @@ const ApiKeyForm = ({ label, value, placeholder, onSave, description }: {
                 <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest px-1">{label}</label>
                 <div className="flex gap-2 flex-wrap sm:flex-nowrap">
                     <Input
-                        {...register('key', { required: true })}
+                        {...register('key')}
                         type="password"
                         placeholder={placeholder}
                         className={errors.key ? 'border-red-500 focus-visible:ring-red-500' : ''}
@@ -81,7 +82,7 @@ const ApiKeyForm = ({ label, value, placeholder, onSave, description }: {
                         )}
                     </Button>
                 </div>
-                {errors.key && <p className="text-xs text-red-500 px-1">Key is required.</p>}
+                {errors.key && <p className="text-xs text-red-500 px-1">{errors.key.message}</p>}
                 {description && <p className="text-[11px] text-slate-500 dark:text-slate-500 px-1">{description}</p>}
             </div>
         </form>

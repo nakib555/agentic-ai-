@@ -52,7 +52,7 @@ export const useAppLogic = () => {
     } | null>(null);
 
     const [modelsLoading, setModelsLoading] = useState(false);
-    const settingsLoading = false; // Placeholder for now
+    const settingsLoading = false; 
 
     // --- Backend Status ---
     const [backendStatus, setBackendStatus] = useState<'online' | 'offline' | 'checking'>('checking');
@@ -120,12 +120,8 @@ export const useAppLogic = () => {
         const init = async () => {
             try {
                 const serverSettings = await getSettings();
-                // Hydrate store from server if needed, though persist middleware handles local
-                // We mainly want to verify connection here
                 if (serverSettings) {
-                    // Update connection-critical keys if server has them (rare in local-first, but good for sync)
-                    // Logic: prefer local changes if newer? For now simpler to just ensure we are connected
-                    
+                    // Update connection-critical keys if server has them
                     if ((settings.provider === 'gemini' && settings.apiKey) || 
                         (settings.provider === 'openrouter' && settings.openRouterApiKey) ||
                         (settings.provider === 'ollama')) {
@@ -162,7 +158,6 @@ export const useAppLogic = () => {
     const handleSetMaxTokens = createSettingUpdater(settings.setMaxTokens, 'maxTokens');
     const handleSetTtsVoice = createSettingUpdater(settings.setTtsVoice, 'ttsVoice');
     
-    // Specialized Updaters
     const handleModelChange = useCallback(async (modelId: string) => {
         settings.setActiveModel(modelId);
         try {
@@ -188,7 +183,7 @@ export const useAppLogic = () => {
             const response = await updateSettings({ provider: newProvider });
             
             // If the backend returned new models for this provider, update them
-            if (response.models) {
+            if (response.models && response.models.length > 0) {
                 processModelData(response);
             } else {
                 // Otherwise fetch explicitly
@@ -216,7 +211,7 @@ export const useAppLogic = () => {
             const response = await updateSettings(updatePayload);
             
             // Refresh models with the new key
-            if (response.models) {
+            if (response.models && response.models.length > 0) {
                 processModelData(response);
             } else {
                 await fetchModels();
@@ -233,7 +228,7 @@ export const useAppLogic = () => {
         settings.setOllamaHost(host);
         try {
             const response = await updateSettings({ ollamaHost: host });
-            if (response.models) {
+            if (response.models && response.models.length > 0) {
                 processModelData(response);
             } else {
                 await fetchModels();
@@ -248,12 +243,10 @@ export const useAppLogic = () => {
     const onSaveServerUrl = useCallback(async (url: string) => {
         settings.setServerUrl(url);
         localStorage.setItem('custom_server_url', url);
-        // Force reload to apply new base URL for all api calls
         window.location.reload();
         return true;
     }, [settings]);
 
-    // --- Modal & Sidebar Handlers ---
     const handleShowSources = useCallback((sources: any[]) => {
         setSourcesForSidebar(sources);
         setIsSourcesSidebarOpen(true);
@@ -261,7 +254,6 @@ export const useAppLogic = () => {
 
     const handleCloseSourcesSidebar = useCallback(() => setIsSourcesSidebarOpen(false), []);
 
-    // Open artifact handler
     useEffect(() => {
         const handleOpenArtifact = (e: CustomEvent) => {
             const { code, language } = e.detail;
@@ -320,7 +312,6 @@ export const useAppLogic = () => {
             .catch(e => toast.error("Failed to fetch data structure"));
     }, []);
 
-    // --- Confirmation Dialog ---
     const handleRequestClearAll = useCallback(() => {
         setConfirmation({
             prompt: "Are you sure you want to delete all chat history? This cannot be undone.",
@@ -355,7 +346,6 @@ export const useAppLogic = () => {
         setConfirmation(null);
     }, [confirmation]);
 
-    // --- Test Runner ---
     const runDiagnosticTests = useCallback(async (onProgress: (p: TestProgress) => void) => {
         let logs = "Running Diagnostic Tests...\n\n";
         let passed = 0;
@@ -388,18 +378,12 @@ export const useAppLogic = () => {
         return logs;
     }, [chat.sendMessageForTest]);
 
-    // --- Connection Retry ---
     const retryConnection = useCallback(() => {
         setBackendStatus('checking');
         setBackendError(null);
-        fetchModels().then(() => {
-            // fetchModels sets success status on success
-        }).catch(() => {
-            // fetchModels sets failure status on failure
-        });
+        fetchModels();
     }, [fetchModels]);
 
-    // --- Export ---
     const handleExportChat = useCallback((format: 'md' | 'json' | 'pdf') => {
         if (!chat.currentChatId) return;
         const currentChat = chat.chatHistory.find(c => c.id === chat.currentChatId);
@@ -422,24 +406,19 @@ export const useAppLogic = () => {
         });
     }, [chat.currentChatId, chat.chatHistory]);
 
-    // Helper for saving API key and refreshing models
     const saveApiKey = async (key: string, providerType: 'gemini' | 'openrouter' | 'ollama') => {
         if (providerType === 'gemini') settings.setApiKey(key);
         if (providerType === 'openrouter') settings.setOpenRouterApiKey(key);
         if (providerType === 'ollama') settings.setOllamaApiKey(key);
         
-        // Trigger model refresh
-        await fetchModels();
-        toast.success("API Key saved.");
+        await onSaveApiKey(key, providerType);
     };
 
     return {
-        // App State
         isDesktop, isWideDesktop, visualViewportHeight,
         appContainerRef, messageListRef,
         theme, setTheme,
         
-        // Modals & UI (from Store)
         isSettingsOpen: ui.isSettingsOpen, 
         setIsSettingsOpen: ui.setSettingsOpen,
         isMemoryModalOpen: ui.isMemoryModalOpen, 
@@ -463,13 +442,11 @@ export const useAppLogic = () => {
         modelsLoading, 
         backendStatus, backendError, retryConnection,
         
-        // Data from Store
         availableModels: settings.availableModels,
         availableImageModels: settings.availableImageModels, 
         availableVideoModels: settings.availableVideoModels, 
         availableTtsModels: settings.availableTtsModels,
         
-        // Settings from Store
         provider: settings.provider, 
         openRouterApiKey: settings.openRouterApiKey, 
         ollamaHost: settings.ollamaHost,
@@ -502,7 +479,6 @@ export const useAppLogic = () => {
         ttsVoice: settings.ttsVoice, 
         setTtsVoice: handleSetTtsVoice,
         
-        // Memory
         memory,
         isMemoryEnabled: settings.isMemoryEnabled,
         setIsMemoryEnabled: handleSetIsMemoryEnabled,
@@ -517,10 +493,8 @@ export const useAppLogic = () => {
         cancelMemoryUpdate: memory.cancelMemoryUpdate,
         onManageMemory: () => ui.setMemoryModalOpen(true),
 
-        // Sidebar Hooks
         ...sidebar,
         
-        // Chat Hooks
         ...chat,
         setActiveResponseIndex: chat.setResponseIndex,
         handleRequestClearAll, handleDeleteChatRequest,
@@ -533,7 +507,6 @@ export const useAppLogic = () => {
         handleShareChat,
         isChatActive: !!chat.currentChatId,
         
-        // Secondary Sidebars
         isSourcesSidebarOpen, handleCloseSourcesSidebar, sourcesForSidebar, 
         sourcesSidebarWidth: sidebar.sourcesSidebarWidth, 
         handleSetSourcesSidebarWidth: sidebar.handleSetSourcesSidebarWidth,
@@ -543,7 +516,6 @@ export const useAppLogic = () => {
         isArtifactOpen, setIsArtifactOpen, artifactContent, artifactLanguage,
         artifactWidth, setArtifactWidth, isArtifactResizing, setIsArtifactResizing,
 
-        // Tests
         runDiagnosticTests
     };
 };

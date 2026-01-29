@@ -22,7 +22,7 @@ const getEffectiveEndpoint = async (): Promise<string> => {
     }
     
     if (!host) {
-        host = process.env.OLLAMA_HOST || '';
+        host = process.env.OLLAMA_HOST || 'http://localhost:11434';
     }
 
     // Normalization Logic
@@ -39,6 +39,21 @@ const getEffectiveEndpoint = async (): Promise<string> => {
     return host;
 };
 
+// Helper to fetch with fallback (e.g. try localhost, then 127.0.0.1)
+const fetchWithFallback = async (endpoint: string, options: any): Promise<Response> => {
+    try {
+        return await fetch(endpoint, options);
+    } catch (error: any) {
+        // If failed and using localhost, try 127.0.0.1
+        if (endpoint.includes('localhost') && (error.code === 'ECONNREFUSED' || error.cause?.code === 'ECONNREFUSED')) {
+            const fallbackEndpoint = endpoint.replace('localhost', '127.0.0.1');
+            console.log(`[OllamaProvider] Localhost failed, retrying with ${fallbackEndpoint}`);
+            return await fetch(fallbackEndpoint, options);
+        }
+        throw error;
+    }
+};
+
 const OllamaProvider: AIProvider = {
     id: 'ollama',
     name: 'Ollama',
@@ -47,7 +62,6 @@ const OllamaProvider: AIProvider = {
         try {
             const effectiveEndpoint = await getEffectiveEndpoint();
             
-            // If no endpoint is configured (empty string), return empty lists immediately
             if (!effectiveEndpoint) {
                 return { chatModels: [], imageModels: [], videoModels: [], ttsModels: [] };
             }
@@ -56,7 +70,7 @@ const OllamaProvider: AIProvider = {
             
             console.log(`[OllamaProvider] Fetching installed models from: ${url}`);
             
-            const response = await fetch(url, { 
+            const response = await fetchWithFallback(url, { 
                 method: 'GET', 
                 headers: { 
                     'Content-Type': 'application/json',
@@ -85,14 +99,8 @@ const OllamaProvider: AIProvider = {
             };
         } catch (error: any) {
             console.error('[OllamaProvider] Failed to fetch models:', error.message);
-            
             // Return empty list instead of throwing to prevent UI crash
-            return {
-                chatModels: [],
-                imageModels: [],
-                videoModels: [],
-                ttsModels: []
-            };
+            return { chatModels: [], imageModels: [], videoModels: [], ttsModels: [] };
         }
     },
 
@@ -125,8 +133,10 @@ const OllamaProvider: AIProvider = {
         }
 
         try {
-            console.log(`[OllamaProvider] Connecting to chat endpoint: ${effectiveEndpoint}/api/chat`);
-            const response = await fetch(`${effectiveEndpoint}/api/chat`, {
+            const endpoint = `${effectiveEndpoint}/api/chat`;
+            console.log(`[OllamaProvider] Connecting to chat endpoint: ${endpoint}`);
+            
+            const response = await fetchWithFallback(endpoint, {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -187,7 +197,7 @@ const OllamaProvider: AIProvider = {
                 const msg = error.message || '';
                 if (msg.includes('fetch failed') || msg.includes('ECONNREFUSED')) {
                     if (effectiveEndpoint.includes('127.0.0.1') || effectiveEndpoint.includes('localhost')) {
-                         callbacks.onError(new Error("Failed to connect to Ollama at localhost. If you are running this app in the cloud (e.g. Render/Vercel), it cannot access your local computer. You must deploy Ollama publicly or use a tunnel like ngrok."));
+                         callbacks.onError(new Error("Failed to connect to Ollama at localhost. If you are running this app in the cloud, it cannot access your local computer."));
                     } else {
                          callbacks.onError(new Error(`Failed to connect to Ollama at ${effectiveEndpoint}. Please check if the server is running and accessible.`));
                     }
@@ -209,7 +219,8 @@ const OllamaProvider: AIProvider = {
              if (systemInstruction) messages.push({ role: 'system', content: systemInstruction });
              messages.push({ role: 'user', content: prompt });
              
-             const resp = await fetch(`${effectiveEndpoint}/api/chat`, {
+             const endpoint = `${effectiveEndpoint}/api/chat`;
+             const resp = await fetchWithFallback(endpoint, {
                  method: 'POST',
                  headers: { 
                     'Content-Type': 'application/json',
