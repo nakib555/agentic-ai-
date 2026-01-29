@@ -8,7 +8,8 @@ import { AnimatePresence, motion as motionTyped, LayoutGroup } from 'framer-moti
 import type { Model } from '../../types';
 import { SettingsCategoryButton } from './SettingsCategoryButton';
 import type { Theme } from '../../hooks/useTheme';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from "../ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } from "../ui/dialog";
+import { X } from "lucide-react";
 
 // Static imports for instant tab switching
 import GeneralSettings from './GeneralSettings';
@@ -119,7 +120,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = (props) => {
 
   return (
     <Dialog open={props.isOpen} onOpenChange={props.onClose}>
-      <DialogContent className="p-0 gap-0 w-[95vw] md:w-full max-w-4xl h-[90vh] md:h-[85vh] flex flex-col overflow-hidden bg-page rounded-2xl border border-border-default shadow-2xl focus:outline-none">
+      <DialogContent className="p-0 gap-0 w-[95vw] md:w-full max-w-4xl h-[90vh] md:h-[85vh] flex flex-col overflow-hidden bg-page rounded-2xl border border-border-default shadow-2xl focus:outline-none [&>button]:hidden">
         <DialogTitle className="sr-only">Settings</DialogTitle>
         <DialogDescription className="sr-only">Configure application settings, API keys, and models.</DialogDescription>
         
@@ -127,8 +128,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = (props) => {
         <div className="flex-shrink-0 border-b border-border-default bg-layer-1/50 backdrop-blur-xl z-20">
             <div className="flex items-center justify-between px-6 pt-5 pb-2">
                 <h2 className="text-xl font-bold text-content-primary tracking-tight">Settings</h2>
-                {/* Space for absolute close button */}
-                <div className="w-8 h-8" /> 
+                <DialogClose className="p-2 -mr-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <X className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+                    <span className="sr-only">Close</span>
+                </DialogClose>
             </div>
             
             <div className="px-4 pb-2">
