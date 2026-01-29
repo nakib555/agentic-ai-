@@ -1,22 +1,24 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useSidebar } from '../../hooks/useSidebar';
-import { useTheme } from '../../hooks/useTheme';
-import { useViewport } from '../../hooks/useViewport';
-import { useChat } from '../../hooks/useChat/index';
-import { useMemory } from '../../hooks/useMemory';
-import { getSettings } from '../../services/settingsService';
-import { fetchFromApi, setOnVersionMismatch } from '../../utils/api';
-import { testSuite, type TestProgress } from '../Testing/testSuite';
-import type { MessageFormHandle } from '../Chat/MessageForm/types';
-import { MessageListHandle } from '../Chat/MessageList';
-import type { ChatSession } from '../../types';
-import { useSettingsStore } from '../../store/settingsStore';
-import { useUIStore } from '../../store/uiStore';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSidebar } from './useSidebar';
+import { useTheme } from './useTheme';
+import { useViewport } from './useViewport';
+import { useChat } from './useChat/index';
+import { useMemory } from './useMemory';
+import { getSettings, updateSettings, AppSettings } from '../services/settingsService';
+import { fetchFromApi, setOnVersionMismatch } from '../utils/api';
+import type { Model, Source } from '../types';
+import { DEFAULT_TEMPERATURE, DEFAULT_MAX_TOKENS, DEFAULT_TTS_VOICE, DEFAULT_ABOUT_USER, DEFAULT_ABOUT_RESPONSE } from '../components/App/constants';
+import { testSuite, type TestProgress } from '../components/Testing/testSuite';
+import type { MessageFormHandle } from '../components/Chat/MessageForm/types';
+import { MessageListHandle } from '../components/Chat/MessageList';
+import { useSettingsStore } from '../store/settingsStore';
+import { useUIStore } from '../store/uiStore';
 import { toast } from 'sonner';
 
 export const useAppLogic = () => {
@@ -64,16 +66,21 @@ export const useAppLogic = () => {
         (msg, type) => toast[type === 'info' ? 'info' : type === 'error' ? 'error' : 'success'](msg)
     );
 
+    // --- Helper to process models from backend response ---
+    const processModelData = useCallback((data: any) => {
+        if (data.models) settings.setAvailableModels(data.models);
+        if (data.imageModels) settings.setAvailableImageModels(data.imageModels);
+        if (data.videoModels) settings.setAvailableVideoModels(data.videoModels);
+        if (data.ttsModels) settings.setAvailableTtsModels(data.ttsModels);
+    }, [settings]);
+
     // --- Initial Data Loading ---
     const fetchModels = useCallback(async () => {
         try {
             const res = await fetchFromApi('/api/models');
             if (res.ok) {
                 const data = await res.json();
-                settings.setAvailableModels(data.models || []);
-                settings.setAvailableImageModels(data.imageModels || []);
-                settings.setAvailableVideoModels(data.videoModels || []);
-                settings.setAvailableTtsModels(data.ttsModels || []);
+                processModelData(data);
                 setBackendStatus('online');
                 setBackendError(null);
             } else {
@@ -84,7 +91,7 @@ export const useAppLogic = () => {
             setBackendStatus('offline');
             setBackendError(e instanceof Error ? e.message : "Could not connect to backend server.");
         }
-    }, [settings]);
+    }, [processModelData]);
 
     useEffect(() => {
         const init = async () => {
@@ -113,23 +120,124 @@ export const useAppLogic = () => {
         init();
     }, []);
 
-    // --- Model Change Wrappers ---
-    const handleModelChange = (modelId: string) => {
-        settings.setActiveModel(modelId);
-        chat.updateChatModel(chat.currentChatId || '', modelId);
+    // --- Settings Updaters ---
+    
+    // Generic updater generator
+    const createSettingUpdater = <T,>(setter: (val: T) => void, key: keyof AppSettings) => async (val: T) => {
+        setter(val);
+        try {
+            await updateSettings({ [key]: val });
+        } catch (error) {
+            console.error(`Failed to update ${String(key)}:`, error);
+            toast.error(`Failed to save ${String(key)} setting.`);
+        }
     };
 
-    // --- Sidebar Handlers ---
-    const [isSourcesSidebarOpen, setIsSourcesSidebarOpen] = useState(false);
-    const [sourcesForSidebar, setSourcesForSidebar] = useState<any[]>([]);
+    const handleSetAboutUser = createSettingUpdater(settings.setAboutUser, 'aboutUser');
+    const handleSetAboutResponse = createSettingUpdater(settings.setAboutResponse, 'aboutResponse');
+    const handleSetTemperature = createSettingUpdater(settings.setTemperature, 'temperature');
+    const handleSetMaxTokens = createSettingUpdater(settings.setMaxTokens, 'maxTokens');
+    const handleSetTtsVoice = createSettingUpdater(settings.setTtsVoice, 'ttsVoice');
     
-    // Artifact Sidebar State (Local state fine for ephemeral UI)
-    const [isArtifactOpen, setIsArtifactOpen] = useState(false);
-    const [artifactContent, setArtifactContent] = useState('');
-    const [artifactLanguage, setArtifactLanguage] = useState('');
-    const [artifactWidth, setArtifactWidth] = useState(500);
-    const [isArtifactResizing, setIsArtifactResizing] = useState(false);
-    
+    // Specialized Updaters
+    const handleModelChange = useCallback(async (modelId: string) => {
+        settings.setActiveModel(modelId);
+        try {
+            await updateSettings({ activeModel: modelId });
+            chat.updateChatModel(chat.currentChatId || '', modelId);
+        } catch (e) { console.error(e); }
+    }, [chat.updateChatModel, chat.currentChatId, settings]);
+
+    const onImageModelChange = createSettingUpdater(settings.setImageModel, 'imageModel');
+    const onVideoModelChange = createSettingUpdater(settings.setVideoModel, 'videoModel');
+    const onTtsModelChange = createSettingUpdater(settings.setTtsModel, 'ttsModel');
+
+    const handleSetIsMemoryEnabled = useCallback(async (enabled: boolean) => {
+        settings.setIsMemoryEnabled(enabled);
+        try {
+            await updateSettings({ isMemoryEnabled: enabled });
+        } catch (e) { console.error(e); }
+    }, [settings]);
+
+    const onProviderChange = useCallback(async (newProvider: 'gemini' | 'openrouter' | 'ollama') => {
+        settings.setProvider(newProvider);
+        try {
+            const response = await updateSettings({ provider: newProvider });
+            
+            // If the backend returned new models for this provider, update them
+            if (response.models) {
+                processModelData(response);
+            } else {
+                // Otherwise fetch explicitly
+                await fetchModels();
+            }
+            
+            toast.success(`Switched provider to ${newProvider === 'gemini' ? 'Google Gemini' : newProvider === 'openrouter' ? 'OpenRouter' : 'Ollama'}.`);
+        } catch (error) {
+            console.error("Failed to update provider:", error);
+            toast.error("Failed to switch provider.");
+        }
+    }, [processModelData, fetchModels, settings]);
+
+    const onSaveApiKey = useCallback(async (key: string, providerType: 'gemini' | 'openrouter' | 'ollama') => {
+        if (providerType === 'gemini') settings.setApiKey(key);
+        if (providerType === 'openrouter') settings.setOpenRouterApiKey(key);
+        if (providerType === 'ollama') settings.setOllamaApiKey(key);
+        
+        try {
+            const updatePayload: Partial<AppSettings> = {};
+            if (providerType === 'gemini') updatePayload.apiKey = key;
+            if (providerType === 'openrouter') updatePayload.openRouterApiKey = key;
+            if (providerType === 'ollama') updatePayload.ollamaApiKey = key; 
+
+            const response = await updateSettings(updatePayload);
+            
+            // Refresh models with the new key
+            if (response.models) {
+                processModelData(response);
+            } else {
+                await fetchModels();
+            }
+            
+            toast.success('API Key saved successfully.');
+        } catch (error) {
+            console.error("Failed to save API key:", error);
+            toast.error('Failed to save API Key.');
+        }
+    }, [processModelData, fetchModels, settings]);
+
+    const onSaveOllamaHost = useCallback(async (host: string) => {
+        settings.setOllamaHost(host);
+        try {
+            const response = await updateSettings({ ollamaHost: host });
+            if (response.models) {
+                processModelData(response);
+            } else {
+                await fetchModels();
+            }
+            toast.success('Ollama host updated.');
+        } catch (error) {
+            console.error("Failed to update Ollama host:", error);
+            toast.error('Failed to update Ollama host.');
+        }
+    }, [processModelData, fetchModels, settings]);
+
+    const onSaveServerUrl = useCallback(async (url: string) => {
+        settings.setServerUrl(url);
+        localStorage.setItem('custom_server_url', url);
+        // Force reload to apply new base URL for all api calls
+        window.location.reload();
+        return true;
+    }, [settings]);
+
+    // --- Modal & Sidebar Handlers ---
+    const handleShowSources = useCallback((sources: any[]) => {
+        setSourcesForSidebar(sources);
+        setIsSourcesSidebarOpen(true);
+    }, []);
+
+    const handleCloseSourcesSidebar = useCallback(() => setIsSourcesSidebarOpen(false), []);
+
     // Open artifact handler
     useEffect(() => {
         const handleOpenArtifact = (e: CustomEvent) => {
@@ -142,12 +250,6 @@ export const useAppLogic = () => {
         return () => window.removeEventListener('open-artifact', handleOpenArtifact as EventListener);
     }, []);
 
-    const handleShowSources = useCallback((sources: any[]) => {
-        setSourcesForSidebar(sources);
-        setIsSourcesSidebarOpen(true);
-    }, []);
-
-    // --- Exports & Logs ---
     const handleFileUploadForImport = useCallback((file: File) => {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -157,6 +259,7 @@ export const useAppLogic = () => {
                 chat.importChat(importedChat);
                 toast.success('Chat imported successfully.');
             } catch (err) {
+                console.error("Import failed:", err);
                 toast.error('Failed to import chat. Invalid file format.');
             }
         };
@@ -164,13 +267,13 @@ export const useAppLogic = () => {
     }, [chat.importChat]);
 
     const handleExportAllChats = useCallback(() => {
-        import('../../utils/exportUtils').then(mod => {
+        import('../utils/exportUtils').then(mod => {
             (mod as any).exportAllChatsToJson(chat.chatHistory);
         });
     }, [chat.chatHistory]);
 
     const handleDownloadLogs = useCallback(() => {
-        import('../../utils/logCollector').then(mod => {
+        import('../utils/logCollector').then(mod => {
             const logs = mod.logCollector.formatLogs();
             const blob = new Blob([logs], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
@@ -195,8 +298,6 @@ export const useAppLogic = () => {
     }, []);
 
     // --- Confirmation Dialog ---
-    const [confirmation, setConfirmation] = useState<{ prompt: string; onConfirm: () => void; onCancel?: () => void; destructive?: boolean } | null>(null);
-
     const handleRequestClearAll = useCallback(() => {
         setConfirmation({
             prompt: "Are you sure you want to delete all chat history? This cannot be undone.",
@@ -222,7 +323,10 @@ export const useAppLogic = () => {
         });
     }, [chat.deleteChat]);
 
-    const handleConfirm = useCallback(() => confirmation?.onConfirm(), [confirmation]);
+    const handleConfirm = useCallback(() => {
+        confirmation?.onConfirm();
+    }, [confirmation]);
+
     const handleCancel = useCallback(() => {
         if (confirmation?.onCancel) confirmation.onCancel();
         setConfirmation(null);
@@ -261,13 +365,24 @@ export const useAppLogic = () => {
         return logs;
     }, [chat.sendMessageForTest]);
 
+    // --- Connection Retry ---
+    const retryConnection = useCallback(() => {
+        setBackendStatus('checking');
+        setBackendError(null);
+        fetchModels().then(() => {
+            // fetchModels sets success status on success
+        }).catch(() => {
+            // fetchModels sets failure status on failure
+        });
+    }, [fetchModels]);
+
     // --- Export ---
     const handleExportChat = useCallback((format: 'md' | 'json' | 'pdf') => {
         if (!chat.currentChatId) return;
         const currentChat = chat.chatHistory.find(c => c.id === chat.currentChatId);
         if (!currentChat) return;
 
-        import('../../utils/exportUtils').then(mod => {
+        import('../utils/exportUtils').then(mod => {
             if (format === 'json') (mod as any).exportChatToJson(currentChat);
             else if (format === 'md') (mod as any).exportChatToMarkdown(currentChat);
             else if (format === 'pdf') (mod as any).exportChatToPdf(currentChat);
@@ -279,7 +394,7 @@ export const useAppLogic = () => {
         const currentChat = chat.chatHistory.find(c => c.id === chat.currentChatId);
         if (!currentChat) return;
         
-        import('../../utils/exportUtils').then(mod => {
+        import('../utils/exportUtils').then(mod => {
             (mod as any).exportChatToClipboard(currentChat);
         });
     }, [chat.currentChatId, chat.chatHistory]);
@@ -288,13 +403,7 @@ export const useAppLogic = () => {
     const saveApiKey = async (key: string, providerType: 'gemini' | 'openrouter' | 'ollama') => {
         if (providerType === 'gemini') settings.setApiKey(key);
         if (providerType === 'openrouter') settings.setOpenRouterApiKey(key);
-        
-        // Persist to backend/settings
-        // We use the store's action which updates local state, but we also want to persist.
-        // We assume settingsStore.persist middleware handles local storage, 
-        // and we call backend update here for server-side persistence if needed
-        // but typically client-side keys are enough if backend acts as relay.
-        // If backend needs key for tools, we should push it.
+        if (providerType === 'ollama') settings.setOllamaApiKey(key);
         
         // Trigger model refresh
         await fetchModels();
@@ -302,6 +411,7 @@ export const useAppLogic = () => {
     };
 
     return {
+        // App State
         isDesktop, isWideDesktop, visualViewportHeight,
         appContainerRef, messageListRef,
         theme, setTheme,
@@ -322,13 +432,13 @@ export const useAppLogic = () => {
         confirmation, handleConfirm, handleCancel,
         versionMismatch,
         isAnyResizing: sidebar.isResizing || sidebar.isSourcesResizing || isArtifactResizing,
-        isNewChatDisabled: chat.isLoading,
-        handleToggleSidebar: ui.toggleSidebar,
+        isNewChatDisabled: modelsLoading || settingsLoading || chat.isLoading,
+        handleToggleSidebar: () => sidebar.setIsSidebarOpen(!sidebar.isSidebarOpen),
         handleShowSources,
 
         settingsLoading: false, 
         modelsLoading: false, 
-        backendStatus, backendError, retryConnection: fetchModels,
+        backendStatus, backendError, retryConnection,
         
         // Data from Store
         availableModels: settings.availableModels,
@@ -340,38 +450,39 @@ export const useAppLogic = () => {
         provider: settings.provider, 
         openRouterApiKey: settings.openRouterApiKey, 
         ollamaHost: settings.ollamaHost,
-        onProviderChange: settings.setProvider, 
+        ollamaApiKey: settings.ollamaApiKey,
+        onProviderChange: onProviderChange, 
         onSaveApiKey: saveApiKey, 
-        onSaveOllamaHost: settings.setOllamaHost,
+        onSaveOllamaHost: onSaveOllamaHost,
         serverUrl: settings.serverUrl, 
-        onSaveServerUrl: async (url: string) => { settings.setServerUrl(url); return true; },
+        onSaveServerUrl: onSaveServerUrl,
         apiKey: settings.apiKey,
         
         activeModel: settings.activeModel, 
         onModelChange: handleModelChange,
         imageModel: settings.imageModel, 
-        onImageModelChange: settings.setImageModel,
+        onImageModelChange: onImageModelChange,
         videoModel: settings.videoModel, 
-        onVideoModelChange: settings.setVideoModel,
+        onVideoModelChange: onVideoModelChange,
         ttsModel: settings.ttsModel, 
-        onTtsModelChange: settings.setTtsModel,
+        onTtsModelChange: onTtsModelChange,
         
         temperature: settings.temperature, 
-        setTemperature: settings.setTemperature,
+        setTemperature: handleSetTemperature,
         maxTokens: settings.maxTokens, 
-        setMaxTokens: settings.setMaxTokens,
+        setMaxTokens: handleSetMaxTokens,
         
         aboutUser: settings.aboutUser, 
-        setAboutUser: settings.setAboutUser,
+        setAboutUser: handleSetAboutUser,
         aboutResponse: settings.aboutResponse, 
-        setAboutResponse: settings.setAboutResponse,
+        setAboutResponse: handleSetAboutResponse,
         ttsVoice: settings.ttsVoice, 
-        setTtsVoice: settings.setTtsVoice,
+        setTtsVoice: handleSetTtsVoice,
         
         // Memory
         memory,
         isMemoryEnabled: settings.isMemoryEnabled,
-        setIsMemoryEnabled: settings.setIsMemoryEnabled,
+        setIsMemoryEnabled: handleSetIsMemoryEnabled,
         memoryContent: memory.memoryContent,
         memoryFiles: memory.memoryFiles,
         clearMemory: memory.clearMemory,
@@ -400,9 +511,7 @@ export const useAppLogic = () => {
         isChatActive: !!chat.currentChatId,
         
         // Secondary Sidebars
-        isSourcesSidebarOpen, 
-        handleCloseSourcesSidebar: () => setIsSourcesSidebarOpen(false), 
-        sourcesForSidebar, 
+        isSourcesSidebarOpen, handleCloseSourcesSidebar, sourcesForSidebar, 
         sourcesSidebarWidth: sidebar.sourcesSidebarWidth, 
         handleSetSourcesSidebarWidth: sidebar.handleSetSourcesSidebarWidth,
         isSourcesResizing: sidebar.isSourcesResizing,

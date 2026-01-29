@@ -81,6 +81,7 @@ type AppModalsProps = {
   // Provider Settings
   provider: 'gemini' | 'openrouter' | 'ollama';
   openRouterApiKey: string;
+  ollamaApiKey?: string;
   onProviderChange: (provider: 'gemini' | 'openrouter' | 'ollama') => void;
   ollamaHost?: string;
   onSaveOllamaHost?: (host: string) => Promise<void>;
@@ -215,6 +216,7 @@ export const AppModals: React.FC<AppModalsProps> = (props) => {
           // Provider props
           provider={props.provider}
           openRouterApiKey={props.openRouterApiKey}
+          ollamaApiKey={props.ollamaApiKey}
           onProviderChange={props.onProviderChange}
           ollamaHost={props.ollamaHost}
           onSaveOllamaHost={props.onSaveOllamaHost}

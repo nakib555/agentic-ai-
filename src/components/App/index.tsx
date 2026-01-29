@@ -286,6 +286,7 @@ export const App = () => {
           // Provider Props for Ollama
           provider={logic.provider}
           openRouterApiKey={logic.openRouterApiKey}
+          ollamaApiKey={logic.ollamaApiKey}
           onProviderChange={logic.onProviderChange}
           ollamaHost={logic.ollamaHost}
           onSaveOllamaHost={logic.onSaveOllamaHost}

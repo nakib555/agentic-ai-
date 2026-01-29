@@ -51,14 +51,16 @@ export const updateSettings = async (req: any, res: any) => {
         const providerChanged = updates.provider && updates.provider !== currentSettings.provider;
         const keyChanged = (newSettings.provider === 'gemini' && updates.apiKey !== currentSettings.apiKey) ||
                            (newSettings.provider === 'openrouter' && updates.openRouterApiKey !== currentSettings.openRouterApiKey) ||
-                           (newSettings.provider === 'ollama' && (updates.apiKey !== currentSettings.apiKey || updates.ollamaHost !== currentSettings.ollamaHost)); 
+                           (newSettings.provider === 'ollama' && (updates.ollamaApiKey !== currentSettings.ollamaApiKey || updates.ollamaHost !== currentSettings.ollamaHost)); 
 
         if (providerChanged || keyChanged) {
             try {
                 // Fetch models based on the NEW provider and NEW key/host
                 const activeKey = newSettings.provider === 'openrouter' 
                     ? newSettings.openRouterApiKey 
-                    : newSettings.apiKey; // Both Gemini and Ollama now use the main 'apiKey' field/variable logic or specifically handled
+                    : newSettings.provider === 'ollama'
+                        ? newSettings.ollamaApiKey
+                        : newSettings.apiKey;
                 
                 // Strictly require a key to fetch models, unless provider is Ollama which supports keyless local operation
                 if (activeKey || newSettings.provider === 'ollama') {
@@ -84,7 +86,10 @@ export const getApiKey = async (): Promise<string | undefined> => {
         if (settings.provider === 'openrouter') {
             return settings.openRouterApiKey;
         }
-        // For Gemini and Ollama, we use the standard apiKey field
+        if (settings.provider === 'ollama') {
+            return settings.ollamaApiKey;
+        }
+        // For Gemini
         return settings.apiKey || process.env.API_KEY || process.env.GEMINI_API_KEY;
     } catch (error) {
         return process.env.API_KEY || process.env.GEMINI_API_KEY;

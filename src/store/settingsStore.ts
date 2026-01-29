@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -13,6 +14,7 @@ interface SettingsState {
   provider: 'gemini' | 'openrouter' | 'ollama';
   apiKey: string;
   openRouterApiKey: string;
+  ollamaApiKey: string;
   ollamaHost: string;
   serverUrl: string;
   
@@ -40,6 +42,7 @@ interface SettingsState {
   setProvider: (provider: 'gemini' | 'openrouter' | 'ollama') => void;
   setApiKey: (key: string) => void;
   setOpenRouterApiKey: (key: string) => void;
+  setOllamaApiKey: (key: string) => void;
   setOllamaHost: (host: string) => void;
   setServerUrl: (url: string) => void;
   
@@ -68,6 +71,7 @@ export const useSettingsStore = create<SettingsState>()(
       provider: 'gemini',
       apiKey: '',
       openRouterApiKey: '',
+      ollamaApiKey: '',
       ollamaHost: 'http://localhost:11434',
       serverUrl: '',
       
@@ -91,6 +95,7 @@ export const useSettingsStore = create<SettingsState>()(
       setProvider: (provider) => set({ provider }),
       setApiKey: (apiKey) => set({ apiKey }),
       setOpenRouterApiKey: (openRouterApiKey) => set({ openRouterApiKey }),
+      setOllamaApiKey: (ollamaApiKey) => set({ ollamaApiKey }),
       setOllamaHost: (ollamaHost) => set({ ollamaHost }),
       setServerUrl: (serverUrl) => set({ serverUrl }),
       
@@ -119,6 +124,7 @@ export const useSettingsStore = create<SettingsState>()(
         provider: state.provider,
         apiKey: state.apiKey,
         openRouterApiKey: state.openRouterApiKey,
+        ollamaApiKey: state.ollamaApiKey,
         ollamaHost: state.ollamaHost,
         activeModel: state.activeModel,
         imageModel: state.imageModel,

@@ -61,6 +61,7 @@ type SettingsModalProps = {
   onSaveServerUrl: (url: string) => Promise<boolean>;
   provider: 'gemini' | 'openrouter' | 'ollama';
   openRouterApiKey: string;
+  ollamaApiKey?: string;
   onProviderChange: (provider: 'gemini' | 'openrouter' | 'ollama') => void;
   ollamaHost?: string;
   onSaveOllamaHost?: (host: string) => Promise<void> | void;
@@ -83,27 +84,18 @@ const CATEGORIES = [
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
         <path d="M12 2a10 10 0 0 1 10 10c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2Z" />
-        <path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" />
-        <path d="M12 2v4" />
-        <path d="M12 18v4" />
-        <path d="M4.93 4.93l2.83 2.83" />
-        <path d="M16.24 16.24l2.83 2.83" />
-        <path d="M2 12h4" />
-        <path d="M18 12h4" />
-        <path d="M4.93 19.07l2.83-2.83" />
-        <path d="M16.24 7.76l2.83-2.83" />
+        <path d="M12 14a2 2 0 0 0-2 2h4a2 2 0 0 0-2-2Z" />
+        <path d="M12 9a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z" />
       </svg>
     ) 
   },
   { 
     id: 'personalize', 
-    label: 'Personalize', 
+    label: 'Persona', 
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
         <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
         <circle cx="12" cy="7" r="4" />
-        <path d="M12 11l4 4" /> 
-        <path d="M16 11l-4 4" />
       </svg>
     ) 
   },
@@ -112,140 +104,137 @@ const CATEGORIES = [
     label: 'Voice & Memory', 
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-        <path d="M2 10v3" />
-        <path d="M6 6v11" />
-        <path d="M10 3v18" />
-        <path d="M14 8v7" />
-        <path d="M18 5v13" />
-        <path d="M22 10v4" />
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+        <line x1="12" y1="19" x2="12" y2="23" />
+        <line x1="8" y1="23" x2="16" y2="23" />
       </svg>
     ) 
   },
 ];
 
-export const SettingsModal: React.FC<SettingsModalProps> = React.memo((props) => {
-    const { isOpen, onClose } = props;
-    const [activeCategory, setActiveCategory] = useState('general');
+export const SettingsModal: React.FC<SettingsModalProps> = (props) => {
+  const [activeTab, setActiveTab] = useState('general');
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-5xl h-[85dvh] min-h-[500px] p-0 gap-0 overflow-hidden flex flex-col bg-page border-border-default">
-            <DialogTitle className="sr-only">Settings</DialogTitle>
-            <DialogDescription className="sr-only">Configure application settings</DialogDescription>
-            
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-layer-1 z-20 flex-shrink-0">
-              <div>
-                <h2 className="text-xl font-bold text-content-primary tracking-tight">
-                  Settings
-                </h2>
-                <p className="text-xs text-content-tertiary font-medium mt-0.5">Preferences & Configuration</p>
-              </div>
+    <Dialog open={props.isOpen} onOpenChange={props.onClose}>
+      <DialogContent className="p-0 gap-0 w-full max-w-5xl h-[85vh] md:h-[80vh] flex flex-col md:flex-row overflow-hidden bg-page">
+        <DialogTitle className="sr-only">Settings</DialogTitle>
+        <DialogDescription className="sr-only">Configure application settings, API keys, and models.</DialogDescription>
+        
+        {/* Sidebar Navigation */}
+        <div className="w-full md:w-64 bg-layer-2/50 border-b md:border-b-0 md:border-r border-border-subtle flex flex-col">
+          <div className="p-4 md:p-6 pb-2 md:pb-6">
+            <h2 className="text-xl font-bold text-content-primary px-2 mb-4 hidden md:block tracking-tight">Settings</h2>
+            <nav className="flex md:flex-col gap-1 overflow-x-auto md:overflow-visible pb-2 md:pb-0 scrollbar-hide">
+              <LayoutGroup>
+                {CATEGORIES.map((cat) => (
+                  <SettingsCategoryButton
+                    key={cat.id}
+                    icon={cat.icon}
+                    label={cat.label}
+                    isActive={activeTab === cat.id}
+                    onClick={() => setActiveTab(cat.id)}
+                  />
+                ))}
+              </LayoutGroup>
+            </nav>
+          </div>
+          
+          <div className="mt-auto p-4 md:p-6 hidden md:block">
+            <div className="text-xs text-content-tertiary px-2">
+              <p>Agentic AI v1.0</p>
+              <p className="mt-1 opacity-60">Running locally</p>
             </div>
-            
-            <div className="flex-1 flex flex-col md:flex-row min-h-0 bg-layer-2/50 overflow-hidden">
-                {/* Navigation Sidebar */}
-                <nav className="flex-shrink-0 p-4 md:w-64 lg:w-72 bg-layer-1/50 z-10 border-b md:border-b-0 md:border-r border-border flex flex-col gap-2 overflow-y-auto">
-                    <div className="hidden md:block px-2 mb-2">
-                        <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Configuration</h3>
-                    </div>
+          </div>
+        </div>
 
-                    <LayoutGroup id="settings-nav">
-                        <ul className="flex flex-row md:flex-col gap-1 w-full overflow-x-auto md:overflow-visible no-scrollbar">
-                            {CATEGORIES.map(cat => (
-                                <li key={cat.id} className="flex-shrink-0">
-                                    <SettingsCategoryButton
-                                        icon={cat.icon}
-                                        label={cat.label}
-                                        isActive={activeCategory === cat.id}
-                                        onClick={(e) => {
-                                            setActiveCategory(cat.id);
-                                        }}
-                                    />
-                                </li>
-                            ))}
-                        </ul>
-                    </LayoutGroup>
-                </nav>
-
-                {/* Content Area */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar relative bg-page w-full p-0">
-                    <div className="px-6 py-6 md:p-8 max-w-3xl mx-auto min-h-full">
-                        <AnimatePresence mode="wait">
-                            <motion.div
-                                key={activeCategory}
-                                initial={{ opacity: 0, x: 5 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -5 }}
-                                transition={{ duration: 0.15, ease: "easeOut" }}
-                                className="w-full"
-                            >
-                                {activeCategory === 'general' && (
-                                    <GeneralSettings 
-                                        onClearAllChats={props.onClearAllChats} 
-                                        onRunTests={props.onRunTests} 
-                                        onDownloadLogs={props.onDownloadLogs} 
-                                        onShowDataStructure={props.onShowDataStructure}
-                                        onExportAllChats={props.onExportAllChats} 
-                                        apiKey={props.apiKey} 
-                                        onSaveApiKey={props.onSaveApiKey} 
-                                        theme={props.theme} 
-                                        setTheme={props.setTheme} 
-                                        serverUrl={props.serverUrl}
-                                        onSaveServerUrl={props.onSaveServerUrl}
-                                        provider={props.provider}
-                                        openRouterApiKey={props.openRouterApiKey}
-                                        onProviderChange={props.onProviderChange}
-                                        ollamaHost={props.ollamaHost}
-                                        onSaveOllamaHost={props.onSaveOllamaHost}
-                                    />
-                                )}
-                                {activeCategory === 'personalize' && <PersonalizeSettings {...props} />}
-                                {activeCategory === 'model' && (
-                                    <ModelSettings
-                                        models={props.models}
-                                        imageModels={props.imageModels}
-                                        videoModels={props.videoModels}
-                                        ttsModels={props.ttsModels}
-                                        selectedModel={props.selectedModel}
-                                        onModelChange={props.onModelChange}
-                                        temperature={props.temperature}
-                                        setTemperature={props.setTemperature}
-                                        maxTokens={props.maxTokens}
-                                        setMaxTokens={props.setMaxTokens}
-                                        imageModel={props.imageModel}
-                                        onImageModelChange={props.onImageModelChange}
-                                        videoModel={props.videoModel}
-                                        onVideoModelChange={props.onVideoModelChange}
-                                        ttsModel={props.ttsModel}
-                                        onTtsModelChange={props.onTtsModelChange}
-                                        defaultTemperature={props.defaultTemperature}
-                                        defaultMaxTokens={props.defaultMaxTokens}
-                                        disabled={props.disabled}
-                                        provider={props.provider}
-                                    />
-                                )}
-                                {activeCategory === 'speech' && (
-                                    <SpeechMemorySettings 
-                                        isMemoryEnabled={props.isMemoryEnabled} 
-                                        setIsMemoryEnabled={props.setIsMemoryEnabled} 
-                                        onManageMemory={props.onManageMemory} 
-                                        disabled={props.disabled}
-                                        ttsVoice={props.ttsVoice}
-                                        setTtsVoice={props.setTtsVoice}
-                                        ttsModels={props.ttsModels}
-                                        ttsModel={props.ttsModel}
-                                        onTtsModelChange={props.onTtsModelChange}
-                                    />
-                                )}
-                            </motion.div>
-                        </AnimatePresence>
-                    </div>
-                </div>
-            </div>
-        </DialogContent>
+        {/* Main Content Area */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar bg-page relative">
+          <div className="p-4 md:p-8 lg:p-10 max-w-3xl mx-auto min-h-full">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="w-full"
+              >
+                {activeTab === 'general' && (
+                  <GeneralSettings 
+                    onClearAllChats={props.onClearAllChats}
+                    onRunTests={props.onRunTests}
+                    onDownloadLogs={props.onDownloadLogs}
+                    onShowDataStructure={props.onShowDataStructure}
+                    onExportAllChats={props.onExportAllChats}
+                    apiKey={props.apiKey}
+                    onSaveApiKey={props.onSaveApiKey}
+                    theme={props.theme}
+                    setTheme={props.setTheme}
+                    serverUrl={props.serverUrl}
+                    onSaveServerUrl={props.onSaveServerUrl}
+                    provider={props.provider}
+                    openRouterApiKey={props.openRouterApiKey}
+                    ollamaApiKey={props.ollamaApiKey}
+                    onProviderChange={props.onProviderChange}
+                    ollamaHost={props.ollamaHost}
+                    onSaveOllamaHost={props.onSaveOllamaHost}
+                  />
+                )}
+                {activeTab === 'model' && (
+                  <ModelSettings 
+                    models={props.models}
+                    imageModels={props.imageModels}
+                    videoModels={props.videoModels}
+                    ttsModels={props.ttsModels}
+                    selectedModel={props.selectedModel}
+                    onModelChange={props.onModelChange}
+                    temperature={props.temperature}
+                    setTemperature={props.setTemperature}
+                    maxTokens={props.maxTokens}
+                    setMaxTokens={props.setMaxTokens}
+                    imageModel={props.imageModel}
+                    onImageModelChange={props.onImageModelChange}
+                    videoModel={props.videoModel}
+                    onVideoModelChange={props.onVideoModelChange}
+                    ttsModel={props.ttsModel}
+                    onTtsModelChange={props.onTtsModelChange}
+                    defaultTemperature={props.defaultTemperature}
+                    defaultMaxTokens={props.defaultMaxTokens}
+                    disabled={props.disabled}
+                    provider={props.provider}
+                  />
+                )}
+                {activeTab === 'personalize' && (
+                  <PersonalizeSettings 
+                    aboutUser={props.aboutUser}
+                    setAboutUser={props.setAboutUser}
+                    aboutResponse={props.aboutResponse}
+                    setAboutResponse={props.setAboutResponse}
+                    disabled={props.disabled}
+                  />
+                )}
+                {activeTab === 'speech' && (
+                  <SpeechMemorySettings 
+                    isMemoryEnabled={props.isMemoryEnabled}
+                    setIsMemoryEnabled={props.setIsMemoryEnabled}
+                    onManageMemory={props.onManageMemory}
+                    disabled={props.disabled}
+                    ttsVoice={props.ttsVoice}
+                    setTtsVoice={props.setTtsVoice}
+                    ttsModels={props.ttsModels}
+                    ttsModel={props.ttsModel}
+                    onTtsModelChange={props.onTtsModelChange}
+                  />
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </div>
+      </DialogContent>
     </Dialog>
   );
-});
+};
 
 export default SettingsModal;

@@ -1,4 +1,6 @@
 
+
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -46,6 +48,7 @@ export const useAppLogic = () => {
     const [provider, setProvider] = useState<'gemini' | 'openrouter' | 'ollama'>('gemini');
     const [apiKey, setApiKey] = useState('');
     const [openRouterApiKey, setOpenRouterApiKey] = useState('');
+    const [ollamaApiKey, setOllamaApiKey] = useState('');
     const [ollamaHost, setOllamaHost] = useState('');
     const [serverUrl, setServerUrl] = useState('');
     const [activeModel, setActiveModel] = useState('');
@@ -95,6 +98,9 @@ export const useAppLogic = () => {
     const memory = useMemory(isMemoryEnabled);
 
     // --- Chat Hook ---
+    // Select appropriate key for chat logic
+    const activeKey = provider === 'openrouter' ? openRouterApiKey : (provider === 'ollama' ? ollamaApiKey : apiKey);
+    
     const chat = useChat(
         activeModel, 
         { 
@@ -107,7 +113,7 @@ export const useAppLogic = () => {
             videoModel
         }, 
         memory.memoryContent, 
-        provider === 'openrouter' ? openRouterApiKey : apiKey, // Select appropriate key for chat logic
+        activeKey,
         showToast
     );
 
@@ -150,6 +156,7 @@ export const useAppLogic = () => {
                 setProvider(settings.provider || 'gemini');
                 setApiKey(settings.apiKey || '');
                 setOpenRouterApiKey(settings.openRouterApiKey || '');
+                setOllamaApiKey(settings.ollamaApiKey || '');
                 setOllamaHost(settings.ollamaHost || '');
                 setActiveModel(settings.activeModel || '');
                 setImageModel(settings.imageModel || '');
@@ -244,13 +251,13 @@ export const useAppLogic = () => {
     const onSaveApiKey = useCallback(async (key: string, providerType: 'gemini' | 'openrouter' | 'ollama') => {
         if (providerType === 'gemini') setApiKey(key);
         if (providerType === 'openrouter') setOpenRouterApiKey(key);
-        // For Ollama, the key is optional (auth header)
+        if (providerType === 'ollama') setOllamaApiKey(key);
         
         try {
             const updatePayload: Partial<AppSettings> = {};
             if (providerType === 'gemini') updatePayload.apiKey = key;
             if (providerType === 'openrouter') updatePayload.openRouterApiKey = key;
-            if (providerType === 'ollama') updatePayload.apiKey = key; // Reusing apiKey field for generic auth
+            if (providerType === 'ollama') updatePayload.ollamaApiKey = key; 
 
             const response = await updateSettings(updatePayload);
             
@@ -485,7 +492,7 @@ export const useAppLogic = () => {
         availableModels, availableImageModels, availableVideoModels, availableTtsModels,
         
         // Settings
-        provider, openRouterApiKey, ollamaHost,
+        provider, openRouterApiKey, ollamaHost, ollamaApiKey,
         onProviderChange, onSaveApiKey, onSaveOllamaHost,
         serverUrl, onSaveServerUrl,
         apiKey,

@@ -24,6 +24,7 @@ type GeneralSettingsProps = {
   onSaveServerUrl: (url: string) => Promise<boolean>;
   provider: 'gemini' | 'openrouter' | 'ollama';
   openRouterApiKey: string;
+  ollamaApiKey?: string;
   onProviderChange: (provider: 'gemini' | 'openrouter' | 'ollama') => void;
   ollamaHost?: string;
   onSaveOllamaHost?: (host: string) => Promise<void> | void;
@@ -46,7 +47,7 @@ const ApiKeyForm = ({ label, value, placeholder, onSave, description }: {
     label: string, value: string, placeholder: string, onSave: (key: string) => Promise<void>, description?: string 
 }) => {
     const { register, handleSubmit, formState: { errors, isSubmitting, isSubmitSuccessful } } = useForm<ApiKeyFormData>({
-        resolver: zodResolver(apiKeySchema),
+        // resolver: zodResolver(apiKeySchema), // Removed strict regex validation to allow diverse key formats
         defaultValues: { key: value }
     });
 
@@ -60,7 +61,7 @@ const ApiKeyForm = ({ label, value, placeholder, onSave, description }: {
                 <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest px-1">{label}</label>
                 <div className="flex gap-2 flex-wrap sm:flex-nowrap">
                     <Input
-                        {...register('key')}
+                        {...register('key', { required: true })}
                         type="password"
                         placeholder={placeholder}
                         className={errors.key ? 'border-red-500 focus-visible:ring-red-500' : ''}
@@ -79,7 +80,7 @@ const ApiKeyForm = ({ label, value, placeholder, onSave, description }: {
                         )}
                     </Button>
                 </div>
-                {errors.key && <p className="text-xs text-red-500 px-1">{errors.key.message}</p>}
+                {errors.key && <p className="text-xs text-red-500 px-1">Key is required.</p>}
                 {description && <p className="text-[11px] text-slate-500 dark:text-slate-500 px-1">{description}</p>}
             </div>
         </form>
@@ -105,7 +106,7 @@ const ActionButton = ({
 const GeneralSettings: React.FC<GeneralSettingsProps> = ({ 
     onClearAllChats, onRunTests, onDownloadLogs, onShowDataStructure, onExportAllChats, 
     apiKey, onSaveApiKey, theme, setTheme, serverUrl, onSaveServerUrl,
-    provider, openRouterApiKey, onProviderChange, ollamaHost, onSaveOllamaHost
+    provider, openRouterApiKey, ollamaApiKey, onProviderChange, ollamaHost, onSaveOllamaHost
 }) => {
     return (
         <div className="space-y-10 pb-12 w-full max-w-full">
@@ -156,7 +157,7 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
                 )}
                 
                 {provider === 'ollama' && (
-                     <div className="space-y-4 pt-2 animate-in fade-in slide-in-from-top-2 duration-300 w-full">
+                     <div className="space-y-6 pt-2 animate-in fade-in slide-in-from-top-2 duration-300 w-full">
                         <div className="flex flex-col gap-2">
                              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest px-1">Ollama Host URL</label>
                              <div className="flex gap-2">
@@ -169,6 +170,13 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
                              </div>
                              <p className="text-[11px] text-slate-500 px-1">Ensure your Ollama server allows CORS.</p>
                         </div>
+                        <ApiKeyForm
+                            label="Ollama API Key (Optional)" 
+                            value={ollamaApiKey || ''} 
+                            placeholder="sk-..." 
+                            onSave={(key) => onSaveApiKey(key, 'ollama')}
+                            description="Only required if your Ollama instance is protected by authentication."
+                        />
                     </div>
                 )}
             </section>
