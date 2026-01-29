@@ -44,16 +44,8 @@ html {
 .custom-scrollbar::-webkit-scrollbar,
 .custom-scrollbar *::-webkit-scrollbar {
   display: block;
-  width: 6px; /* Thinner on mobile for better aesthetics */
-  height: 6px;
-}
-
-@media (min-width: 768px) {
-  .custom-scrollbar::-webkit-scrollbar,
-  .custom-scrollbar *::-webkit-scrollbar {
-    width: 12px; /* Standard size on desktop for easier clicking */
-    height: 12px;
-  }
+  width: 12px; /* Standard size for all devices */
+  height: 12px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track,
@@ -66,15 +58,8 @@ html {
   background-color: var(--border-strong);
   border-radius: 99px;
   /* Responsive border for padding effect */
-  border: 1.5px solid transparent; 
+  border: 3px solid transparent; /* Creates padding effect for floating look */
   background-clip: content-box;
-}
-
-@media (min-width: 768px) {
-  .custom-scrollbar::-webkit-scrollbar-thumb,
-  .custom-scrollbar *::-webkit-scrollbar-thumb {
-     border: 3px solid transparent; /* Creates padding effect for floating look */
-  }
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover,

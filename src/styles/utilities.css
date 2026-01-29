@@ -17,16 +17,8 @@
 .custom-scrollbar::-webkit-scrollbar,
 .custom-scrollbar *::-webkit-scrollbar {
   display: block;
-  width: 6px;
-  height: 6px;
-}
-
-@media (min-width: 768px) {
-  .custom-scrollbar::-webkit-scrollbar,
-  .custom-scrollbar *::-webkit-scrollbar {
-    width: 12px;
-    height: 12px;
-  }
+  width: 12px;
+  height: 12px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track,
@@ -38,15 +30,8 @@
 .custom-scrollbar *::-webkit-scrollbar-thumb {
   background-color: var(--border-strong);
   border-radius: 99px;
-  border: 1.5px solid transparent; 
+  border: 3px solid transparent; 
   background-clip: content-box;
-}
-
-@media (min-width: 768px) {
-  .custom-scrollbar::-webkit-scrollbar-thumb,
-  .custom-scrollbar *::-webkit-scrollbar-thumb {
-     border: 3px solid transparent;
-  }
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover,
