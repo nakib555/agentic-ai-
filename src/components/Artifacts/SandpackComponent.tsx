@@ -21,15 +21,14 @@ const LIVECODES_CDN = "https://cdn.jsdelivr.net/npm/livecodes/livecodes.umd.js";
 let scriptLoadingPromise: Promise<void> | null = null;
 
 const loadLiveCodesScript = () => {
+    // If already loaded successfully
+    if ((window as any).livecodes) {
+        return Promise.resolve();
+    }
+
     if (scriptLoadingPromise) return scriptLoadingPromise;
 
     scriptLoadingPromise = new Promise((resolve, reject) => {
-        // If already loaded
-        if ((window as any).livecodes) {
-            resolve();
-            return;
-        }
-
         const script = document.createElement('script');
         script.src = LIVECODES_CDN;
         script.async = true;
@@ -38,13 +37,14 @@ const loadLiveCodesScript = () => {
             if ((window as any).livecodes) {
                 resolve();
             } else {
+                scriptLoadingPromise = null; // Reset on soft failure
                 reject(new Error('LiveCodes loaded but global object not found'));
             }
         };
 
         script.onerror = (e) => {
             console.error("LiveCodes script load error:", e);
-            scriptLoadingPromise = null; // Allow retry
+            scriptLoadingPromise = null; // Reset to allow retry
             reject(new Error('Failed to load LiveCodes script from CDN'));
         };
 
@@ -134,91 +134,77 @@ const LiveCodesEmbed: React.FC<LiveCodesProps> = ({ code, language, theme }) => 
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Initialization Effect: Runs only once to create the playground
+    const init = async () => {
+        if (!containerRef.current) return;
+        
+        // If already initialized, just return
+        if (playgroundRef.current) {
+            setIsLoading(false);
+            return;
+        }
+        
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            // Ensure script is loaded
+            await loadLiveCodesScript();
+            
+            const livecodesGlobal = (window as any).livecodes;
+            if (!livecodesGlobal || !livecodesGlobal.createPlayground) {
+                throw new Error("LiveCodes initialization function not found");
+            }
+
+            if (!containerRef.current) return; // Unmounted check
+
+            // Clear container before mounting to prevent duplicates
+            containerRef.current.innerHTML = '';
+
+            // Initial Configuration
+            const config = getLiveCodesConfig(code, language);
+            
+            // Initialize LiveCodes
+            const app = await livecodesGlobal.createPlayground(containerRef.current, {
+                config: {
+                    ...config,
+                    mode: 'result', // Start in result mode
+                    theme: theme,   // Initial theme
+                    autoupdate: true, // Equivalent to run: true
+                    tools: {
+                        enabled: ['console'], // Explicitly enable console
+                        active: 'console',    // Make console the active tool
+                        status: 'closed',     // Show status bar but keep tools closed initially
+                    }
+                },
+            });
+            
+            playgroundRef.current = app;
+            setIsLoading(false);
+
+        } catch (err: any) {
+            console.error("LiveCodes initialization failed:", err);
+            // Allow user to see error state
+            setError(err.message || "Failed to load preview environment.");
+            setIsLoading(false);
+        }
+    };
+
+    // Initialization Effect
     useEffect(() => {
-        let isMounted = true;
-        let app: any = null;
-
-        const init = async () => {
-            if (!containerRef.current) return;
-            
-            // If already initialized, just return
-            if (playgroundRef.current) {
-                setIsLoading(false);
-                return;
-            }
-            
-            setIsLoading(true);
-            setError(null);
-
-            try {
-                // Ensure script is loaded
-                await loadLiveCodesScript();
-                
-                const livecodesGlobal = (window as any).livecodes;
-                if (!livecodesGlobal || !livecodesGlobal.createPlayground) {
-                    throw new Error("LiveCodes initialization function not found");
-                }
-
-                if (!isMounted) return;
-
-                // Clear container before mounting to prevent duplicates
-                if (containerRef.current) {
-                   containerRef.current.innerHTML = '';
-                }
-
-                // Initial Configuration
-                const config = getLiveCodesConfig(code, language);
-                
-                // Initialize LiveCodes
-                app = await livecodesGlobal.createPlayground(containerRef.current, {
-                    config: {
-                        ...config,
-                        mode: 'result', // Start in result mode
-                        theme: theme,   // Initial theme
-                        autoupdate: true, // Equivalent to run: true
-                        tools: {
-                            enabled: ['console'], // Explicitly enable console
-                            active: 'console',    // Make console the active tool
-                            status: 'closed',     // Show status bar but keep tools closed initially
-                        }
-                    },
-                });
-                
-                if (isMounted) {
-                    playgroundRef.current = app;
-                    setIsLoading(false);
-                } else {
-                    // Component unmounted while initializing
-                    await app.destroy();
-                }
-            } catch (err: any) {
-                console.error("LiveCodes initialization failed:", err);
-                if (isMounted) {
-                    setError(err.message || "Failed to load preview environment.");
-                    setIsLoading(false);
-                }
-            }
-        };
-
-        // Small delay to ensure DOM layout is stable
+        // Use a timeout to ensure DOM is ready and reduce blocking
         const timer = setTimeout(init, 50);
 
         return () => {
-            isMounted = false;
             clearTimeout(timer);
-            if (app) app.destroy();
             if (playgroundRef.current) {
                 playgroundRef.current.destroy().catch(() => {});
                 playgroundRef.current = null;
             }
         };
-        // We purposefully omit code/theme/language from deps here to prevent re-creation.
-        // Updates are handled by the second useEffect using setConfig.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); 
 
-    // Update Effect: Runs when props change to update existing playground
+    // Update Effect
     useEffect(() => {
         const update = async () => {
             if (!playgroundRef.current) return;
@@ -226,7 +212,6 @@ const LiveCodesEmbed: React.FC<LiveCodesProps> = ({ code, language, theme }) => 
             try {
                 const config = getLiveCodesConfig(code, language);
                 
-                // Use setConfig to update state without full reload
                 await playgroundRef.current.setConfig({
                     ...config,
                     theme: theme,
@@ -243,10 +228,18 @@ const LiveCodesEmbed: React.FC<LiveCodesProps> = ({ code, language, theme }) => 
             }
         };
 
-        if (!isLoading) {
+        if (!isLoading && !error) {
             update();
         }
-    }, [code, language, theme, isLoading]);
+    }, [code, language, theme, isLoading, error]);
+
+    const handleRetry = () => {
+        // Reset global promise to force fresh load attempt
+        scriptLoadingPromise = null;
+        setError(null);
+        setIsLoading(true);
+        init();
+    };
 
     if (error) {
         return (
@@ -255,7 +248,7 @@ const LiveCodesEmbed: React.FC<LiveCodesProps> = ({ code, language, theme }) => 
                 <p className="text-sm font-medium">{error}</p>
                 <p className="text-xs text-slate-500 mt-1 max-w-xs">The external editor library failed to load. Check your internet connection.</p>
                 <button 
-                    onClick={() => { setError(null); setIsLoading(true); window.location.reload(); }} 
+                    onClick={handleRetry}
                     className="mt-4 px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-500 transition-colors"
                 >
                     Retry Connection

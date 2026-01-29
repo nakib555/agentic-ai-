@@ -9,8 +9,6 @@
  */
 export const getApiBaseUrl = (): string => {
     // 1. Build Configuration / Environment Variable (VITE_API_BASE_URL) - Highest Priority
-    // This allows deployments (like Cloudflare Pages) to define the backend URL via env vars.
-    // If this is set, it overrides manual user settings.
     try {
         // @ts-ignore - Vite specific
         const envUrl = import.meta.env.VITE_API_BASE_URL;
@@ -22,7 +20,6 @@ export const getApiBaseUrl = (): string => {
     }
 
     // 2. Manual Override from LocalStorage (User Input)
-    // Used if no environment variable is provided.
     try {
         if (typeof window !== 'undefined') {
             const customUrl = localStorage.getItem('custom_server_url');
@@ -30,30 +27,18 @@ export const getApiBaseUrl = (): string => {
         }
     } catch (e) {}
 
-    // 3. Safe environment detection
-    // Some bundlers/runtimes don't support import.meta.env
-    const isDev = typeof process !== 'undefined' && process.env?.NODE_ENV === 'development';
-    
-    // 4. Development/Localhost logic
+    // 3. Development/Localhost logic
     if (typeof window !== 'undefined') {
         const { hostname, port, protocol } = window.location;
         const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
 
         if (isLocal) {
-            // Default backend port is 3001.
-            // If the frontend is NOT running on 3001, we assume the backend is on 3001.
-            // If the frontend IS on 3001, we assume we are proxying or it's a monolithic serve,
-            // so we return an empty string to use relative paths.
             if (port !== '3001') {
                 return `${protocol}//${hostname}:3001`;
             }
-            // If served from backend port, use relative
             return '';
         }
         
-        // 5. Preview/Iframe Environments (like AI Studio)
-        // If the hostname looks like a sub-domain of a known platform, 
-        // we might still want to try same-origin relative paths first.
         return ''; 
     }
 
@@ -66,16 +51,16 @@ export const setOnVersionMismatch = (callback: () => void) => {
     onVersionMismatch = callback;
 };
 
-type ApiOptions = RequestInit & { silent?: boolean };
+type ApiOptions = RequestInit & { silent?: boolean; timeout?: number };
 
 /**
- * Enhanced fetch wrapper for API calls with automatic base URL and error handling.
+ * Enhanced fetch wrapper for API calls with automatic base URL, timeout, and error handling.
  */
 export const fetchFromApi = async (url: string, options: ApiOptions = {}): Promise<Response> => {
     const baseUrl = getApiBaseUrl();
     const fullUrl = `${baseUrl}${url}`;
     const method = options.method || 'GET';
-    const { silent, ...fetchOptions } = options;
+    const { silent, timeout = 60000, ...fetchOptions } = options; // Default 60s timeout
     
     // Get version from safe source
     let appVersion = 'unknown';
@@ -90,10 +75,18 @@ export const fetchFromApi = async (url: string, options: ApiOptions = {}): Promi
         ...fetchOptions.headers,
     };
     
+    // Setup Timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    // Allow user-provided signal to override internal timeout signal if needed, 
+    // or merge them (complex), but for simplicity we assume if signal is passed, caller handles timeout.
+    const signal = fetchOptions.signal || controller.signal;
+
     try {
-        const response = await fetch(fullUrl, { ...fetchOptions, headers });
+        const response = await fetch(fullUrl, { ...fetchOptions, headers, signal });
+        clearTimeout(timeoutId);
         
-        // 409 Conflict is our convention for version mismatch
         if (response.status === 409) {
             console.warn(`[API Warning] ⚠️ Version mismatch detected for ${url}`);
             onVersionMismatch();
@@ -101,22 +94,37 @@ export const fetchFromApi = async (url: string, options: ApiOptions = {}): Promi
         }
 
         if (!response.ok && !silent) {
-            // Log as expanded object for better debugging in developer tools
             console.error(`[API Error] ❌ ${method} ${url} failed with status ${response.status}`);
             try {
-                const errorData = await response.clone().json();
-                console.dir(errorData);
-            } catch (e) {
-                const errorText = await response.clone().text();
-                console.error('Response body:', errorText);
-            }
+                // Clone to not consume body if caller needs it (though usually we throw here)
+                const errorClone = response.clone();
+                const errorText = await errorClone.text();
+                // Attempt to parse json for cleaner log
+                try {
+                    console.dir(JSON.parse(errorText));
+                } catch {
+                    console.error('Response body:', errorText);
+                }
+            } catch (e) {}
         }
         
         return response;
-    } catch (error) {
+    } catch (error: any) {
+        clearTimeout(timeoutId);
+        
         if (!silent) {
-            console.error(`[API Fatal] 💥 ${method} ${url} request failed`, error);
+            if (error.name === 'AbortError') {
+                 console.warn(`[API] ⏱️ Request timed out: ${method} ${url}`);
+            } else {
+                 console.error(`[API Fatal] 💥 ${method} ${url} request failed`, error);
+            }
         }
+        
+        // Normalize network errors
+        if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+             throw new Error('Network error: Could not connect to server. Please check your connection.');
+        }
+        
         throw error;
     }
 };

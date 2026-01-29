@@ -1,5 +1,6 @@
 
 
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -46,6 +47,8 @@ const writeToClient = (job: Job, type: string, payload: any) => {
                 console.error(`[JOB] Failed to write to client for chat ${job.chatId}`, e);
                 job.clients.delete(client);
             }
+        } else {
+             job.clients.delete(client);
         }
     });
 };
