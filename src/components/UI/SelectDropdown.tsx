@@ -16,23 +16,27 @@ import { cn } from "../../lib/utils";
 type SelectDropdownProps = {
     label?: string;
     icon?: React.ReactNode;
+    startIcon?: React.ReactNode;
     options: { id: string; label: string; desc?: string }[];
     value: string;
     onChange: (val: string) => void;
     disabled?: boolean;
     className?: string;
     triggerClassName?: string;
+    placeholder?: string;
 };
 
 export const SelectDropdown: React.FC<SelectDropdownProps> = ({ 
     label, 
     icon, 
+    startIcon,
     options, 
     value, 
     onChange, 
     disabled, 
     className = '',
-    triggerClassName
+    triggerClassName,
+    placeholder = "Select an option"
 }) => {
     return (
         <div className={cn("flex flex-col gap-2", className)}>
@@ -47,21 +51,34 @@ export const SelectDropdown: React.FC<SelectDropdownProps> = ({
             
             <Select value={value} onValueChange={onChange} disabled={disabled}>
                 <SelectTrigger className={cn("w-full h-12", triggerClassName)}>
-                    <SelectValue placeholder="Select an option" />
+                    <div className="flex items-center gap-2.5 truncate">
+                        {startIcon && (
+                            <span className="flex-shrink-0 text-indigo-600 dark:text-indigo-400">
+                                {startIcon}
+                            </span>
+                        )}
+                        <SelectValue placeholder={placeholder} />
+                    </div>
                 </SelectTrigger>
                 <SelectContent className="max-h-[300px]">
-                    {options.map((opt) => (
-                        <SelectItem key={opt.id} value={opt.id} className="py-2.5">
-                            <div className="flex flex-col text-left">
-                                <span className="font-semibold">{opt.label}</span>
-                                {opt.desc && (
-                                    <span className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                        {opt.desc}
-                                    </span>
-                                )}
-                            </div>
-                        </SelectItem>
-                    ))}
+                    {options.length === 0 ? (
+                        <div className="p-4 text-center">
+                            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">No options available</p>
+                        </div>
+                    ) : (
+                        options.map((opt) => (
+                            <SelectItem key={opt.id} value={opt.id} className="py-2.5">
+                                <div className="flex flex-col text-left">
+                                    <span className="font-semibold">{opt.label}</span>
+                                    {opt.desc && (
+                                        <span className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate max-w-[240px]">
+                                            {opt.desc}
+                                        </span>
+                                    )}
+                                </div>
+                            </SelectItem>
+                        ))
+                    )}
                 </SelectContent>
             </Select>
         </div>

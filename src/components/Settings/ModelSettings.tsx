@@ -1,4 +1,3 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -6,7 +5,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import type { Model } from '../../types';
-import { ModelSelector } from '../UI/ModelSelector';
+import { SelectDropdown } from '../UI/SelectDropdown';
 import { SettingItem } from './SettingItem';
 
 // Modern Icons
@@ -207,6 +206,8 @@ const ModelSettings: React.FC<ModelSettingsProps> = ({
         });
     }, [models, imageModels, videoModels, ttsModels]);
 
+    const formatModels = (list: Model[]) => list.map(m => ({ id: m.id, label: m.name, desc: m.description }));
+
     const noModelsAvailable = !filteredReasoningModels || filteredReasoningModels.length === 0;
     
     let descriptionText = "The main model used for chat, reasoning, and planning.";
@@ -261,13 +262,14 @@ const ModelSettings: React.FC<ModelSettingsProps> = ({
                         description={descriptionText}
                     >
                         <div className="w-full sm:w-[320px]">
-                            <ModelSelector 
-                                models={filteredReasoningModels} 
-                                selectedModel={selectedModel} 
-                                onModelChange={onModelChange} 
+                            <SelectDropdown 
+                                options={formatModels(filteredReasoningModels)} 
+                                value={selectedModel} 
+                                onChange={onModelChange} 
                                 disabled={disabled || noModelsAvailable} 
                                 placeholder="Select a reasoning model"
-                                icon={<SparklesIcon />}
+                                startIcon={<SparklesIcon />}
+                                className="w-full"
                             />
                         </div>
                     </SettingItem>
@@ -299,39 +301,42 @@ const ModelSettings: React.FC<ModelSettingsProps> = ({
                 <div className="space-y-6">
                     <SettingItem label="Image Generation">
                         <div className="w-full sm:w-[320px]">
-                            <ModelSelector 
-                                models={imageModels} 
-                                selectedModel={imageModel} 
-                                onModelChange={onImageModelChange} 
+                            <SelectDropdown 
+                                options={formatModels(imageModels)} 
+                                value={imageModel} 
+                                onChange={onImageModelChange} 
                                 disabled={disabled || noModelsAvailable} 
                                 placeholder="Select image model"
-                                icon={<PhotoIcon />}
+                                startIcon={<PhotoIcon />}
+                                className="w-full"
                             />
                         </div>
                     </SettingItem>
 
                     <SettingItem label="Video Generation">
                         <div className="w-full sm:w-[320px]">
-                            <ModelSelector 
-                                models={videoModels} 
-                                selectedModel={videoModel} 
-                                onModelChange={onVideoModelChange} 
+                            <SelectDropdown 
+                                options={formatModels(videoModels)} 
+                                value={videoModel} 
+                                onChange={onVideoModelChange} 
                                 disabled={disabled || noModelsAvailable} 
                                 placeholder="Select video model"
-                                icon={<VideoIcon />}
+                                startIcon={<VideoIcon />}
+                                className="w-full"
                             />
                         </div>
                     </SettingItem>
 
                     <SettingItem label="Speech Synthesis (TTS)">
                         <div className="w-full sm:w-[320px]">
-                            <ModelSelector 
-                                models={ttsModels} 
-                                selectedModel={ttsModel} 
-                                onModelChange={onTtsModelChange} 
+                            <SelectDropdown 
+                                options={formatModels(ttsModels)} 
+                                value={ttsModel} 
+                                onChange={onTtsModelChange} 
                                 disabled={disabled || noModelsAvailable} 
                                 placeholder="Select TTS model"
-                                icon={<SpeakerIcon />}
+                                startIcon={<SpeakerIcon />}
+                                className="w-full"
                             />
                         </div>
                     </SettingItem>

@@ -1,4 +1,3 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -8,13 +7,13 @@ import React, { useState } from 'react';
 import { motion as motionTyped, AnimatePresence } from 'framer-motion';
 import { ToggleSwitch } from '../UI/ToggleSwitch';
 import { SettingItem } from './SettingItem';
-import { VoiceSelector } from '../UI/VoiceSelector';
-import { ModelSelector } from '../UI/ModelSelector';
+import { SelectDropdown } from '../UI/SelectDropdown';
 import type { Model } from '../../types';
 import { audioManager } from '../../services/audioService';
 import { fetchFromApi } from '../../utils/api';
 import { decode, decodeAudioData } from '../../utils/audioUtils';
 import { AudioWave } from '../UI/AudioWave';
+import { TTS_VOICES } from '../App/constants';
 
 const motion = motionTyped as any;
 
@@ -109,6 +108,9 @@ const SpeechMemorySettings: React.FC<SpeechMemorySettingsProps> = ({
 
     const noTtsModels = !disabled && ttsModels.length === 0;
 
+    const formattedTtsModels = ttsModels.map(m => ({ id: m.id, label: m.name, desc: m.description }));
+    const formattedVoices = TTS_VOICES.map(v => ({ id: v.id, label: v.name, desc: v.desc }));
+
     return (
         <div className="space-y-6 pb-10">
             {/* Header */}
@@ -166,13 +168,14 @@ const SpeechMemorySettings: React.FC<SpeechMemorySettingsProps> = ({
                 
                 <SettingItem label="TTS Model" description="The model used for generating speech.">
                     <div className="w-full sm:w-[320px]">
-                        <ModelSelector 
-                            models={ttsModels} 
-                            selectedModel={ttsModel} 
-                            onModelChange={onTtsModelChange} 
+                        <SelectDropdown 
+                            options={formattedTtsModels} 
+                            value={ttsModel} 
+                            onChange={onTtsModelChange} 
                             disabled={disabled || isLoadingPreview || isPlayingPreview} 
                             placeholder="Select a TTS model"
-                            icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M12 6v14" /><path d="M8 10v6" /><path d="M16 10v6" /><path d="M4 12v2" /><path d="M20 12v2" /></svg>}
+                            startIcon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M12 6v14" /><path d="M8 10v6" /><path d="M16 10v6" /><path d="M4 12v2" /><path d="M20 12v2" /></svg>}
+                            className="w-full"
                         />
                     </div>
                 </SettingItem>
@@ -180,10 +183,12 @@ const SpeechMemorySettings: React.FC<SpeechMemorySettingsProps> = ({
                 <SettingItem label="Voice Persona" description="Choose the voice for reading responses aloud.">
                     <div className="w-full flex items-center justify-end gap-3 sm:w-[320px]">
                         <div className="flex-1">
-                            <VoiceSelector 
-                                selectedVoice={ttsVoice} 
-                                onVoiceChange={setTtsVoice} 
+                            <SelectDropdown 
+                                options={formattedVoices} 
+                                value={ttsVoice} 
+                                onChange={setTtsVoice} 
                                 disabled={disabled || isLoadingPreview || isPlayingPreview}
+                                placeholder="Select a voice"
                                 className="w-full"
                             />
                         </div>
@@ -204,10 +209,10 @@ const SpeechMemorySettings: React.FC<SpeechMemorySettingsProps> = ({
                                 onClick={handlePlayPreview}
                                 disabled={disabled || isLoadingPreview}
                                 className={`
-                                    w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200
+                                    w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-200 shadow-sm border
                                     ${isPlayingPreview
-                                        ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-500/30 dark:text-indigo-300 ring-2 ring-indigo-500/20'
-                                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 dark:bg-white/5 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-200'
+                                        ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-500/30 dark:text-indigo-300 ring-2 ring-indigo-500/20 border-indigo-200 dark:border-indigo-500/30'
+                                        : 'bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700 dark:bg-white/5 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-200 border-slate-200 dark:border-white/10'
                                     }
                                 `}
                                 title={isPlayingPreview ? "Stop Preview" : "Preview Selected Voice"}
