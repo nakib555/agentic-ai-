@@ -119,7 +119,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = (props) => {
 
   return (
     <Dialog open={props.isOpen} onOpenChange={props.onClose}>
-      <DialogContent className="p-0 gap-0 w-full max-w-5xl h-[85vh] md:h-[80vh] flex flex-col md:flex-row overflow-hidden bg-page">
+      <DialogContent className="p-0 gap-0 w-[95vw] md:w-full max-w-5xl h-[85vh] md:h-[80vh] flex flex-col md:flex-row overflow-hidden bg-page rounded-2xl border border-border-default shadow-2xl">
         <DialogTitle className="sr-only">Settings</DialogTitle>
         <DialogDescription className="sr-only">Configure application settings, API keys, and models.</DialogDescription>
         

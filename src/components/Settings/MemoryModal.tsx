@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion as motionTyped } from 'framer-motion';
 import { Virtuoso } from 'react-virtuoso';
 import JSZip from 'jszip';
@@ -344,18 +345,20 @@ export const MemoryModal: React.FC<MemoryModalProps> = ({ isOpen, onClose, memor
       }, 100);
   };
 
-  return (
+  // We use createPortal to ensure the Memory Modal is always on top of the Settings Dialog
+  // and isolated from any focus traps or stacking context issues.
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="fixed inset-0 bg-black/40 backdrop-blur-none md:backdrop-blur-sm z-[80] flex items-center justify-center p-4 sm:p-6 overflow-hidden"
+          className="fixed inset-0 bg-black/40 backdrop-blur-none md:backdrop-blur-sm z-[80] flex items-center justify-center p-4 sm:p-6 overflow-hidden pointer-events-auto"
           role="dialog"
           aria-modal="true"
           aria-labelledby="memory-modal-title"
+          onClick={onClose}
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -588,6 +591,7 @@ export const MemoryModal: React.FC<MemoryModalProps> = ({ isOpen, onClose, memor
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
