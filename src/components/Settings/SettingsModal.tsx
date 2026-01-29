@@ -119,46 +119,44 @@ export const SettingsModal: React.FC<SettingsModalProps> = (props) => {
 
   return (
     <Dialog open={props.isOpen} onOpenChange={props.onClose}>
-      <DialogContent className="p-0 gap-0 w-[90vw] md:w-full max-w-5xl h-[80vh] md:h-[80vh] flex flex-col md:flex-row overflow-hidden bg-page rounded-2xl border border-border-default shadow-2xl focus:outline-none">
+      <DialogContent className="p-0 gap-0 w-[95vw] md:w-full max-w-4xl h-[90vh] md:h-[85vh] flex flex-col overflow-hidden bg-page rounded-2xl border border-border-default shadow-2xl focus:outline-none">
         <DialogTitle className="sr-only">Settings</DialogTitle>
         <DialogDescription className="sr-only">Configure application settings, API keys, and models.</DialogDescription>
         
-        {/* Sidebar Navigation */}
-        <div className="w-full md:w-64 bg-layer-2/50 border-b md:border-b-0 md:border-r border-border-subtle flex flex-col flex-shrink-0">
-          <div className="p-4 md:p-6 pb-2 md:pb-6">
-            <h2 className="text-xl font-bold text-content-primary px-2 mb-4 hidden md:block tracking-tight">Settings</h2>
-            <nav className="flex md:flex-col gap-2 overflow-x-auto md:overflow-visible pb-2 md:pb-0 scrollbar-hide snap-x">
-              <LayoutGroup>
-                {CATEGORIES.map((cat) => (
-                  <SettingsCategoryButton
-                    key={cat.id}
-                    icon={cat.icon}
-                    label={cat.label}
-                    isActive={activeTab === cat.id}
-                    onClick={() => setActiveTab(cat.id)}
-                  />
-                ))}
-              </LayoutGroup>
-            </nav>
-          </div>
-          
-          <div className="mt-auto p-4 md:p-6 hidden md:block">
-            <div className="text-xs text-content-tertiary px-2">
-              <p>Agentic AI v1.0</p>
-              <p className="mt-1 opacity-60">Running locally</p>
+        {/* Header Section */}
+        <div className="flex-shrink-0 border-b border-border-default bg-layer-1/50 backdrop-blur-xl z-20">
+            <div className="flex items-center justify-between px-6 pt-5 pb-2">
+                <h2 className="text-xl font-bold text-content-primary tracking-tight">Settings</h2>
+                {/* Space for absolute close button */}
+                <div className="w-8 h-8" /> 
             </div>
-          </div>
+            
+            <div className="px-4 pb-2">
+                <nav className="flex gap-1 overflow-x-auto scrollbar-hide py-1">
+                    <LayoutGroup>
+                        {CATEGORIES.map((cat) => (
+                        <SettingsCategoryButton
+                            key={cat.id}
+                            icon={cat.icon}
+                            label={cat.label}
+                            isActive={activeTab === cat.id}
+                            onClick={() => setActiveTab(cat.id)}
+                        />
+                        ))}
+                    </LayoutGroup>
+                </nav>
+            </div>
         </div>
 
-        {/* Main Content Area */}
+        {/* Content Section */}
         <div className="flex-1 overflow-y-auto custom-scrollbar bg-page relative">
-          <div className="p-4 md:p-8 lg:p-10 max-w-3xl mx-auto min-h-full">
+          <div className="p-4 md:p-8 max-w-3xl mx-auto min-h-full">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTab}
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
                 className="w-full"
               >
@@ -232,6 +230,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = (props) => {
               </motion.div>
             </AnimatePresence>
           </div>
+        </div>
+        
+        {/* Footer */}
+        <div className="py-3 px-6 border-t border-border-default bg-layer-1 flex justify-between items-center text-xs text-content-tertiary">
+            <span>Agentic AI v1.0</span>
+            <span>Running locally</span>
         </div>
       </DialogContent>
     </Dialog>
