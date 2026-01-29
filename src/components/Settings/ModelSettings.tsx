@@ -150,57 +150,16 @@ const ModelSettings: React.FC<ModelSettingsProps> = ({
         ]);
 
         return models.filter(m => {
-            // 1. Exclude if present in specialized lists
+            // 1. Exclude if present in specialized lists (e.g. dont show an image model in chat list)
             if (specializedIds.has(m.id)) return false;
 
-            // 2. Keyword filtering for models that might be misclassified or just pure noise
+            // 2. Minimal filtering: Just ensure it's not obviously an embedding model
             const id = m.id.toLowerCase();
-            const name = m.name.toLowerCase();
-            
-            // Exclude embedding models
             if (id.includes('embedding') || id.includes('embed')) return false;
-            
-            // Exclude pure TTS/Audio models
-            if (
-                id.includes('tts') || 
-                id.includes('whisper') || 
-                name.includes('text-to-speech') || 
-                id.includes('eleven-labs') || 
-                id.includes('playht') || 
-                (id.includes('audio') && !id.includes('gpt-4o') && !id.includes('gemini') && !id.includes('claude'))
-            ) return false;
-            
-            // Exclude Image/Video Generation models (Expanded list for OpenRouter)
-            if (
-                id.includes('stable-diffusion') || 
-                id.includes('dall-e') || 
-                id.includes('midjourney') || 
-                id.includes('flux') || 
-                id.includes('imagen') || 
-                id.includes('flash-image') || 
-                id.includes('image-preview') || 
-                id.includes('veo') || 
-                id.includes('luma') || 
-                id.includes('runway') || 
-                id.includes('sora') || 
-                id.includes('kandinsky') ||
-                id.includes('playground') ||
-                id.includes('ideogram') || 
-                id.includes('recraft') ||
-                id.includes('svd') ||
-                id.includes('cogvideo') ||
-                id.includes('animatediff') ||
-                id.includes('vidu') ||
-                id.includes('haiper') ||
-                id.includes('minimax') ||
-                id.includes('auraflow') ||
-                id.includes('shakker') ||
-                // New keywords including tts and audio to ensure they are filtered if missed above
-                id.includes('video') ||
-                id.includes('image') ||
-                id.includes('tts') || 
-                (id.includes('audio') && !id.includes('gpt-4o') && !id.includes('gemini') && !id.includes('claude'))
-            ) return false;
+
+            // We relax other string-based filters because backend providers (especially OpenRouter/Ollama)
+            // might have chat models with "image" or "vision" in the name (e.g. Llama 3.2 Vision).
+            // We rely on the backend to send us the correct 'chatModels' list.
             
             return true;
         });

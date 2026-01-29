@@ -1,4 +1,3 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -76,10 +75,17 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         // Vertical positioning logic
         const spaceBelow = viewportHeight - rect.bottom - padding;
         const spaceAbove = rect.top - padding;
-        const desiredMaxHeight = 320; 
+        const desiredMaxHeight = 350; 
+        
+        // Use more available space if on mobile to maximize list visibility
+        const isSmallScreen = viewportHeight < 600;
+        
         // Prefer bottom, flip to top if cramped below (<200px) and more room above
         const showOnTop = spaceBelow < 200 && spaceAbove > spaceBelow;
-        const maxHeight = Math.min(desiredMaxHeight, showOnTop ? spaceAbove : spaceBelow);
+        
+        // Calculate max height based on available space, clamping to safe limits
+        const availableHeight = showOnTop ? spaceAbove : spaceBelow;
+        const maxHeight = Math.min(desiredMaxHeight, Math.max(100, availableHeight));
 
         // Width & Alignment Logic
         // 1. Min width: Match trigger width, but enforce ~200px floor for readability
@@ -117,7 +123,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
             maxWidth,
             top: showOnTop ? undefined : rect.bottom + 6,
             bottom: showOnTop ? viewportHeight - rect.top + 6 : undefined,
-            maxHeight: Math.max(100, maxHeight) // Ensure at least 100px height
+            maxHeight
         });
     }
   }, []);
@@ -229,7 +235,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                     maxWidth: coords.maxWidth,
                     top: coords.top,
                     bottom: coords.bottom,
-                    zIndex: 99999,
+                    zIndex: 2000, // Elevated Z-Index to match other dropdowns
                 }}
                 className="bg-white dark:bg-[#1a1a1a] border border-gray-200/50 dark:border-white/10 rounded-xl shadow-2xl overflow-hidden ring-1 ring-black/5"
             >
