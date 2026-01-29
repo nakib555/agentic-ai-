@@ -1,53 +1,41 @@
 /* Utility Classes & Scrollbars */
 
-/* Hide scrollbar for Chrome, Safari and Opera */
+/* Global Custom Scrollbar - Applied to Desktop & Mobile */
+/* We enforce display:block to ensure mobile browsers (like iOS Safari) render the custom bar instead of native overlay */
 *::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
-}
-
-/* Hide scrollbar for IE, Edge and Firefox */
-* {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-/* Custom Scrollbar Utility */
-.custom-scrollbar::-webkit-scrollbar,
-.custom-scrollbar *::-webkit-scrollbar {
   display: block;
   width: 12px;
   height: 12px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-track,
-.custom-scrollbar *::-webkit-scrollbar-track {
+*::-webkit-scrollbar-track {
   background-color: transparent;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb,
-.custom-scrollbar *::-webkit-scrollbar-thumb {
+*::-webkit-scrollbar-thumb {
   background-color: var(--border-strong);
   border-radius: 99px;
   border: 3px solid transparent; 
   background-clip: content-box;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover,
-.custom-scrollbar *::-webkit-scrollbar-thumb:hover {
+*::-webkit-scrollbar-thumb:hover {
   background-color: var(--text-secondary);
 }
 
-.custom-scrollbar::-webkit-scrollbar-corner,
-.custom-scrollbar *::-webkit-scrollbar-corner {
+*::-webkit-scrollbar-corner {
   background-color: transparent;
 }
 
-.custom-scrollbar,
-.custom-scrollbar * {
+/* Firefox */
+* {
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
+}
+
+/* Retain class for specific overrides if needed, but logic is now global */
+.custom-scrollbar::-webkit-scrollbar {
+  display: block;
 }
 
 /* Utils */
