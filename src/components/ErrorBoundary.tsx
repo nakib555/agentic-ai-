@@ -5,61 +5,97 @@
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 
-interface Props {
+interface ErrorBoundaryProps {
   children?: ReactNode;
   fallback?: ReactNode;
+  onError?: (error: Error, errorInfo: ErrorInfo) => void;
 }
 
-interface State {
+interface ErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
 }
 
-export class ErrorBoundary extends Component<Props, State> {
-  public state: State = {
-    hasError: false,
-    error: null
-  };
+export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  public override state: ErrorBoundaryState;
 
-  public static getDerivedStateFromError(error: Error): State {
-    // Update state so the next render will show the fallback UI.
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = {
+      hasError: false,
+      error: null,
+    };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Uncaught error in ErrorBoundary:', error, errorInfo);
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('Uncaught error:', error, errorInfo);
+    if (this.props.onError) {
+        this.props.onError(error, errorInfo);
+    }
   }
 
-  public render() {
+  componentDidUpdate(prevProps: ErrorBoundaryProps) {
+    // Automatically reset error state if children change (e.g., due to HMR, code edits, or parent re-render)
+    if (this.state.hasError && this.props.children !== prevProps.children) {
+      this.setState({ hasError: false, error: null });
+    }
+  }
+
+  handleReload = async () => {
+    // Attempt to unregister service workers before reloading to fix potential cache issues
+    try {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map(registration => registration.unregister()));
+      }
+    } catch (e) {
+      console.warn('Failed to unregister service workers during reload:', e);
+    } finally {
+      // Always reload, even if SW cleanup fails
+      window.location.reload();
+    }
+  }
+
+  handleDismiss = () => {
+    this.setState({ hasError: false, error: null });
+  }
+
+  render() {
     if (this.state.hasError) {
       if (this.props.fallback) {
-        return this.props.fallback;
+          return this.props.fallback;
       }
 
       return (
-        <div className="flex flex-col items-center justify-center p-8 m-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/50 rounded-2xl text-center shadow-sm">
-          <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4 text-red-600 dark:text-red-400">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-              <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 0 0 0 1.5z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <h2 className="text-lg font-bold text-red-900 dark:text-red-200 mb-2">Something went wrong</h2>
-          <p className="text-sm text-red-700 dark:text-red-300/80 mb-6 max-w-md mx-auto">
-            {this.state.error?.message || "An unexpected error occurred in this view."}
-          </p>
-          <div className="flex gap-3">
+        <div className="fixed inset-0 flex items-center justify-center bg-page p-4 text-center z-[9999]">
+          <div className="bg-white dark:bg-layer-1 p-8 rounded-2xl shadow-xl border border-border max-w-md w-full">
+            <div className="mx-auto w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4 text-red-600 dark:text-red-400">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-content-primary mb-2">Something went wrong</h2>
+            <p className="text-content-secondary mb-6 text-xs font-mono break-words bg-slate-100 dark:bg-black/20 p-2 rounded">
+              {this.state.error?.message || "An unexpected error occurred."}
+            </p>
+            <div className="flex justify-end gap-3">
               <button
-                onClick={() => this.setState({ hasError: false, error: null })}
-                className="px-4 py-2 bg-white dark:bg-white/10 text-red-700 dark:text-red-200 text-sm font-semibold rounded-xl border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-white/20 transition-colors shadow-sm"
+                onClick={this.handleDismiss}
+                className="px-4 py-2 text-sm font-semibold text-content-secondary hover:bg-layer-2 rounded-lg transition-colors"
               >
-                Try Again
+                Dismiss
               </button>
               <button
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-red-600 hover:bg-red-50 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors"
+                onClick={this.handleReload}
+                className="px-4 py-2 text-sm font-semibold text-white bg-primary-main hover:bg-primary-hover rounded-lg transition-colors"
               >
-                Reload App
+                Reload
               </button>
+            </div>
           </div>
         </div>
       );

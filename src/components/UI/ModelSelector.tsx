@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -20,6 +21,7 @@ type ModelSelectorProps = {
   icon?: React.ReactNode;
 };
 
+// Default icons if none provided
 const DefaultModelIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
@@ -49,15 +51,18 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   const selectedItemRef = useRef<HTMLButtonElement>(null);
   const selectedModelData = models.find(m => m.id === selectedModel);
 
+  // State to calculate dynamic position
   const [coords, setCoords] = useState<{ 
       top?: number; 
       bottom?: number; 
       left?: number; 
       right?: number;
-      width: number;
+      minWidth: number;
+      maxWidth: number;
       maxHeight: number;
   }>({ 
-      width: 0, 
+      minWidth: 0, 
+      maxWidth: 0, 
       maxHeight: 300 
   });
 
@@ -66,44 +71,65 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         const rect = selectorRef.current.getBoundingClientRect();
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
-        const padding = 12;
+        const padding = 8; // Safety padding from screen edges
 
+        // Vertical positioning logic
         const spaceBelow = viewportHeight - rect.bottom - padding;
         const spaceAbove = rect.top - padding;
         const desiredMaxHeight = 320; 
+        // Prefer bottom, flip to top if cramped below (<200px) and more room above
         const showOnTop = spaceBelow < 200 && spaceAbove > spaceBelow;
         const maxHeight = Math.min(desiredMaxHeight, showOnTop ? spaceAbove : spaceBelow);
 
-        let left = rect.left;
-        let width = rect.width;
-
-        // Ensure menu doesn't go off-screen horizontally
-        if (left + width > viewportWidth - padding) {
-            left = viewportWidth - width - padding;
+        // Width & Alignment Logic
+        // 1. Min width: Match trigger width, but enforce ~200px floor for readability
+        let minWidth = Math.max(rect.width, 200);
+        
+        // 2. Clamp minWidth if screen is extremely small (e.g. mobile portrait)
+        if (minWidth > viewportWidth - (padding * 2)) {
+            minWidth = viewportWidth - (padding * 2);
         }
-        if (left < padding) {
-            left = padding;
-            width = Math.min(width, viewportWidth - (padding * 2));
+
+        // 3. Determine Alignment (Left vs Right)
+        // Check available space on both sides
+        const spaceOnRight = viewportWidth - rect.left - padding;
+        const spaceOnLeft = rect.right - padding;
+        
+        // Prefer left align (growing right) if space permits.
+        const alignLeft = spaceOnRight >= minWidth || spaceOnRight > spaceOnLeft;
+
+        let left: number | undefined;
+        let right: number | undefined;
+        let maxWidth: number;
+
+        if (alignLeft) {
+            left = rect.left;
+            maxWidth = spaceOnRight;
+        } else {
+            right = viewportWidth - rect.right;
+            maxWidth = spaceOnLeft;
         }
 
         setCoords({
             left,
-            width,
+            right,
+            minWidth,
+            maxWidth,
             top: showOnTop ? undefined : rect.bottom + 6,
             bottom: showOnTop ? viewportHeight - rect.top + 6 : undefined,
-            maxHeight: Math.max(120, maxHeight)
+            maxHeight: Math.max(100, maxHeight) // Ensure at least 100px height
         });
     }
   }, []);
 
   useLayoutEffect(() => {
     if (isOpen) {
-        updatePosition();
+        updatePosition(); // Initial position calculation
         
+        // Auto-scroll to selected item
         if (selectedItemRef.current) {
-            const el = selectedItemRef.current;
             setTimeout(() => {
-                el.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+                selectedItemRef.current?.scrollIntoView({ block: 'center', behavior: 'instant' });
             }, 0);
         }
         
@@ -191,14 +217,16 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
             {isOpen && (
             <motion.div
                 ref={menuRef}
-                initial={{ opacity: 0, scale: 0.98, y: coords.bottom ? 4 : -4 }}
+                initial={{ opacity: 0, scale: 0.95, y: coords.bottom ? 5 : -5 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.98, y: coords.bottom ? 4 : -4 }}
+                exit={{ opacity: 0, scale: 0.95, y: coords.bottom ? 5 : -5 }}
                 transition={{ duration: 0.1, ease: "easeOut" }}
                 style={{
                     position: 'fixed',
                     left: coords.left,
-                    width: coords.width,
+                    right: coords.right,
+                    minWidth: coords.minWidth,
+                    maxWidth: coords.maxWidth,
                     top: coords.top,
                     bottom: coords.bottom,
                     zIndex: 99999,
@@ -231,7 +259,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                                 >
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between gap-2">
-                                            <span className={`text-sm font-medium truncate ${isSelected ? 'text-indigo-900 dark:text-indigo-100 font-bold' : 'text-slate-700 dark:text-slate-200'}`}>
+                                            <span className={`text-sm font-medium truncate ${isSelected ? 'text-indigo-900 dark:text-indigo-100' : 'text-slate-700 dark:text-slate-200'}`}>
                                                 {model.name}
                                             </span>
                                             {isSelected && (

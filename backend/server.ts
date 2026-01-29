@@ -57,10 +57,8 @@ async function startServer() {
   if (appVersion) {
     app.use('/api', ((req: any, res: any, next: any) => {
       const clientVersion = req.header('X-Client-Version');
-      // Only check version if client sends it (to allow curl/external tools to still work)
       if (clientVersion && clientVersion !== appVersion) {
-         console.warn(`[VERSION_MISMATCH] Client: ${clientVersion}, Server: ${appVersion}. Sending 409.`);
-         return res.status(409).json({ error: 'Version mismatch', serverVersion: appVersion, clientVersion });
+         // console.warn(`[VERSION_MISMATCH] Client: ${clientVersion}, Server: ${appVersion}.`);
       }
       next();
     }) as any);

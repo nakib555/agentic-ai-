@@ -37,10 +37,7 @@ export const executeVideoGenerator = async (ai: GoogleGenAI, args: { prompt: str
             throw new Error('Video generation succeeded but no download link was provided.');
         }
 
-        // Safely append API Key regardless of whether the link already has query params
-        const separator = downloadLink.includes('?') ? '&' : '?';
-        const response = await fetch(`${downloadLink}${separator}key=${apiKey}`);
-        
+        const response = await fetch(`${downloadLink}&key=${apiKey}`);
         if (!response.ok || !response.body) {
             throw new Error(`Failed to download video file. Status: ${response.status}`);
         }

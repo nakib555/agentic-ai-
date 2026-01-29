@@ -56,8 +56,18 @@ export const ArtifactSidebar: React.FC<ArtifactSidebarProps> = React.memo(({
         const MIN_H = vh * 0.45;
 
         if (isOpen) {
-            // Always open to max height (y=0) on mobile for artifacts to ensure full visibility of code
-            animate(y, 0, { type: "spring", damping: 30, stiffness: 300 });
+            // Calculate dynamic height based on content, similar to FilePreviewSidebar
+            const actualHeight = contentRef.current?.scrollHeight || 0;
+            // Default to MAX_H for code artifacts which are usually dense, but allow shrinking if content is surprisingly small
+            // We use a slightly more aggressive default for artifacts compared to files
+            const targetHeight = Math.min(Math.max(actualHeight, MIN_H), MAX_H); 
+            
+            // For Artifacts, we often want full height code views, so we lean towards MAX_H if it's close
+            const finalHeight = targetHeight > MAX_H * 0.8 ? MAX_H : targetHeight;
+            
+            const targetY = MAX_H - finalHeight;
+            
+            animate(y, targetY, { type: "spring", damping: 30, stiffness: 300 });
         } else {
             // Slide completely off screen
             animate(y, MAX_H, { type: "spring", damping: 30, stiffness: 300 });
