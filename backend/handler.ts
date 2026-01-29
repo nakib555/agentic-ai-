@@ -119,6 +119,8 @@ class ChatPersistenceManager {
     private messageId: string;
     private buffer: { text: string } | null = null;
     private saveTimeout: ReturnType<typeof setTimeout> | null = null;
+    // Reduced from 1500ms to 200ms to minimize data loss on crash
+    private readonly FLUSH_DELAY_MS = 200; 
 
     constructor(chatId: string, messageId: string) {
         this.chatId = chatId;
@@ -156,7 +158,7 @@ class ChatPersistenceManager {
     }
     private scheduleSave() {
         if (this.saveTimeout) return;
-        this.saveTimeout = setTimeout(() => this.flush(), 1500); 
+        this.saveTimeout = setTimeout(() => this.flush(), this.FLUSH_DELAY_MS); 
     }
     private async flush() {
         this.saveTimeout = null;

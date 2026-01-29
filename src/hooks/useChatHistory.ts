@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ChatSession, Message, ModelResponse } from '../types';
 import { fetchFromApi } from '../utils/api';
 
-const fetchApi = async (url: string, options?: RequestInit) => {
+const fetchApi = async (url: string, options?: RequestInit & { keepalive?: boolean }) => {
     let finalUrl = url;
     if (!options || options.method === 'GET' || !options.method) {
         const separator = finalUrl.includes('?') ? '&' : '?';
@@ -250,9 +250,14 @@ export const useChatHistory = () => {
           delete pendingUpdatesRef.current[chatId];
 
           try {
+              // Ensure body size is checked for keepalive (limit ~64kb)
+              const body = JSON.stringify(updatesToSave);
+              const isSmall = new Blob([body]).size < 60000;
+
               await fetchApi(`/api/chats/${chatId}`, {
                   method: 'PUT',
-                  body: JSON.stringify(updatesToSave),
+                  body,
+                  keepalive: isSmall // Try to use keepalive for reliability on unload
               });
           } catch (error) {
               if (isVersionMismatch(error)) return;
