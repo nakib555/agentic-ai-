@@ -41,8 +41,6 @@ export const useAppLogic = () => {
     const [isArtifactOpen, setIsArtifactOpen] = useState(false);
     const [artifactContent, setArtifactContent] = useState('');
     const [artifactLanguage, setArtifactLanguage] = useState('text');
-    const [artifactWidth, setArtifactWidth] = useState(450);
-    const [isArtifactResizing, setIsArtifactResizing] = useState(false);
 
     const [confirmation, setConfirmation] = useState<{
         prompt: string;
@@ -272,7 +270,9 @@ export const useAppLogic = () => {
     const handleShowSources = useCallback((sources: any[]) => {
         setSourcesForSidebar(sources);
         setIsSourcesSidebarOpen(true);
-    }, []);
+        // If opening sources, ensure artifact is closed to avoid visual clutter on small screens
+        if (!isWideDesktop) setIsArtifactOpen(false);
+    }, [isWideDesktop]);
 
     const handleCloseSourcesSidebar = useCallback(() => setIsSourcesSidebarOpen(false), []);
 
@@ -282,10 +282,12 @@ export const useAppLogic = () => {
             setArtifactContent(code);
             setArtifactLanguage(language);
             setIsArtifactOpen(true);
+            // If opening artifact, ensure sources is closed to avoid visual clutter on small screens
+            if (!isWideDesktop) setIsSourcesSidebarOpen(false);
         };
         window.addEventListener('open-artifact', handleOpenArtifact as EventListener);
         return () => window.removeEventListener('open-artifact', handleOpenArtifact as EventListener);
-    }, []);
+    }, [isWideDesktop]);
 
     const handleFileUploadForImport = useCallback((file: File) => {
         const reader = new FileReader();
@@ -455,7 +457,7 @@ export const useAppLogic = () => {
 
         confirmation, handleConfirm, handleCancel,
         versionMismatch,
-        isAnyResizing: sidebar.isResizing || sidebar.isSourcesResizing || isArtifactResizing,
+        isAnyResizing: false, // Panels handles this internally now
         isNewChatDisabled: modelsLoading || settingsLoading || chat.isLoading,
         handleToggleSidebar: () => sidebar.setIsSidebarOpen(!sidebar.isSidebarOpen),
         handleShowSources,
@@ -530,13 +532,8 @@ export const useAppLogic = () => {
         isChatActive: !!chat.currentChatId,
         
         isSourcesSidebarOpen, handleCloseSourcesSidebar, sourcesForSidebar, 
-        sourcesSidebarWidth: sidebar.sourcesSidebarWidth, 
-        handleSetSourcesSidebarWidth: sidebar.handleSetSourcesSidebarWidth,
-        isSourcesResizing: sidebar.isSourcesResizing,
-        setIsSourcesResizing: sidebar.setIsSourcesResizing,
-
+        
         isArtifactOpen, setIsArtifactOpen, artifactContent, artifactLanguage,
-        artifactWidth, setArtifactWidth, isArtifactResizing, setIsArtifactResizing,
 
         runDiagnosticTests
     };

@@ -1,9 +1,10 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useCallback, useRef, Suspense, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { motion as motionTyped, AnimatePresence, useDragControls } from 'framer-motion';
 const motion = motionTyped as any;
 import type { ChatSession } from '../../types';
@@ -23,10 +24,6 @@ type SidebarProps = {
     setIsOpen: (isOpen: boolean) => void;
     isCollapsed: boolean;
     setIsCollapsed: (collapsed: boolean) => void;
-    width: number;
-    setWidth: (width: number) => void;
-    isResizing: boolean;
-    setIsResizing: (isResizing: boolean) => void;
     history: ChatSession[];
     isHistoryLoading: boolean;
     currentChatId: string | null;
@@ -40,45 +37,13 @@ type SidebarProps = {
 };
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
-    isOpen, setIsOpen, isCollapsed, setIsCollapsed, width, setWidth,
-    isResizing, setIsResizing, history, isHistoryLoading, currentChatId, onNewChat, isNewChatDisabled, onLoadChat,
+    isOpen, setIsOpen, isCollapsed, setIsCollapsed, 
+    history, isHistoryLoading, currentChatId, onNewChat, isNewChatDisabled, onLoadChat,
     onDeleteChat, onUpdateChatTitle, onSettingsClick,
     isDesktop
 }) => {
-    const prevIsDesktop = useRef(isDesktop);
-    const [animationDisabledForResize, setAnimationDisabledForResize] = useState(false);
     const dragControls = useDragControls();
 
-    useEffect(() => {
-        if (prevIsDesktop.current !== isDesktop) {
-            setAnimationDisabledForResize(true);
-            const timer = setTimeout(() => {
-                setAnimationDisabledForResize(false);
-            }, 50);
-            prevIsDesktop.current = isDesktop;
-            return () => clearTimeout(timer);
-        }
-    }, [isDesktop]);
-
-    const startResizing = useCallback((mouseDownEvent: React.MouseEvent) => {
-        mouseDownEvent.preventDefault();
-        setIsResizing(true);
-
-        const handleMouseMove = (mouseMoveEvent: MouseEvent) => {
-            setWidth(mouseMoveEvent.clientX);
-        };
-
-        const handleMouseUp = () => {
-            setIsResizing(false);
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
-        };
-        
-        window.addEventListener('mousemove', handleMouseMove);
-        window.addEventListener('mouseup', handleMouseUp);
-    }, [setWidth, setIsResizing]);
-
-    
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
             if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
@@ -100,7 +65,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     };
 
     return (
-        <aside className={`h-full flex-shrink-0 ${isDesktop ? 'relative z-20' : 'fixed inset-0 z-40 pointer-events-none'}`}>
+        <aside className={`h-full flex-shrink-0 ${isDesktop ? 'relative z-20 w-full' : 'fixed inset-0 z-40 pointer-events-none'}`}>
             <AnimatePresence>
                 {!isDesktop && isOpen && (
                     <motion.div 
@@ -117,11 +82,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             
             <motion.div
                 initial={false}
-                animate={isDesktop ? { width: isCollapsed ? 72 : width } : (isOpen ? 'open' : 'closed')}
+                animate={isDesktop ? undefined : (isOpen ? 'open' : 'closed')}
                 variants={isDesktop ? undefined : mobileVariants}
                 transition={{
-                    type: isResizing || animationDisabledForResize ? 'tween' : 'spring',
-                    duration: isResizing || animationDisabledForResize ? 0 : 0.4,
+                    type: 'spring',
                     stiffness: 300,
                     damping: 30,
                     mass: 0.8,
@@ -132,27 +96,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 dragConstraints={{ left: -1000, right: 0 }} 
                 dragElastic={{ left: 0.5, right: 0 }} 
                 onDragEnd={onDragEnd}
-                style={{
+                style={!isDesktop ? {
                     height: '100%',
-                    position: isDesktop ? 'relative' : 'fixed',
-                    width: isDesktop ? 'auto' : '80%',
-                    maxWidth: isDesktop ? undefined : '340px',
+                    position: 'fixed',
+                    width: '80%',
+                    maxWidth: '340px',
                     left: 0,
                     top: 0,
                     bottom: 0,
                     pointerEvents: 'auto',
-                    willChange: isResizing ? 'width' : 'transform, width',
-                    zIndex: isDesktop ? undefined : 50,
-                }}
-                className={`bg-layer-1 flex flex-col transform-gpu shadow-2xl md:shadow-none overflow-hidden ${
+                    willChange: 'transform',
+                    zIndex: 50,
+                } : { height: '100%' }}
+                className={`bg-layer-1 flex flex-col transform-gpu shadow-2xl md:shadow-none overflow-hidden h-full w-full ${
                     isDesktop ? 'border-r border-border' : 'border-r border-border'
                 }`}
                 onClick={(e: React.MouseEvent) => e.stopPropagation()}
             >
                 <div 
-                    className="p-3 flex flex-col h-full group min-h-0 relative"
+                    className="p-3 flex flex-col h-full group min-h-0 relative w-full"
                     style={{ 
-                        userSelect: isResizing ? 'none' : 'auto',
                         paddingBottom: !isDesktop ? 'calc(env(safe-area-inset-bottom) + 12px)' : '0.75rem', 
                         paddingTop: !isDesktop ? 'calc(env(safe-area-inset-top) + 12px)' : '0.75rem'
                     }}
@@ -181,17 +144,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         />
                     </Suspense>
                 </div>
-
-                {isDesktop && !isCollapsed && (
-                    <div
-                        className="group absolute top-0 right-0 h-full z-50 w-4 cursor-col-resize flex justify-center hover:bg-transparent"
-                        onMouseDown={startResizing}
-                        role="separator"
-                        aria-label="Resize sidebar"
-                    >
-                        <div className={`w-[2px] h-full transition-colors duration-200 ${isResizing ? 'bg-indigo-500' : 'bg-transparent group-hover:bg-indigo-400/50'}`}></div>
-                    </div>
-                )}
                 
                 {isDesktop && isCollapsed && (
                     <button

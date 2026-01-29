@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useCallback, useLayoutEffect, useRef } from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 import { motion as motionTyped, useDragControls, AnimatePresence, useMotionValue, animate, useTransform } from 'framer-motion';
 import { useViewport } from '../../hooks/useViewport';
 import { ArtifactContent } from './ArtifactContent';
@@ -16,17 +16,10 @@ type ArtifactSidebarProps = {
     onClose: () => void;
     content: string;
     language: string;
-    width: number;
-    setWidth: (width: number) => void;
-    isResizing: boolean;
-    setIsResizing: (isResizing: boolean) => void;
 };
 
-// No lazy loading needed for ArtifactContent as it's already code-split within itself via Sandpack lazy loading
-// And ArtifactSidebar is already lazy loaded by App.
-
 export const ArtifactSidebar: React.FC<ArtifactSidebarProps> = React.memo(({ 
-    isOpen, onClose, content, language, width, setWidth, isResizing, setIsResizing 
+    isOpen, onClose, content, language
 }) => {
     const { isDesktop } = useViewport();
     const dragControls = useDragControls();
@@ -36,12 +29,8 @@ export const ArtifactSidebar: React.FC<ArtifactSidebarProps> = React.memo(({
     const contentRef = useRef<HTMLDivElement>(null);
     
     // Dynamic height calculation for mobile drag
-    // Keeps the bottom of the content container anchored to the bottom of the screen
-    // so scrollbars are always visible even when the sheet is dragged down (peeking).
     const maxSheetHeight = typeof window !== 'undefined' ? window.innerHeight * 0.85 : 800;
     const dynamicHeight = useTransform(y, (latestY) => {
-        // When y=0 (fully open), height is max. When y increases (dragged down), height shrinks.
-        // We clamp to avoid negative heights or excessive growth during rubber-banding.
         const calculated = maxSheetHeight - latestY;
         return Math.max(100, Math.min(calculated, maxSheetHeight)); 
     });
@@ -56,13 +45,11 @@ export const ArtifactSidebar: React.FC<ArtifactSidebarProps> = React.memo(({
         const MIN_H = vh * 0.45;
 
         if (isOpen) {
-            // Calculate dynamic height based on content, similar to FilePreviewSidebar
+            // Calculate dynamic height based on content
             const actualHeight = contentRef.current?.scrollHeight || 0;
-            // Default to MAX_H for code artifacts which are usually dense, but allow shrinking if content is surprisingly small
-            // We use a slightly more aggressive default for artifacts compared to files
             const targetHeight = Math.min(Math.max(actualHeight, MIN_H), MAX_H); 
             
-            // For Artifacts, we often want full height code views, so we lean towards MAX_H if it's close
+            // For Artifacts, we often want full height code views
             const finalHeight = targetHeight > MAX_H * 0.8 ? MAX_H : targetHeight;
             
             const targetY = MAX_H - finalHeight;
@@ -96,22 +83,6 @@ export const ArtifactSidebar: React.FC<ArtifactSidebarProps> = React.memo(({
         }
     };
 
-    const startResizingHandler = useCallback((mouseDownEvent: React.MouseEvent) => {
-        mouseDownEvent.preventDefault();
-        setIsResizing(true);
-        const handleMouseMove = (e: MouseEvent) => {
-            const newWidth = window.innerWidth - e.clientX;
-            setWidth(Math.max(300, Math.min(newWidth, window.innerWidth * 0.8)));
-        };
-        const handleMouseUp = () => {
-            setIsResizing(false);
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
-        };
-        window.addEventListener('mousemove', handleMouseMove);
-        window.addEventListener('mouseup', handleMouseUp);
-    }, [setIsResizing, setWidth]);
-
     // Safety check for initialization
     if (!content && !isOpen) return null;
 
@@ -132,10 +103,7 @@ export const ArtifactSidebar: React.FC<ArtifactSidebarProps> = React.memo(({
 
             <motion.aside
                 initial={false}
-                // Desktop uses width, Mobile uses Y via MotionValue
-                animate={isDesktop ? { width: isOpen ? width : 0 } : undefined} 
-                style={!isDesktop ? { y, height: '85dvh', maxHeight: '85dvh' } : { width }}
-                transition={isDesktop ? { type: isResizing ? 'tween' : 'spring', stiffness: 300, damping: 30 } : undefined}
+                style={!isDesktop ? { y, height: '85dvh', maxHeight: '85dvh' } : { height: '100%', width: '100%' }}
                 drag={!isDesktop ? "y" : false}
                 dragListener={false} // Manual control via drag handle
                 dragControls={dragControls}
@@ -149,7 +117,6 @@ export const ArtifactSidebar: React.FC<ArtifactSidebarProps> = React.memo(({
                         : 'fixed inset-x-0 bottom-0 z-[70] border-t rounded-t-2xl'
                     }
                 `}
-                // Ensure interactions are disabled when closed to prevent ghost clicks
                 aria-hidden={!isOpen}
             >
                 <motion.div 
@@ -175,18 +142,6 @@ export const ArtifactSidebar: React.FC<ArtifactSidebarProps> = React.memo(({
                         onClose={onClose}
                     />
                 </motion.div>
-
-                {/* Resize Handle (Desktop only) */}
-                {isDesktop && (
-                    <div
-                        className="group absolute top-0 left-0 h-full z-50 w-4 cursor-col-resize flex justify-start hover:bg-transparent pl-[1px]"
-                        onMouseDown={startResizingHandler}
-                        // Hide handle when closed to prevent accidental drags
-                        style={{ display: isOpen ? 'flex' : 'none' }}
-                    >
-                        <div className={`w-[2px] h-full transition-colors duration-200 ${isResizing ? 'bg-indigo-500' : 'bg-transparent group-hover:bg-indigo-400/50'}`}></div>
-                    </div>
-                )}
             </motion.aside>
         </>
     );

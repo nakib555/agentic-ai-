@@ -1,9 +1,10 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useCallback, useRef, useLayoutEffect, Suspense } from 'react';
+import React, { useRef, useLayoutEffect, Suspense } from 'react';
 import { motion as motionTyped, useDragControls, AnimatePresence, useMotionValue, animate } from 'framer-motion';
 import type { Source } from '../../types';
 import { useViewport } from '../../hooks/useViewport';
@@ -19,33 +20,13 @@ type SourcesSidebarProps = {
     isOpen: boolean;
     onClose: () => void;
     sources: Source[];
-    width: number;
-    setWidth: (width: number) => void;
-    isResizing: boolean;
-    setIsResizing: (isResizing: boolean) => void;
 };
 
-export const SourcesSidebar: React.FC<SourcesSidebarProps> = ({ isOpen, onClose, sources, width, setWidth, isResizing, setIsResizing }) => {
+export const SourcesSidebar: React.FC<SourcesSidebarProps> = ({ isOpen, onClose, sources }) => {
     const { isDesktop } = useViewport();
     const dragControls = useDragControls();
     const contentRef = useRef<HTMLDivElement>(null);
     const y = useMotionValue(typeof window !== 'undefined' ? window.innerHeight : 800);
-
-    const startResizing = useCallback((mouseDownEvent: React.MouseEvent) => {
-        mouseDownEvent.preventDefault();
-        setIsResizing(true);
-        const handleMouseMove = (mouseMoveEvent: MouseEvent) => {
-            const newWidth = window.innerWidth - mouseMoveEvent.clientX;
-            setWidth(newWidth);
-        };
-        const handleMouseUp = () => {
-            setIsResizing(false);
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
-        };
-        window.addEventListener('mousemove', handleMouseMove);
-        window.addEventListener('mouseup', handleMouseUp);
-    }, [setWidth, setIsResizing]);
 
     // Mobile Sheet Logic: Calculate optimal height and animate
     useLayoutEffect(() => {
@@ -107,9 +88,7 @@ export const SourcesSidebar: React.FC<SourcesSidebarProps> = ({ isOpen, onClose,
             </AnimatePresence>
             <motion.aside
                 initial={false}
-                animate={isDesktop ? { width: isOpen ? width : 0 } : undefined}
-                style={!isDesktop ? { y, height: '85vh', maxHeight: '85vh' } : { width }}
-                transition={isDesktop ? { type: isResizing ? 'tween' : 'spring', stiffness: 250, damping: 30 } : undefined}
+                style={!isDesktop ? { y, height: '85vh', maxHeight: '85vh' } : { height: '100%', width: '100%' }}
                 drag={!isDesktop ? "y" : false}
                 dragListener={false}
                 dragControls={dragControls}
@@ -159,10 +138,6 @@ export const SourcesSidebar: React.FC<SourcesSidebarProps> = ({ isOpen, onClose,
                         <SourcesContent sources={sources} />
                     </Suspense>
                 </div>
-                
-                {isDesktop && isOpen && (
-                    <div onMouseDown={startResizing} className="absolute top-0 left-0 w-1.5 h-full cursor-col-resize bg-transparent hover:bg-blue-500/30 transition-colors z-10" title="Resize sidebar" />
-                )}
             </motion.aside>
         </>
     );

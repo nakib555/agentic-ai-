@@ -5,13 +5,11 @@
  */
 
 import React, { Suspense, useState, useEffect, useRef } from 'react';
-// Changed import to use the correct path if useAppLogic is in hooks/
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { useAppLogic } from '../../hooks/useAppLogic';
 import { AppSkeleton } from '../UI/AppSkeleton';
 import { ChatSkeleton } from '../UI/ChatSkeleton';
-import {
-  DEFAULT_TEMPERATURE, DEFAULT_MAX_TOKENS
-} from './constants';
+import { DEFAULT_TEMPERATURE, DEFAULT_MAX_TOKENS } from './constants';
 import { VersionMismatchOverlay } from '../UI/VersionMismatchOverlay';
 import type { ChatSession } from '../../types';
 
@@ -27,7 +25,6 @@ function lazyLoad<T extends React.ComponentType<any>>(
         if (!component) {
           throw new Error(`Module does not export component '${name}'`);
         }
-        // Cleanup reload flag on successful load
         try { sessionStorage.removeItem(`reload_attempt_${name}`); } catch {}
         return { default: component };
       })
@@ -71,11 +68,10 @@ export const App = () => {
     : null;
   const chatTitle = currentChat ? currentChat.title : null;
   
-  const activeMessage = currentChat?.messages?.length ? currentChat.messages[currentChat.messages.length - 1] : null;
-
   // --- Keyboard Detection Logic ---
   const [stableHeight, setStableHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 0);
   const widthRef = useRef(typeof window !== 'undefined' ? window.innerWidth : 0);
+  const sidebarPanelRef = useRef<any>(null);
 
   useEffect(() => {
       const handleResize = () => {
@@ -103,18 +99,74 @@ export const App = () => {
 
   const isKeyboardOpen = !logic.isDesktop && logic.visualViewportHeight < (stableHeight * 0.85);
 
-  // Determine if we have a valid configuration to start chatting
-  // For Ollama, we assume it's ready if provider is selected (default host is used).
   const hasApiKey = 
       (logic.provider === 'gemini' && !!logic.apiKey) || 
       (logic.provider === 'openrouter' && !!logic.openRouterApiKey) || 
       (logic.provider === 'ollama'); 
 
+  // Expand sidebar panel programmatically when toggle button is clicked in ChatHeader
+  useEffect(() => {
+    if (logic.isDesktop && !logic.isSidebarCollapsed && sidebarPanelRef.current) {
+        sidebarPanelRef.current.expand();
+    }
+  }, [logic.isDesktop, logic.isSidebarCollapsed]);
+
+
+  const renderMainContent = () => (
+    <div className="flex-1 flex flex-col w-full min-h-0 h-full bg-page transition-colors duration-300">
+        <ChatHeader 
+            isDesktop={logic.isDesktop}
+            handleToggleSidebar={() => {
+                if (logic.isDesktop && sidebarPanelRef.current) {
+                    const isCollapsed = sidebarPanelRef.current.isCollapsed();
+                    if (isCollapsed) {
+                        sidebarPanelRef.current.expand();
+                    } else {
+                        sidebarPanelRef.current.collapse();
+                    }
+                } else {
+                    logic.handleToggleSidebar();
+                }
+            }}
+            isSidebarOpen={logic.isSidebarOpen}
+            isSidebarCollapsed={logic.isSidebarCollapsed}
+            onImportChat={logic.handleImportChat}
+            onExportChat={logic.handleExportChat}
+            onShareChat={() => logic.handleShareChat()}
+            isChatActive={logic.isChatActive}
+            chatTitle={chatTitle}
+        />
+        <Suspense fallback={<ChatSkeleton />}>
+            <ChatArea 
+                messageListRef={logic.messageListRef}
+                messages={logic.messages}
+                isLoading={logic.isLoading}
+                isAppLoading={logic.modelsLoading || logic.settingsLoading}
+                sendMessage={logic.sendMessage}
+                onCancel={logic.cancelGeneration}
+                ttsVoice={logic.ttsVoice}
+                ttsModel={logic.ttsModel}
+                setTtsVoice={logic.setTtsVoice}
+                currentChatId={logic.currentChatId}
+                activeModel={logic.activeModel} 
+                onShowSources={logic.handleShowSources}
+                onRegenerate={logic.regenerateResponse}
+                onSetActiveResponseIndex={logic.setActiveResponseIndex}
+                backendStatus={logic.backendStatus}
+                backendError={logic.backendError}
+                onRetryConnection={logic.retryConnection}
+                hasApiKey={hasApiKey}
+                onEditMessage={logic.editMessage}
+                onNavigateBranch={logic.navigateBranch}
+            />
+        </Suspense>
+    </div>
+  );
+
   return (
     <div 
         ref={logic.appContainerRef} 
-        // Removed transition-[height] and duration-200 to prevent jank on mobile keyboard open/close
-        className={`flex h-full bg-page text-content-primary overflow-hidden ease-out ${logic.isAnyResizing ? 'pointer-events-none' : ''}`}
+        className={`flex h-full bg-page text-content-primary overflow-hidden ease-out`}
         style={{ 
             height: !logic.isDesktop && logic.visualViewportHeight ? `${logic.visualViewportHeight}px` : '100dvh',
             paddingTop: logic.isDesktop ? '0' : 'env(safe-area-inset-top)', 
@@ -124,106 +176,117 @@ export const App = () => {
       {logic.versionMismatch && <VersionMismatchOverlay />}
       
       <Suspense fallback={<AppSkeleton />}>
-        <Sidebar
-          key={logic.isDesktop ? 'desktop' : 'mobile'}
-          isDesktop={logic.isDesktop}
-          isOpen={logic.isSidebarOpen} 
-          setIsOpen={logic.setIsSidebarOpen}
-          isCollapsed={logic.isSidebarCollapsed}
-          setIsCollapsed={logic.handleSetSidebarCollapsed}
-          width={logic.sidebarWidth}
-          setWidth={logic.handleSetSidebarWidth}
-          isResizing={logic.isResizing}
-          setIsResizing={logic.setIsResizing}
-          history={logic.chatHistory}
-          isHistoryLoading={logic.isHistoryLoading}
-          currentChatId={logic.currentChatId}
-          onNewChat={logic.startNewChat}
-          isNewChatDisabled={logic.isNewChatDisabled}
-          onLoadChat={logic.loadChat}
-          onDeleteChat={logic.handleDeleteChatRequest}
-          onUpdateChatTitle={logic.updateChatTitle}
-          onSettingsClick={() => logic.setIsSettingsOpen(true)}
-        />
+        {logic.isDesktop ? (
+            <PanelGroup direction="horizontal" autoSaveId="app-layout">
+                <Panel 
+                    defaultSize={20} 
+                    minSize={15} 
+                    maxSize={30} 
+                    collapsible={true}
+                    collapsedSize={4}
+                    onCollapse={() => logic.handleSetSidebarCollapsed(true)}
+                    onExpand={() => logic.handleSetSidebarCollapsed(false)}
+                    ref={sidebarPanelRef}
+                    id="sidebar"
+                    order={1}
+                >
+                    <Sidebar
+                        isDesktop={true}
+                        isOpen={logic.isSidebarOpen} 
+                        setIsOpen={logic.setIsSidebarOpen}
+                        isCollapsed={logic.isSidebarCollapsed}
+                        setIsCollapsed={logic.handleSetSidebarCollapsed}
+                        history={logic.chatHistory}
+                        isHistoryLoading={logic.isHistoryLoading}
+                        currentChatId={logic.currentChatId}
+                        onNewChat={logic.startNewChat}
+                        isNewChatDisabled={logic.isNewChatDisabled}
+                        onLoadChat={logic.loadChat}
+                        onDeleteChat={logic.handleDeleteChatRequest}
+                        onUpdateChatTitle={logic.updateChatTitle}
+                        onSettingsClick={() => logic.setIsSettingsOpen(true)}
+                    />
+                </Panel>
+                
+                <PanelResizeHandle className="w-1 bg-border-default hover:bg-primary-main transition-colors duration-200 focus:outline-none" />
 
-        <main 
-            className="relative z-10 flex-1 flex flex-col min-w-0 h-full bg-page transition-colors duration-300"
-        >
-          {!logic.isDesktop && (
-            <div className="absolute top-0 left-0 right-0 z-30 pointer-events-none px-4 py-3">
-               <div className="h-11 flex items-center">
-                 {!logic.isSidebarOpen && (
-                  <button
-                    onClick={() => logic.setIsSidebarOpen(true)}
-                    className="pointer-events-auto p-2 rounded-lg bg-layer-1/80 backdrop-blur-md border border-border text-content-secondary hover:text-content-primary shadow-sm"
-                    aria-label="Open sidebar"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-                  </button>
-                 )}
-               </div>
-            </div>
-          )}
+                <Panel order={2} minSize={30}>
+                    {renderMainContent()}
+                </Panel>
 
-          <div className="flex-1 flex flex-col w-full min-h-0">
-             <ChatHeader 
-                isDesktop={logic.isDesktop}
-                handleToggleSidebar={logic.handleToggleSidebar}
-                isSidebarOpen={logic.isSidebarOpen}
-                isSidebarCollapsed={logic.isSidebarCollapsed}
-                onImportChat={logic.handleImportChat}
-                onExportChat={logic.handleExportChat}
-                onShareChat={() => logic.handleShareChat()}
-                isChatActive={logic.isChatActive}
-                chatTitle={chatTitle}
-             />
-             <Suspense fallback={<ChatSkeleton />}>
-                <ChatArea 
-                    messageListRef={logic.messageListRef}
-                    messages={logic.messages}
-                    isLoading={logic.isLoading}
-                    isAppLoading={logic.modelsLoading || logic.settingsLoading}
-                    sendMessage={logic.sendMessage}
-                    onCancel={logic.cancelGeneration}
-                    ttsVoice={logic.ttsVoice}
-                    ttsModel={logic.ttsModel}
-                    setTtsVoice={logic.setTtsVoice}
+                {(logic.isSourcesSidebarOpen || logic.isArtifactOpen) && (
+                    <>
+                        <PanelResizeHandle className="w-1 bg-border-default hover:bg-primary-main transition-colors duration-200 focus:outline-none" />
+                        <Panel defaultSize={25} minSize={20} maxSize={40} order={3} id="right-sidebar">
+                            {logic.isSourcesSidebarOpen ? (
+                                <SourcesSidebar
+                                    isOpen={logic.isSourcesSidebarOpen}
+                                    onClose={logic.handleCloseSourcesSidebar}
+                                    sources={logic.sourcesForSidebar}
+                                />
+                            ) : (
+                                <ArtifactSidebar
+                                    isOpen={logic.isArtifactOpen}
+                                    onClose={() => logic.setIsArtifactOpen(false)}
+                                    content={logic.artifactContent}
+                                    language={logic.artifactLanguage}
+                                />
+                            )}
+                        </Panel>
+                    </>
+                )}
+            </PanelGroup>
+        ) : (
+            // Mobile Layout (Unchanged structure)
+            <>
+                <Sidebar
+                    isDesktop={false}
+                    isOpen={logic.isSidebarOpen} 
+                    setIsOpen={logic.setIsSidebarOpen}
+                    isCollapsed={logic.isSidebarCollapsed}
+                    setIsCollapsed={logic.handleSetSidebarCollapsed}
+                    history={logic.chatHistory}
+                    isHistoryLoading={logic.isHistoryLoading}
                     currentChatId={logic.currentChatId}
-                    activeModel={logic.activeModel} 
-                    onShowSources={logic.handleShowSources}
-                    onRegenerate={logic.regenerateResponse}
-                    onSetActiveResponseIndex={logic.setActiveResponseIndex}
-                    backendStatus={logic.backendStatus}
-                    backendError={logic.backendError}
-                    onRetryConnection={logic.retryConnection}
-                    hasApiKey={hasApiKey}
-                    onEditMessage={logic.editMessage}
-                    onNavigateBranch={logic.navigateBranch}
+                    onNewChat={logic.startNewChat}
+                    isNewChatDisabled={logic.isNewChatDisabled}
+                    onLoadChat={logic.loadChat}
+                    onDeleteChat={logic.handleDeleteChatRequest}
+                    onUpdateChatTitle={logic.updateChatTitle}
+                    onSettingsClick={() => logic.setIsSettingsOpen(true)}
                 />
-             </Suspense>
-          </div>
-        </main>
 
-        <SourcesSidebar
-          isOpen={logic.isSourcesSidebarOpen}
-          onClose={logic.handleCloseSourcesSidebar}
-          sources={logic.sourcesForSidebar}
-          width={logic.sourcesSidebarWidth}
-          setWidth={logic.handleSetSourcesSidebarWidth}
-          isResizing={logic.isSourcesResizing}
-          setIsResizing={logic.setIsSourcesResizing}
-        />
+                <main className="relative z-10 flex-1 flex flex-col min-w-0 h-full bg-page transition-colors duration-300">
+                    <div className="absolute top-0 left-0 right-0 z-30 pointer-events-none px-4 py-3">
+                        <div className="h-11 flex items-center">
+                            {!logic.isSidebarOpen && (
+                                <button
+                                    onClick={() => logic.setIsSidebarOpen(true)}
+                                    className="pointer-events-auto p-2 rounded-lg bg-layer-1/80 backdrop-blur-md border border-border-default text-content-secondary hover:text-content-primary shadow-sm"
+                                    aria-label="Open sidebar"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                    {renderMainContent()}
+                </main>
 
-        <ArtifactSidebar
-            isOpen={logic.isArtifactOpen}
-            onClose={() => logic.setIsArtifactOpen(false)}
-            content={logic.artifactContent}
-            language={logic.artifactLanguage}
-            width={logic.artifactWidth}
-            setWidth={logic.setArtifactWidth}
-            isResizing={logic.isArtifactResizing}
-            setIsResizing={logic.setIsArtifactResizing}
-        />
+                <SourcesSidebar
+                    isOpen={logic.isSourcesSidebarOpen}
+                    onClose={logic.handleCloseSourcesSidebar}
+                    sources={logic.sourcesForSidebar}
+                />
+
+                <ArtifactSidebar
+                    isOpen={logic.isArtifactOpen}
+                    onClose={() => logic.setIsArtifactOpen(false)}
+                    content={logic.artifactContent}
+                    language={logic.artifactLanguage}
+                />
+            </>
+        )}
 
         <AppModals
           isDesktop={logic.isDesktop}
@@ -266,7 +329,7 @@ export const App = () => {
           defaultMaxTokens={DEFAULT_MAX_TOKENS}
           isMemoryEnabled={logic.isMemoryEnabled}
           setIsMemoryEnabled={logic.setIsMemoryEnabled}
-          onManageMemory={() => logic.setIsMemoryModalOpen(true)}
+          onManageMemory={logic.onManageMemory}
           memoryContent={logic.memoryContent}
           memoryFiles={logic.memoryFiles}
           clearMemory={logic.clearMemory}
@@ -285,7 +348,6 @@ export const App = () => {
           setTheme={logic.setTheme}
           serverUrl={logic.serverUrl}
           onSaveServerUrl={logic.onSaveServerUrl}
-          // Provider Props for Ollama
           provider={logic.provider}
           openRouterApiKey={logic.openRouterApiKey}
           ollamaApiKey={logic.ollamaApiKey}
