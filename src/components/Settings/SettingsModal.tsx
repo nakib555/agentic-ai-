@@ -119,15 +119,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = (props) => {
 
   return (
     <Dialog open={props.isOpen} onOpenChange={props.onClose}>
-      <DialogContent className="p-0 gap-0 w-[95vw] md:w-full max-w-5xl h-[85vh] md:h-[80vh] flex flex-col md:flex-row overflow-hidden bg-page rounded-2xl border border-border-default shadow-2xl">
+      <DialogContent className="p-0 gap-0 w-[90vw] md:w-full max-w-5xl h-[80vh] md:h-[80vh] flex flex-col md:flex-row overflow-hidden bg-page rounded-2xl border border-border-default shadow-2xl focus:outline-none">
         <DialogTitle className="sr-only">Settings</DialogTitle>
         <DialogDescription className="sr-only">Configure application settings, API keys, and models.</DialogDescription>
         
         {/* Sidebar Navigation */}
-        <div className="w-full md:w-64 bg-layer-2/50 border-b md:border-b-0 md:border-r border-border-subtle flex flex-col">
+        <div className="w-full md:w-64 bg-layer-2/50 border-b md:border-b-0 md:border-r border-border-subtle flex flex-col flex-shrink-0">
           <div className="p-4 md:p-6 pb-2 md:pb-6">
             <h2 className="text-xl font-bold text-content-primary px-2 mb-4 hidden md:block tracking-tight">Settings</h2>
-            <nav className="flex md:flex-col gap-1 overflow-x-auto md:overflow-visible pb-2 md:pb-0 scrollbar-hide">
+            <nav className="flex md:flex-col gap-2 overflow-x-auto md:overflow-visible pb-2 md:pb-0 scrollbar-hide snap-x">
               <LayoutGroup>
                 {CATEGORIES.map((cat) => (
                   <SettingsCategoryButton

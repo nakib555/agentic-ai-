@@ -354,7 +354,7 @@ export const MemoryModal: React.FC<MemoryModalProps> = ({ isOpen, onClose, memor
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/40 backdrop-blur-none md:backdrop-blur-sm z-[80] flex items-center justify-center p-4 sm:p-6 overflow-hidden pointer-events-auto"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] flex items-center justify-center p-4 sm:p-6 overflow-hidden pointer-events-auto"
           role="dialog"
           aria-modal="true"
           aria-labelledby="memory-modal-title"
@@ -365,7 +365,7 @@ export const MemoryModal: React.FC<MemoryModalProps> = ({ isOpen, onClose, memor
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            className="bg-slate-50 dark:bg-[#09090b] w-full max-w-4xl h-[85vh] rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden"
+            className="bg-slate-50 dark:bg-[#09090b] w-full max-w-4xl h-[85vh] rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden relative z-[201]"
           >
             {editingFile ? (
                 <FileEditor 

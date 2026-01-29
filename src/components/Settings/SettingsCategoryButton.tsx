@@ -19,7 +19,7 @@ type SettingsCategoryButtonProps = {
 export const SettingsCategoryButton: React.FC<SettingsCategoryButtonProps> = ({ icon, label, isActive, onClick }) => (
   <button
     onClick={onClick}
-    className={`group relative w-full flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2.5 md:py-3.5 rounded-xl md:rounded-2xl text-xs md:text-sm font-medium text-left transition-all duration-300 outline-none ${
+    className={`group relative flex-shrink-0 md:flex-shrink w-auto md:w-full flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2.5 md:py-3.5 rounded-xl md:rounded-2xl text-xs md:text-sm font-medium text-left transition-all duration-300 outline-none ${
       isActive 
         ? 'text-indigo-600 dark:text-indigo-300' 
         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -52,7 +52,7 @@ export const SettingsCategoryButton: React.FC<SettingsCategoryButtonProps> = ({ 
         <motion.span 
             initial={{ opacity: 0, x: -5 }}
             animate={{ opacity: 1, x: 0 }}
-            className="relative z-10 text-indigo-400 dark:text-indigo-500 hidden md:block"
+            className="relative z-10 text-indigo-400 dark:text-indigo-500 hidden md:block ml-auto"
         >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                 <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
