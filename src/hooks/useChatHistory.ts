@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -198,6 +199,9 @@ export const useChatHistory = () => {
 
   // Persist updates to backend
   const updateChatProperty = useCallback(async (chatId: string, update: Partial<ChatSession>, debounceMs: number = 0) => {
+      // Guard clause: Prevent updates with invalid/missing IDs
+      if (!chatId) return;
+
       // Optimistic update
       updateLocalAndCache(old => (old || []).map(c => c.id === chatId ? { ...c, ...update } : c));
       

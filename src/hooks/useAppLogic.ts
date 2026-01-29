@@ -162,7 +162,10 @@ export const useAppLogic = () => {
         settings.setActiveModel(modelId);
         try {
             await updateSettings({ activeModel: modelId });
-            chat.updateChatModel(chat.currentChatId || '', modelId);
+            // Only update chat model if there is an active chat
+            if (chat.currentChatId) {
+                chat.updateChatModel(chat.currentChatId, modelId);
+            }
         } catch (e) { console.error(e); }
     }, [chat.updateChatModel, chat.currentChatId, settings]);
 
