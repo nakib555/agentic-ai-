@@ -10,7 +10,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
  * A hook that progressively reveals text to simulate a typewriter effect.
  * 
  * PERFORMANCE OPTIMIZATION:
- * This hook uses a "Time Budget" strategy.
+ * This hook uses a "Time Budget" strategy with fixed intervals.
  * 1. It limits React state updates to prevent blocking the main thread.
  * 2. It calculates how many characters to add based on the remaining queue size.
  */
@@ -20,9 +20,47 @@ export const useTypewriter = (targetText: string, isThinking: boolean) => {
   
   const currentLength = useRef(isThinking ? 0 : targetText.length);
   const targetTextRef = useRef(targetText);
-  const rafRef = useRef<number | null>(null);
-  const lastUpdateRef = useRef<number>(0);
+  const timerRef = useRef<number | null>(null);
   const prevIsThinking = useRef(isThinking);
+
+  // Fixed tick rate for consistent UI performance (30ms = ~33fps target)
+  // This is smoother than 50ms but less heavy than RAF (16ms)
+  const TICK_RATE = 30;
+
+  const loop = useCallback(() => {
+      const targetLen = targetTextRef.current.length;
+      
+      // Stop if caught up
+      if (currentLength.current >= targetLen) {
+          timerRef.current = null;
+          return;
+      }
+
+      // --- ADAPTIVE SPEED CALCULATION ---
+      const remainingChars = targetLen - currentLength.current;
+      let charsToAdd = 1;
+
+      // Acceleration: The further behind we are, the faster we type.
+      // Thresholds tuned for mobile stability
+      if (remainingChars > 2000) charsToAdd = 200;    // Massive catch-up
+      else if (remainingChars > 1000) charsToAdd = 100; // Very Fast
+      else if (remainingChars > 500) charsToAdd = 50;   // Fast
+      else if (remainingChars > 200) charsToAdd = 20;   // Moderate Fast
+      else if (remainingChars > 100) charsToAdd = 10;   // Reading speed
+      else if (remainingChars > 50) charsToAdd = 5;     // Decent pace
+      else charsToAdd = 2; // Natural base speed
+
+      currentLength.current += charsToAdd;
+      
+      // Clamp to prevent overshooting
+      if (currentLength.current > targetLen) currentLength.current = targetLen;
+
+      setDisplayedText(targetTextRef.current.slice(0, currentLength.current));
+      
+      // Use setTimeout instead of RAF to decouple from screen refresh rate
+      // and prevent main thread starvation on low-end devices
+      timerRef.current = window.setTimeout(loop, TICK_RATE);
+  }, []);
 
   useEffect(() => {
     targetTextRef.current = targetText;
@@ -33,11 +71,11 @@ export const useTypewriter = (targetText: string, isThinking: boolean) => {
     // CASE 1: NOT THINKING (Generation Done or History Item)
     if (!isThinking) {
         // If we were just thinking, this is a stream completion. 
-        // We do NOT snap. We let the loop finish the buffer gracefully.
+        // We do NOT snap immediately. We let the loop finish the buffer gracefully.
         if (wasThinking) {
             // Ensure loop is running if there is text left to type
-            if (rafRef.current === null && currentLength.current < targetText.length) {
-                rafRef.current = requestAnimationFrame(loop);
+            if (timerRef.current === null && currentLength.current < targetText.length) {
+                loop();
             }
             return;
         }
@@ -48,9 +86,9 @@ export const useTypewriter = (targetText: string, isThinking: boolean) => {
             currentLength.current = targetText.length;
             setDisplayedText(targetText);
         }
-        if (rafRef.current) {
-            cancelAnimationFrame(rafRef.current);
-            rafRef.current = null;
+        if (timerRef.current) {
+            clearTimeout(timerRef.current);
+            timerRef.current = null;
         }
         return;
     } 
@@ -63,71 +101,14 @@ export const useTypewriter = (targetText: string, isThinking: boolean) => {
     }
     
     // Ensure loop is running if there is work to do
-    if (rafRef.current === null && currentLength.current < targetText.length) {
-        rafRef.current = requestAnimationFrame(loop);
+    if (timerRef.current === null && currentLength.current < targetText.length) {
+        loop();
     }
-  }, [targetText, isThinking]);
-
-
-  const loop = useCallback((timestamp: number) => {
-      const targetLen = targetTextRef.current.length;
-      
-      // Stop if caught up
-      if (currentLength.current >= targetLen) {
-          rafRef.current = null;
-          return;
-      }
-
-      // --- PERFORMANCE THROTTLE ---
-      // Dynamic throttling based on content length.
-      let minRenderInterval = 32; // Default 30fps
-      
-      if (currentLength.current > 5000) {
-          minRenderInterval = 150; // 6fps for massive content
-      } else if (currentLength.current > 2000) {
-          minRenderInterval = 100; // 10fps for large content
-      } else if (currentLength.current > 500) {
-          minRenderInterval = 64; // ~15fps for medium content
-      }
-      
-      if (timestamp - lastUpdateRef.current < minRenderInterval) {
-          rafRef.current = requestAnimationFrame(loop);
-          return;
-      }
-
-      // --- ADAPTIVE SPEED CALCULATION ---
-      const remainingChars = targetLen - currentLength.current;
-      let charsToAdd = 1;
-
-      // Acceleration: The further behind we are, the faster we type.
-      if (remainingChars > 5000) charsToAdd = 2000;     // Instant catch-up
-      else if (remainingChars > 2000) charsToAdd = 500; // Very Fast
-      else if (remainingChars > 1000) charsToAdd = 150; // Fast
-      else if (remainingChars > 500) charsToAdd = 50;   // Moderate Fast
-      else if (remainingChars > 200) charsToAdd = 20;   // Reading speed
-      else if (remainingChars > 100) charsToAdd = 10;   // Decent pace
-      else if (remainingChars > 50) charsToAdd = 5;     // Natural
-      else if (remainingChars > 20) charsToAdd = 3;     // Deceleration
-
-      // Adjust chars to add based on the throttle
-      if (minRenderInterval > 32) {
-          charsToAdd = Math.ceil(charsToAdd * (minRenderInterval / 32));
-      }
-
-      currentLength.current += charsToAdd;
-      
-      // Clamp to prevent overshooting
-      if (currentLength.current > targetLen) currentLength.current = targetLen;
-
-      setDisplayedText(targetTextRef.current.slice(0, currentLength.current));
-      
-      lastUpdateRef.current = timestamp;
-      rafRef.current = requestAnimationFrame(loop);
-  }, []);
+  }, [targetText, isThinking, loop]);
 
   useEffect(() => {
       return () => {
-          if (rafRef.current) cancelAnimationFrame(rafRef.current);
+          if (timerRef.current) clearTimeout(timerRef.current);
       };
   }, []);
 

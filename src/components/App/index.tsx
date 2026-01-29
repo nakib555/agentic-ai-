@@ -113,7 +113,8 @@ export const App = () => {
   return (
     <div 
         ref={logic.appContainerRef} 
-        className={`flex h-full bg-page text-content-primary overflow-hidden transition-[height] duration-200 ease-out ${logic.isAnyResizing ? 'pointer-events-none' : ''}`}
+        // Removed transition-[height] and duration-200 to prevent jank on mobile keyboard open/close
+        className={`flex h-full bg-page text-content-primary overflow-hidden ease-out ${logic.isAnyResizing ? 'pointer-events-none' : ''}`}
         style={{ 
             height: !logic.isDesktop && logic.visualViewportHeight ? `${logic.visualViewportHeight}px` : '100dvh',
             paddingTop: logic.isDesktop ? '0' : 'env(safe-area-inset-top)', 

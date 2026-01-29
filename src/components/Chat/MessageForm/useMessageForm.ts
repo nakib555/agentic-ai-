@@ -31,6 +31,9 @@ export const useMessageForm = (
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const attachButtonRef = useRef<HTMLButtonElement>(null);
   const uploadMenuRef = useRef<HTMLDivElement>(null);
+  
+  // Track previous length to optimize resizing logic
+  const prevValueLength = useRef(0);
 
   const fileHandling = useFileHandling(ref);
   const enhancements = useInputEnhancements(inputValue, setInputValue, fileHandling.processedFiles.length > 0, onSubmit);
@@ -54,6 +57,7 @@ export const useMessageForm = (
         const savedText = localStorage.getItem('messageDraft_text');
         if (savedText) {
           setInputValue(savedText);
+          prevValueLength.current = savedText.length;
         }
     } catch (e) { /* ignore */ }
   }, []);
@@ -69,11 +73,22 @@ export const useMessageForm = (
     } catch (e) { /* ignore */ }
   }, [inputValue, fileHandling.processedFiles.length]);
   
+  // Optimized Resize Logic
   useLayoutEffect(() => {
     const element = inputRef.current;
     if (!element) return;
 
-    element.style.height = 'auto';
+    const currentLength = inputValue.length;
+    const isDeleting = currentLength < prevValueLength.current;
+    prevValueLength.current = currentLength;
+
+    // OPTIMIZATION: Only force 'auto' height if we are deleting text or the value is empty.
+    // If we are typing (adding text), the scrollHeight naturally grows, so we don't need to
+    // force a layout thrash by setting height to 'auto' first.
+    // This significantly reduces jank on mobile devices while typing.
+    if (isDeleting || currentLength === 0) {
+        element.style.height = 'auto';
+    }
     
     const scrollHeight = element.scrollHeight;
     
@@ -106,6 +121,7 @@ export const useMessageForm = (
 
   const clearDraft = () => {
     setInputValue('');
+    prevValueLength.current = 0;
     fileHandling.clearFiles(); 
     setPreviewFile(null);
     try {
