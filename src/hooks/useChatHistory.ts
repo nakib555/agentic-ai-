@@ -55,7 +55,7 @@ export const useChatHistory = () => {
                   if (fullChat) {
                       setActiveChat(fullChat);
                       // Update cache with full data
-                      queryClient.setQueryData<ChatSession[]>(['chatHistory'], old => {
+                      queryClient.setQueryData<ChatSession[]>(['chatHistory'], (old: ChatSession[] | undefined) => {
                           return (old || []).map(c => c.id === currentChatId ? fullChat : c);
                       });
                   }
@@ -68,7 +68,7 @@ export const useChatHistory = () => {
 
   // Helper to update local state and RQ cache simultaneously
   const updateLocalAndCache = useCallback((updater: (prevHistory: ChatSession[]) => ChatSession[]) => {
-      queryClient.setQueryData<ChatSession[]>(['chatHistory'], updater);
+      queryClient.setQueryData<ChatSession[]>(['chatHistory'], (old: ChatSession[] | undefined) => updater(old || []));
   }, [queryClient]);
 
   const startNewChat = useCallback(async (model: string, settings: any, optimisticId?: string): Promise<ChatSession | null> => {

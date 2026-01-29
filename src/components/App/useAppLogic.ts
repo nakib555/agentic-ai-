@@ -164,13 +164,13 @@ export const useAppLogic = () => {
     }, [chat.importChat]);
 
     const handleExportAllChats = useCallback(() => {
-        import('../utils/exportUtils').then(mod => {
+        import('../../utils/exportUtils').then(mod => {
             (mod as any).exportAllChatsToJson(chat.chatHistory);
         });
     }, [chat.chatHistory]);
 
     const handleDownloadLogs = useCallback(() => {
-        import('../utils/logCollector').then(mod => {
+        import('../../utils/logCollector').then(mod => {
             const logs = mod.logCollector.formatLogs();
             const blob = new Blob([logs], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
@@ -267,7 +267,7 @@ export const useAppLogic = () => {
         const currentChat = chat.chatHistory.find(c => c.id === chat.currentChatId);
         if (!currentChat) return;
 
-        import('../utils/exportUtils').then(mod => {
+        import('../../utils/exportUtils').then(mod => {
             if (format === 'json') (mod as any).exportChatToJson(currentChat);
             else if (format === 'md') (mod as any).exportChatToMarkdown(currentChat);
             else if (format === 'pdf') (mod as any).exportChatToPdf(currentChat);
@@ -279,7 +279,7 @@ export const useAppLogic = () => {
         const currentChat = chat.chatHistory.find(c => c.id === chat.currentChatId);
         if (!currentChat) return;
         
-        import('../utils/exportUtils').then(mod => {
+        import('../../utils/exportUtils').then(mod => {
             (mod as any).exportChatToClipboard(currentChat);
         });
     }, [chat.currentChatId, chat.chatHistory]);
@@ -316,7 +316,6 @@ export const useAppLogic = () => {
         isTestMode: ui.isTestMode, 
         setIsTestMode: ui.setTestMode,
         
-        toast: null, // Deprecated, using Sonner directly
         showToast: (msg: string, type: any) => toast[type === 'error' ? 'error' : 'success'](msg),
         closeToast: () => {},
 

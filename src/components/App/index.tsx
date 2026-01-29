@@ -1,4 +1,3 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -6,7 +5,6 @@
 
 import React, { Suspense, useState, useEffect, useRef } from 'react';
 import { useAppLogic } from './useAppLogic';
-import { Toast } from '../UI/Toast';
 import { AppSkeleton } from '../UI/AppSkeleton';
 import { ChatSkeleton } from '../UI/ChatSkeleton';
 import {
@@ -301,12 +299,6 @@ export const App = () => {
             />
         )}
       </Suspense>
-
-      <Toast 
-        message={logic.toast?.message || null} 
-        type={logic.toast?.type} 
-        onClose={logic.closeToast} 
-      />
     </div>
   );
 };

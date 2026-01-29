@@ -1,5 +1,3 @@
-
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -9,6 +7,7 @@ import { AnimatePresence, motion as motionTyped, LayoutGroup } from 'framer-moti
 import type { Model } from '../../types';
 import { SettingsCategoryButton } from './SettingsCategoryButton';
 import type { Theme } from '../../hooks/useTheme';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "../ui/dialog";
 
 // Static imports for instant tab switching
 import GeneralSettings from './GeneralSettings';
@@ -129,71 +128,38 @@ export const SettingsModal: React.FC<SettingsModalProps> = React.memo((props) =>
     const [activeCategory, setActiveCategory] = useState('general');
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.15 }}
-          onClick={onClose}
-          className="fixed inset-0 bg-black/40 backdrop-blur-none md:backdrop-blur-sm z-[60] flex items-center justify-center p-4 sm:p-6 overflow-hidden"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="settings-title"
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ duration: 0.2, type: "spring", bounce: 0.25 }}
-            className="bg-page w-full max-w-5xl h-[85dvh] min-h-[300px] rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-white/10"
-            onClick={(e: React.MouseEvent) => e.stopPropagation()}
-          >
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-5xl h-[85dvh] min-h-[500px] p-0 gap-0 overflow-hidden flex flex-col bg-page border-border-default">
+            <DialogTitle className="sr-only">Settings</DialogTitle>
+            <DialogDescription className="sr-only">Configure application settings</DialogDescription>
+            
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-5 border-b border-border bg-layer-1/80 backdrop-blur-md z-20 flex-shrink-0">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-layer-1 z-20 flex-shrink-0">
               <div>
-                <h2 id="settings-title" className="text-lg md:text-xl font-bold text-content-primary tracking-tight">
+                <h2 className="text-xl font-bold text-content-primary tracking-tight">
                   Settings
                 </h2>
-                <p className="text-[10px] md:text-xs text-content-tertiary font-medium mt-0.5">Preferences & Configuration</p>
+                <p className="text-xs text-content-tertiary font-medium mt-0.5">Preferences & Configuration</p>
               </div>
-              <button
-                onClick={onClose}
-                className="p-2 rounded-xl text-content-tertiary hover:text-content-primary hover:bg-layer-2 transition-all duration-200"
-                aria-label="Close settings"
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </button>
             </div>
             
             <div className="flex-1 flex flex-col md:flex-row min-h-0 bg-layer-2/50 overflow-hidden">
                 {/* Navigation Sidebar */}
-                <nav className="flex-shrink-0 p-2 md:p-4 lg:p-6 md:w-64 lg:w-72 bg-layer-1/50 z-10 border-b md:border-b-0 md:border-r border-border backdrop-blur-xl flex flex-col gap-4 md:gap-6">
-                    
-                    <div className="hidden md:block px-2">
+                <nav className="flex-shrink-0 p-4 md:w-64 lg:w-72 bg-layer-1/50 z-10 border-b md:border-b-0 md:border-r border-border flex flex-col gap-2 overflow-y-auto">
+                    <div className="hidden md:block px-2 mb-2">
                         <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Configuration</h3>
                     </div>
 
                     <LayoutGroup id="settings-nav">
-                        {/* Increased horizontal padding (px-4) for mobile nav to prevent edge clipping */}
-                        <ul className="flex flex-row md:flex-col gap-1 md:gap-2 overflow-x-auto md:overflow-visible px-4 md:px-0 py-2 md:py-0 scroll-smooth snap-x no-scrollbar md:custom-scrollbar">
+                        <ul className="flex flex-row md:flex-col gap-1 w-full overflow-x-auto md:overflow-visible no-scrollbar">
                             {CATEGORIES.map(cat => (
-                                <li key={cat.id} className="flex-shrink-0 snap-start">
+                                <li key={cat.id} className="flex-shrink-0">
                                     <SettingsCategoryButton
                                         icon={cat.icon}
                                         label={cat.label}
                                         isActive={activeCategory === cat.id}
                                         onClick={(e) => {
                                             setActiveCategory(cat.id);
-                                            e.currentTarget.scrollIntoView({
-                                                behavior: 'smooth',
-                                                block: 'nearest',
-                                                inline: 'center'
-                                            });
                                         }}
                                     />
                                 </li>
@@ -202,11 +168,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = React.memo((props) =>
                     </LayoutGroup>
                 </nav>
 
-                {/* Content Area - Static Import for speed */}
-                {/* Removed overflow-x-hidden to prevent shadow clipping */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar relative bg-page w-full">
-                    {/* Increased padding (px-6) for better spacing on mobile */}
-                    <div className="px-6 py-6 md:p-8 lg:p-10 max-w-3xl mx-auto min-h-full">
+                {/* Content Area */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar relative bg-page w-full p-0">
+                    <div className="px-6 py-6 md:p-8 max-w-3xl mx-auto min-h-full">
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={activeCategory}
@@ -279,10 +243,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = React.memo((props) =>
                     </div>
                 </div>
             </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        </DialogContent>
+    </Dialog>
   );
 });
 
