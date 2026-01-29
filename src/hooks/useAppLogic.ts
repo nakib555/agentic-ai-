@@ -88,11 +88,30 @@ export const useAppLogic = () => {
 
     // --- Helper to process models from backend response ---
     const processModelData = useCallback((data: any) => {
-        if (data.models) settings.setAvailableModels(data.models);
+        if (data.models) {
+            settings.setAvailableModels(data.models);
+            
+            // Auto-switch model if current active model is not in the new list.
+            // This is critical when switching providers (e.g. Gemini -> Ollama) to prevent
+            // sending a Gemini model ID to Ollama which causes 404s.
+            const currentModelValid = data.models.some((m: Model) => m.id === settings.activeModel);
+            if (!currentModelValid && data.models.length > 0) {
+                const newModel = data.models[0].id;
+                console.log(`[App] Auto-switching model from ${settings.activeModel} to ${newModel}`);
+                
+                settings.setActiveModel(newModel);
+                updateSettings({ activeModel: newModel }).catch(console.error);
+                
+                // Update the current active chat session to use the new model immediately
+                if (chat.currentChatId) {
+                    chat.updateChatModel(chat.currentChatId, newModel);
+                }
+            }
+        }
         if (data.imageModels) settings.setAvailableImageModels(data.imageModels);
         if (data.videoModels) settings.setAvailableVideoModels(data.videoModels);
         if (data.ttsModels) settings.setAvailableTtsModels(data.ttsModels);
-    }, [settings]);
+    }, [settings, chat]);
 
     // --- Initial Data Loading ---
     const fetchModels = useCallback(async () => {
