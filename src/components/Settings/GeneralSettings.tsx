@@ -50,26 +50,29 @@ const ApiKeyForm = ({ label, value, placeholder, onSave, description }: {
     const [showSuccess, setShowSuccess] = useState(false);
     const [isVisible, setIsVisible] = useState(false);
     
-    const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<ApiKeyFormData>({
+    const { register, handleSubmit, reset, formState: { errors, isSubmitting }, getValues } = useForm<ApiKeyFormData>({
         resolver: zodResolver(apiKeySchema), 
         defaultValues: { key: value }
     });
 
-    // Sync form with external value prop when it changes (e.g. initial load or provider switch)
+    // Sync form with external value prop ONLY if it differs from current form value
+    // This prevents clearing user input if they type faster than the async save loop
     useEffect(() => {
-        reset({ key: value });
-    }, [value, reset]);
+        const currentFormValue = getValues().key;
+        if (value !== currentFormValue) {
+            reset({ key: value });
+        }
+    }, [value, reset, getValues]);
 
     const onSubmit = async (data: ApiKeyFormData) => {
         try {
             // Aggressively sanitize input: remove all whitespace/newlines
-            // This fixes issues where copying long keys (like OpenRouter) introduces hidden newlines or spaces
             const cleanKey = data.key.replace(/\s+/g, '');
             await onSave(cleanKey);
             setShowSuccess(true);
             setTimeout(() => setShowSuccess(false), 2000);
         } catch (e) {
-            // Error handling is done by parent via toast, but we catch here to stop success state
+            // Error handling is done by parent via toast
         }
     };
 

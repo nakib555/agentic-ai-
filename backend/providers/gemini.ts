@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -61,16 +62,18 @@ const GeminiProvider: AIProvider = {
                 return { chatModels: [], imageModels: [], videoModels: [], ttsModels: [] };
             }
 
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}`, {
+            // Using header authentication only to avoid leaking key in URL logs
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models`, {
                 headers: { 'x-goog-api-key': cleanKey }
             });
             
             if (!response.ok) {
                 const errorBody = await response.text();
                 
-                // Handle 400 Bad Request (Invalid Key) gracefully
-                if (response.status === 400 && (errorBody.includes('API_KEY_INVALID') || errorBody.includes('API key not valid'))) {
-                    console.warn('[GeminiProvider] Invalid API Key detected. Returning empty model list.');
+                // Handle 400 Bad Request (Invalid Key or Location issue) gracefully
+                if (response.status === 400) {
+                    console.warn('[GeminiProvider] Bad Request during model fetch:', errorBody);
+                    // Return empty list instead of throwing to prevent app crash on invalid key
                     return { chatModels: [], imageModels: [], videoModels: [], ttsModels: [] };
                 }
 

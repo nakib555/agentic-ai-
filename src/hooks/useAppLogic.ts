@@ -230,16 +230,10 @@ export const useAppLogic = () => {
     }, [processModelData, fetchModels, settings]);
 
     const onSaveApiKey = useCallback(async (key: string, providerType: 'gemini' | 'openrouter' | 'ollama') => {
-        if (providerType === 'gemini') settings.setApiKey(key);
-        if (providerType === 'openrouter') settings.setOpenRouterApiKey(key);
-        if (providerType === 'ollama') settings.setOllamaApiKey(key);
-        
         setModelsLoading(true); // Signal start of refresh
-        // Clear models to force visual refresh
+        
+        // Optimistically clear models to show loading state
         settings.setAvailableModels([]);
-        settings.setAvailableImageModels([]);
-        settings.setAvailableVideoModels([]);
-        settings.setAvailableTtsModels([]);
         
         try {
             const updatePayload: Partial<AppSettings> = { provider: providerType };
@@ -249,9 +243,12 @@ export const useAppLogic = () => {
 
             const response = await updateSettings(updatePayload);
             
+            // Update local store only AFTER success
+            if (providerType === 'gemini') settings.setApiKey(key);
+            if (providerType === 'openrouter') settings.setOpenRouterApiKey(key);
+            if (providerType === 'ollama') settings.setOllamaApiKey(key);
+            
             // Refresh models with the new key.
-            // If response.models is present (even if empty), use it. 
-            // The backend guarantees to send models: [] on failure during refresh.
             if (response.models) {
                 processModelData(response);
                 if (response.models.length === 0) {
@@ -265,23 +262,18 @@ export const useAppLogic = () => {
             }
         } catch (error) {
             console.error("Failed to save API key:", error);
-            toast.error('Failed to save API Key.');
+            toast.error('Failed to save API Key. Check server logs.');
         } finally {
             setModelsLoading(false); // Signal end
         }
     }, [processModelData, fetchModels, settings]);
 
     const onSaveOllamaHost = useCallback(async (host: string) => {
-        settings.setOllamaHost(host);
-        setModelsLoading(true); // Signal start of refresh
-        // Clear models to force visual refresh
-        settings.setAvailableModels([]);
-        settings.setAvailableImageModels([]);
-        settings.setAvailableVideoModels([]);
-        settings.setAvailableTtsModels([]);
-        
+        setModelsLoading(true);
         try {
             const response = await updateSettings({ ollamaHost: host });
+            settings.setOllamaHost(host); // Update store after success
+
             // Always refresh models for Ollama when host changes
             if (response.models) {
                 processModelData(response);
