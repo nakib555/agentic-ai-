@@ -1,4 +1,5 @@
 
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -72,7 +73,11 @@ export const updateSettings = async (req: any, res: any) => {
                 // Strictly require a key to fetch models, unless provider is Ollama which supports keyless local operation
                 if (activeKey || newSettings.provider === 'ollama') {
                     // Force refresh to bypass cache
-                    const { chatModels, imageModels, videoModels, ttsModels } = await listAvailableModels(activeKey || '', true);
+                    const { chatModels, imageModels, videoModels, ttsModels } = await listAvailableModels(
+                        activeKey || '', 
+                        true,
+                        newSettings.provider // Explicitly pass the provider we just updated to avoid race conditions
+                    );
                     res.status(200).json({ ...newSettings, models: chatModels, imageModels, videoModels, ttsModels });
                     return;
                 }

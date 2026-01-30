@@ -21,18 +21,31 @@ type ModelCache = {
 let modelCache: ModelCache | null = null;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-export async function listAvailableModels(apiKey: string, forceRefresh = false): Promise<ModelLists> {
-    // Determine provider from settings
-    const settings: any = await readData(SETTINGS_FILE_PATH);
-    const providerId = settings.provider || 'gemini';
+export async function listAvailableModels(apiKey: string, forceRefresh = false, providerOverride?: string): Promise<ModelLists> {
+    // Determine provider from override or settings
+    let providerId = providerOverride;
+    
+    if (!providerId) {
+        try {
+            const settings: any = await readData(SETTINGS_FILE_PATH);
+            providerId = settings.provider;
+        } catch(e) {
+            // ignore
+        }
+    }
+    
+    // Default to gemini if still undetermined
+    providerId = providerId || 'gemini';
     
     // Hash key + provider + (optional) host to ensure cache validity
     let currentKeyHash = (apiKey || '').trim().slice(-8) + providerId;
     
-    // Crucial: For Ollama, include the host URL in the cache key.
-    // This ensures that changing the host immediately invalidates the cache.
+    // For Ollama, include the host URL in the cache key.
     if (providerId === 'ollama') {
-        currentKeyHash += (settings.ollamaHost || '').trim();
+         try {
+             const settings: any = await readData(SETTINGS_FILE_PATH);
+             currentKeyHash += (settings.ollamaHost || '').trim();
+         } catch(e) {}
     }
     
     const now = Date.now();

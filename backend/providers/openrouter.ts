@@ -1,4 +1,5 @@
 
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -19,8 +20,9 @@ const OpenRouterProvider: AIProvider = {
     async getModels(apiKey: string): Promise<ModelLists> {
         try {
             console.log('[OpenRouterProvider] Fetching models...');
+            const cleanKey = apiKey ? apiKey.trim() : '';
             const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-            if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+            if (cleanKey) headers['Authorization'] = `Bearer ${cleanKey}`;
     
             const response = await fetch('https://openrouter.ai/api/v1/models', { method: 'GET', headers });
     
@@ -77,6 +79,8 @@ const OpenRouterProvider: AIProvider = {
         const { model, messages, systemInstruction, temperature, maxTokens, apiKey, callbacks, signal } = options;
 
         if (!apiKey) throw new Error("OpenRouter API Key missing");
+        
+        const cleanKey = apiKey.trim();
 
         // Convert messages to OpenRouter format
         const openRouterMessages = messages
@@ -103,7 +107,7 @@ const OpenRouterProvider: AIProvider = {
             const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                 method: "POST",
                 headers: {
-                    "Authorization": `Bearer ${apiKey}`,
+                    "Authorization": `Bearer ${cleanKey}`,
                     "Content-Type": "application/json",
                     "HTTP-Referer": "https://agentic-ai-chat.local",
                     "X-Title": "Agentic AI Chat",
@@ -186,6 +190,8 @@ const OpenRouterProvider: AIProvider = {
     async complete(options: CompletionOptions): Promise<string> {
         const { model, prompt, systemInstruction, apiKey, jsonMode } = options;
         if (!apiKey) throw new Error("OpenRouter API Key missing");
+        
+        const cleanKey = apiKey.trim();
 
         try {
              const messages = [];
@@ -195,7 +201,7 @@ const OpenRouterProvider: AIProvider = {
              const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                 method: "POST",
                 headers: {
-                    "Authorization": `Bearer ${apiKey}`,
+                    "Authorization": `Bearer ${cleanKey}`,
                     "Content-Type": "application/json",
                     "HTTP-Referer": "https://agentic-ai-chat.local",
                     "X-Title": "Agentic AI Chat",

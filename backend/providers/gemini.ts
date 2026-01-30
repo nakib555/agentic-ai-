@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -23,8 +24,9 @@ const GeminiProvider: AIProvider = {
     async getModels(apiKey: string): Promise<ModelLists> {
         try {
             console.log('[GeminiProvider] Fetching models...');
+            const cleanKey = apiKey ? apiKey.trim() : '';
             const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models', {
-                headers: { 'x-goog-api-key': apiKey }
+                headers: { 'x-goog-api-key': cleanKey }
             });
             
             if (!response.ok) {
@@ -100,7 +102,8 @@ const GeminiProvider: AIProvider = {
         
         if (!apiKey) throw new Error("Gemini API Key missing");
         
-        const ai = new GoogleGenAI({ apiKey });
+        const cleanKey = apiKey.trim();
+        const ai = new GoogleGenAI({ apiKey: cleanKey });
         
         // Construct History
         // We include the new message in the history transformation for Gemini if it's not already there
@@ -204,7 +207,8 @@ const GeminiProvider: AIProvider = {
         const { model, prompt, systemInstruction, temperature, maxTokens, apiKey, jsonMode } = options;
         if (!apiKey) throw new Error("Gemini API Key missing");
         
-        const ai = new GoogleGenAI({ apiKey });
+        const cleanKey = apiKey.trim();
+        const ai = new GoogleGenAI({ apiKey: cleanKey });
         
         const config: any = { 
             systemInstruction,
