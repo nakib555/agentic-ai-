@@ -55,12 +55,25 @@ const GeminiProvider: AIProvider = {
         try {
             console.log('[GeminiProvider] Fetching models...');
             const cleanKey = apiKey ? apiKey.trim() : '';
+            
+            if (!cleanKey) {
+                console.warn('[GeminiProvider] No API key provided. Skipping model fetch.');
+                return { chatModels: [], imageModels: [], videoModels: [], ttsModels: [] };
+            }
+
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}`, {
                 headers: { 'x-goog-api-key': cleanKey }
             });
             
             if (!response.ok) {
                 const errorBody = await response.text();
+                
+                // Handle 400 Bad Request (Invalid Key) gracefully
+                if (response.status === 400 && (errorBody.includes('API_KEY_INVALID') || errorBody.includes('API key not valid'))) {
+                    console.warn('[GeminiProvider] Invalid API Key detected. Returning empty model list.');
+                    return { chatModels: [], imageModels: [], videoModels: [], ttsModels: [] };
+                }
+
                 throw new Error(`Failed to fetch models: ${response.status} ${response.statusText} - ${errorBody}`);
             }
     
@@ -109,8 +122,9 @@ const GeminiProvider: AIProvider = {
                 ttsModels: sortModelsByName(lists.ttsModels),
             };
         } catch (error: any) {
-            console.error('[GeminiProvider] Model fetch failed:', error);
-            throw error;
+            console.error('[GeminiProvider] Model fetch failed:', error.message);
+            // Return empty list on failure to prevent app crash
+            return { chatModels: [], imageModels: [], videoModels: [], ttsModels: [] };
         }
     },
 

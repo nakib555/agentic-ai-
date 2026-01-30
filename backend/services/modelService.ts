@@ -77,7 +77,8 @@ export async function listAvailableModels(apiKey: string, forceRefresh = false, 
         return result;
 
     } catch (error: any) {
-        console.error(`[ModelService] Failed to fetch models for provider ${providerId}:`, error);
+        // Reduced verbosity: log message only instead of full object stack
+        console.error(`[ModelService] Failed to fetch models for provider ${providerId}: ${error.message}`);
         return {
             chatModels: [],
             imageModels: [],
