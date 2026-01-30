@@ -120,7 +120,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = (props) => {
   return (
     <Dialog open={props.isOpen} onOpenChange={props.onClose}>
       <DialogContent 
-        className="p-0 gap-0 w-[95vw] md:w-full max-w-4xl h-[90vh] md:h-[85vh] flex flex-col overflow-hidden bg-page rounded-2xl border border-border-default shadow-2xl focus:outline-none [&>button]:hidden fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+        className="fixed left-[50%] top-[50%] z-50 grid w-[95vw] max-w-4xl translate-x-[-50%] translate-y-[-50%] gap-0 border border-border-default bg-page p-0 shadow-2xl duration-200 h-[85dvh] md:h-[80dvh] flex flex-col overflow-hidden rounded-2xl focus:outline-none [&>button]:hidden"
       >
         <DialogTitle className="sr-only">Settings</DialogTitle>
         <DialogDescription className="sr-only">Configure application settings, API keys, and models.</DialogDescription>

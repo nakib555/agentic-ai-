@@ -1,4 +1,3 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -353,7 +352,9 @@ export const MemoryModal: React.FC<MemoryModalProps> = ({ isOpen, onClose, memor
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="p-0 gap-0 w-[95vw] md:w-full max-w-4xl h-[90vh] md:h-[85vh] flex flex-col overflow-hidden bg-page rounded-2xl border border-border-default shadow-2xl focus:outline-none [&>button]:hidden">
+        <DialogContent 
+            className="fixed left-[50%] top-[50%] z-50 grid w-[95vw] max-w-4xl translate-x-[-50%] translate-y-[-50%] gap-0 border border-border-default bg-page p-0 shadow-2xl duration-200 h-[85dvh] md:h-[80dvh] flex flex-col overflow-hidden rounded-2xl focus:outline-none [&>button]:hidden"
+        >
             <DialogHeader className="sr-only">
                 <DialogTitle>Memory Management</DialogTitle>
                 <DialogDescription>Manage persistent memory files and core context.</DialogDescription>

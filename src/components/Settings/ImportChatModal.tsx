@@ -1,4 +1,3 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -177,7 +176,8 @@ export const ImportChatModal: React.FC<ImportChatModalProps> = ({ isOpen, onClos
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            className="bg-slate-50 dark:bg-layer-1 rounded-2xl shadow-2xl w-full max-w-2xl h-[600px] max-h-[85vh] border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden"
+            className="fixed left-[50%] top-[50%] z-50 flex w-[95vw] max-w-2xl translate-x-[-50%] translate-y-[-50%] flex-col overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 shadow-2xl dark:bg-layer-1 max-h-[85dvh]"
+            style={{ height: '600px' }}
             onClick={(e: React.MouseEvent) => e.stopPropagation()}
           >
             {/* Header */}

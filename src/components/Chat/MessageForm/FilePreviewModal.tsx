@@ -94,7 +94,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ file, isOpen
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0, y: 20 }}
             onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            className="bg-white dark:bg-[#121212] rounded-2xl shadow-2xl overflow-hidden w-full max-w-4xl max-h-[85vh] flex flex-col"
+            className="fixed left-[50%] top-[50%] z-50 flex w-full max-w-4xl translate-x-[-50%] translate-y-[-50%] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-[#121212] max-h-[85dvh]"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#18181b]">
