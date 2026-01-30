@@ -1,4 +1,6 @@
 
+
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -119,6 +121,7 @@ export const fetchFromApi = async (url: string, options: ApiOptions = {}): Promi
         if (!silent) {
             if (error.name === 'AbortError') {
                  console.warn(`[API] ⏱️ Request timed out: ${method} ${url}`);
+                 throw new Error('Request timed out. The server took too long to respond.');
             } else {
                  console.error(`[API Fatal] 💥 ${method} ${url} request failed`, error);
             }
@@ -126,7 +129,7 @@ export const fetchFromApi = async (url: string, options: ApiOptions = {}): Promi
         
         // Normalize network errors
         if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
-             throw new Error('Network error: Could not connect to server. Please check your connection.');
+             throw new Error('Network error: Could not connect to server. Please check your connection and the server URL in Settings.');
         }
         
         throw error;

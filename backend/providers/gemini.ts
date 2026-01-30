@@ -144,8 +144,6 @@ const GeminiProvider: AIProvider = {
         const ai = new GoogleGenAI({ apiKey: cleanKey });
         
         // Transform history once
-        // (Note: newMessage is typically already in messages by the time this is called, 
-        // but we assume the caller handles history integrity)
         const fullHistory = transformHistoryToGeminiFormat(messages);
 
         // --- AGENT MODE ---
@@ -179,19 +177,41 @@ const GeminiProvider: AIProvider = {
 
         // --- STANDARD STREAMING CHAT ---
         try {
-             // Standard tools (Grounding)
+             // Try with standard tools (Grounding) enabled first
              const tools = [{ googleSearch: {} }];
              
-             const result = await generateContentStreamWithRetry(ai, {
-                model,
-                contents: fullHistory,
-                config: {
-                    systemInstruction,
-                    temperature,
-                    maxOutputTokens: maxTokens,
-                    tools
-                }
-             });
+             let result;
+             
+             try {
+                 // Attempt 1: With Search Tool
+                 result = await generateContentStreamWithRetry(ai, {
+                    model,
+                    contents: fullHistory,
+                    config: {
+                        systemInstruction,
+                        temperature,
+                        maxOutputTokens: maxTokens,
+                        tools
+                    }
+                 });
+             } catch (toolError: any) {
+                 // If the model doesn't support tools/search (400 Invalid Argument), fallback to no tools
+                 if (toolError.message?.includes('400') || toolError.message?.includes('INVALID_ARGUMENT') || toolError.message?.includes('tool')) {
+                     console.warn(`[GeminiProvider] Model ${model} rejected tools. Retrying without tools.`);
+                     result = await generateContentStreamWithRetry(ai, {
+                        model,
+                        contents: fullHistory,
+                        config: {
+                            systemInstruction,
+                            temperature,
+                            maxOutputTokens: maxTokens,
+                            // No tools
+                        }
+                     });
+                 } else {
+                     throw toolError;
+                 }
+             }
 
              let fullText = '';
              let groundingMetadata: any = undefined;
@@ -221,6 +241,7 @@ const GeminiProvider: AIProvider = {
              callbacks.onComplete({ finalText: fullText, groundingMetadata });
 
         } catch (error) {
+            console.error("[GeminiProvider] Chat generation failed:", error);
             callbacks.onError(error);
         }
     },

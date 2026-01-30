@@ -1,6 +1,8 @@
 
 
 
+
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -437,6 +439,7 @@ ${personalizationSection}
                 } catch (e: any) {
                     console.error(`[HANDLER] Chat logic failed:`, e);
                     const parsedError = parseApiError(e);
+                    // Explicitly write to the stream even if headers are sent
                     writeToClient(job, 'error', parsedError);
                     persistence.complete((response) => { response.error = parsedError; });
                 } finally {
