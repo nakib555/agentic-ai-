@@ -200,6 +200,13 @@ export const useAppLogic = () => {
 
     const onProviderChange = useCallback(async (newProvider: 'gemini' | 'openrouter' | 'ollama') => {
         settings.setProvider(newProvider);
+        setModelsLoading(true);
+        // Clear models to force visual refresh
+        settings.setAvailableModels([]);
+        settings.setAvailableImageModels([]);
+        settings.setAvailableVideoModels([]);
+        settings.setAvailableTtsModels([]);
+
         try {
             const response = await updateSettings({ provider: newProvider });
             
@@ -216,6 +223,9 @@ export const useAppLogic = () => {
         } catch (error) {
             console.error("Failed to update provider:", error);
             toast.error("Failed to switch provider.");
+            setModelsLoading(false);
+        } finally {
+            setModelsLoading(false);
         }
     }, [processModelData, fetchModels, settings]);
 
@@ -225,6 +235,11 @@ export const useAppLogic = () => {
         if (providerType === 'ollama') settings.setOllamaApiKey(key);
         
         setModelsLoading(true); // Signal start of refresh
+        // Clear models to force visual refresh
+        settings.setAvailableModels([]);
+        settings.setAvailableImageModels([]);
+        settings.setAvailableVideoModels([]);
+        settings.setAvailableTtsModels([]);
         
         try {
             const updatePayload: Partial<AppSettings> = { provider: providerType };
@@ -255,6 +270,11 @@ export const useAppLogic = () => {
     const onSaveOllamaHost = useCallback(async (host: string) => {
         settings.setOllamaHost(host);
         setModelsLoading(true); // Signal start of refresh
+        // Clear models to force visual refresh
+        settings.setAvailableModels([]);
+        settings.setAvailableImageModels([]);
+        settings.setAvailableVideoModels([]);
+        settings.setAvailableTtsModels([]);
         
         try {
             const response = await updateSettings({ ollamaHost: host });
