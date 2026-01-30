@@ -254,11 +254,15 @@ export const useAppLogic = () => {
             // The backend guarantees to send models: [] on failure during refresh.
             if (response.models) {
                 processModelData(response);
+                if (response.models.length === 0) {
+                     toast.warning('API Key saved, but no models were found. Check your key permissions.');
+                } else {
+                     toast.success('API Key saved and models refreshed.');
+                }
             } else {
                 await fetchModels();
+                toast.success('API Key saved. Refreshing models...');
             }
-            
-            toast.success('API Key saved and models refreshed.');
         } catch (error) {
             console.error("Failed to save API key:", error);
             toast.error('Failed to save API Key.');

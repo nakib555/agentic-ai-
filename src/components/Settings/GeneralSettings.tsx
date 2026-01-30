@@ -1,5 +1,4 @@
 
-
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -80,6 +79,9 @@ const ApiKeyForm = ({ label, value, placeholder, onSave, description }: {
                         type="password"
                         placeholder={placeholder}
                         autoComplete="off"
+                        autoCapitalize="off"
+                        autoCorrect="off"
+                        spellCheck="false"
                         className={errors.key ? 'border-red-500 focus-visible:ring-red-500' : ''}
                     />
                     <Button
@@ -133,6 +135,10 @@ const OllamaHostForm = ({ value, onSave }: { value: string, onSave: (host: strin
                     value={host}
                     onChange={(e) => setHost(e.target.value)}
                     placeholder="http://localhost:11434"
+                    autoComplete="off"
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    spellCheck="false"
                     onKeyDown={(e) => e.key === 'Enter' && handleSave()}
                 />
                 <Button
@@ -290,6 +296,10 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
                             type="text" 
                             defaultValue={serverUrl}
                             placeholder="http://localhost:3001"
+                            autoComplete="off"
+                            autoCapitalize="off"
+                            autoCorrect="off"
+                            spellCheck="false"
                             onBlur={(e) => onSaveServerUrl(e.target.value)}
                         />
                      </div>

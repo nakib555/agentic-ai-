@@ -74,7 +74,9 @@ const SelectContent = React.forwardRef<
     <SelectPrimitive.Content
       ref={ref}
       className={cn(
-        "relative z-[2000] max-h-96 min-w-[8rem] overflow-hidden rounded-xl border border-border-default bg-layer-1 text-content-primary shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        // Boost z-index to ensure it sits above modals/dialogs on mobile.
+        // max-h fallback ensures visibility even if var calculation fails.
+        "relative z-[9999] max-h-[300px] min-w-[8rem] overflow-hidden rounded-xl border border-border-default bg-layer-1 text-content-primary shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
         position === "popper" &&
           "max-h-[var(--radix-select-content-available-height)] w-[var(--radix-select-trigger-width)]",
         className
@@ -86,7 +88,7 @@ const SelectContent = React.forwardRef<
       <SelectScrollUpButton />
       <SelectPrimitive.Viewport
         className={cn(
-          "p-1", // Removed scroll-smooth to prevent jumpy scrolling behavior
+          "p-1", 
           position === "popper" &&
             "w-full min-w-[var(--radix-select-trigger-width)]"
         )}
