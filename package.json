@@ -36,6 +36,7 @@
     "@radix-ui/react-tooltip": "^1.0.7",
     "@tanstack/react-query": "^5.28.0",
     "@vitejs/plugin-react": "^4.2.1",
+    "@xstate/react": "^4.1.0",
     "ai": "^3.2.18",
     "autoprefixer": "^10.4.14",
     "class-variance-authority": "^0.7.0",
@@ -78,6 +79,7 @@
     "uuid": "^9.0.1",
     "vite": "^5.2.0",
     "wrangler": "^4.56.0",
+    "xstate": "^5.10.0",
     "zod": "^3.22.4",
     "zustand": "^4.5.2"
   },

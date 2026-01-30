@@ -1,0 +1,180 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { Message, ModelResponse } from '../../types';
+
+/**
+ * Creates a new version branch for a user message.
+ * It effectively "forks" the conversation at this point by creating a new version entry
+ * and saving the "future" messages of the current branch into the payload of the *previous* version.
+ */
+export const createBranchForUserMessage = (
+    messages: Message[],
+    messageId: string,
+    newText: string
+): { updatedMessages: Message[], targetMessage: Message, futureMessages: Message[] } | null => {
+    
+    const messageIndex = messages.findIndex(m => m.id === messageId);
+    if (messageIndex === -1) return null;
+
+    // Clone to avoid mutation
+    const updatedMessages = JSON.parse(JSON.stringify(messages)) as Message[];
+    const targetMessage = updatedMessages[messageIndex];
+    
+    // The "future" is everything after this message in the current timeline
+    const futureMessages = updatedMessages.slice(messageIndex + 1);
+    
+    const currentVersionIndex = targetMessage.activeVersionIndex ?? 0;
+
+    // Initialize versions array if legacy message
+    if (!targetMessage.versions || targetMessage.versions.length === 0) {
+        targetMessage.versions = [{
+            text: targetMessage.text,
+            attachments: targetMessage.attachments,
+            createdAt: Date.now(),
+            historyPayload: futureMessages
+        }];
+    } else {
+        // Save the future of the current branch into the current version
+        targetMessage.versions[currentVersionIndex].historyPayload = futureMessages;
+    }
+
+    // Create the new version
+    const newVersionIndex = targetMessage.versions.length;
+    targetMessage.versions.push({
+        text: newText,
+        attachments: targetMessage.attachments, // Inherit attachments
+        createdAt: Date.now(),
+        historyPayload: [] // New branch has no future yet
+    });
+
+    targetMessage.activeVersionIndex = newVersionIndex;
+    targetMessage.text = newText;
+
+    // Truncate the main list to just this message (future is cleared for the new branch)
+    const truncatedList = [...updatedMessages.slice(0, messageIndex), targetMessage];
+
+    return { updatedMessages: truncatedList, targetMessage, futureMessages: [] };
+};
+
+/**
+ * Creates a new response branch for an AI message (Regeneration).
+ * It preserves the current response and its future context, then creates a fresh slot.
+ */
+export const createBranchForModelResponse = (
+    messages: Message[],
+    aiMessageId: string
+): { updatedMessages: Message[], targetMessage: Message } | null => {
+
+    const messageIndex = messages.findIndex(m => m.id === aiMessageId);
+    // Can't regenerate if it's not an AI message or if it's the very first message (unlikely)
+    if (messageIndex < 1 || messages[messageIndex-1].role !== 'user') return null;
+
+    const updatedMessages = JSON.parse(JSON.stringify(messages)) as Message[];
+    const targetMessage = updatedMessages[messageIndex];
+    
+    // The "future" relative to this AI response
+    const futureMessages = updatedMessages.slice(messageIndex + 1);
+
+    // Initialize responses if legacy
+    if (!targetMessage.responses || targetMessage.responses.length === 0) {
+        targetMessage.responses = [{
+            text: targetMessage.text,
+            startTime: Date.now(),
+            toolCallEvents: []
+        }];
+        targetMessage.activeResponseIndex = 0;
+    }
+
+    const currentResponseIndex = targetMessage.activeResponseIndex;
+    
+    // Save state of current response
+    if (targetMessage.responses[currentResponseIndex]) {
+        targetMessage.responses[currentResponseIndex].historyPayload = futureMessages;
+    }
+
+    // Create new empty response slot
+    const newResponse: ModelResponse = { 
+        text: '', 
+        toolCallEvents: [], 
+        startTime: Date.now() 
+    };
+    
+    targetMessage.responses.push(newResponse);
+    targetMessage.activeResponseIndex = targetMessage.responses.length - 1;
+    targetMessage.isThinking = true;
+
+    // Return truncated list (this message is now the tip of the spear)
+    const truncatedList = [...updatedMessages.slice(0, messageIndex), targetMessage];
+
+    return { updatedMessages: truncatedList, targetMessage };
+};
+
+/**
+ * Navigates between existing branches (versions) of a message.
+ * Restores the "Future" context associated with that specific version.
+ */
+export const navigateBranch = (
+    messages: Message[],
+    messageId: string,
+    direction: 'next' | 'prev'
+): { updatedMessages: Message[] } | null => {
+    
+    const messageIndex = messages.findIndex(m => m.id === messageId);
+    if (messageIndex === -1) return null;
+
+    const updatedMessages = JSON.parse(JSON.stringify(messages)) as Message[];
+    const targetMessage = updatedMessages[messageIndex];
+    
+    // Helper to get total count based on role
+    const getCount = () => targetMessage.role === 'user' 
+        ? (targetMessage.versions?.length || 1) 
+        : (targetMessage.responses?.length || 1);
+        
+    const getActiveIndex = () => targetMessage.role === 'user'
+        ? (targetMessage.activeVersionIndex ?? 0)
+        : targetMessage.activeResponseIndex;
+
+    const total = getCount();
+    const currentIdx = getActiveIndex();
+    
+    if (total < 2) return null;
+
+    let newIdx = direction === 'next' ? currentIdx + 1 : currentIdx - 1;
+    if (newIdx < 0) newIdx = 0;
+    if (newIdx >= total) newIdx = total - 1;
+    
+    if (newIdx === currentIdx) return null;
+
+    // 1. Save current future to the *current* index slot
+    const currentFuture = updatedMessages.slice(messageIndex + 1);
+    
+    if (targetMessage.role === 'user') {
+        if (!targetMessage.versions) targetMessage.versions = [{ text: targetMessage.text, createdAt: Date.now() }];
+        targetMessage.versions[currentIdx].historyPayload = currentFuture;
+    } else {
+        if (!targetMessage.responses) targetMessage.responses = [{ text: targetMessage.text, startTime: Date.now() }];
+        targetMessage.responses[currentIdx].historyPayload = currentFuture;
+    }
+
+    // 2. Restore future from the *new* index slot
+    let restoredFuture: Message[] = [];
+    
+    if (targetMessage.role === 'user') {
+        const targetVersion = targetMessage.versions![newIdx];
+        targetMessage.text = targetVersion.text;
+        targetMessage.attachments = targetVersion.attachments;
+        targetMessage.activeVersionIndex = newIdx;
+        restoredFuture = targetVersion.historyPayload || [];
+    } else {
+        const targetResponse = targetMessage.responses![newIdx];
+        targetMessage.activeResponseIndex = newIdx;
+        restoredFuture = targetResponse.historyPayload || [];
+    }
+
+    const newMessagesList = [...updatedMessages.slice(0, messageIndex), targetMessage, ...restoredFuture];
+
+    return { updatedMessages: newMessagesList };
+};
