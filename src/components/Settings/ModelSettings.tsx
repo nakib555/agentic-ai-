@@ -1,9 +1,10 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { Model } from '../../types';
 import { SelectDropdown } from '../UI/SelectDropdown';
 import { SettingItem } from './SettingItem';
@@ -221,6 +222,7 @@ const ModelSettings: React.FC<ModelSettingsProps> = ({
                     >
                         <div className="w-full sm:w-[320px]">
                             <SelectDropdown 
+                                key={`model-select-${filteredReasoningModels.length}-${provider}`} // Force remount on model list update
                                 options={formatModels(filteredReasoningModels)} 
                                 value={selectedModel} 
                                 onChange={onModelChange} 
@@ -260,6 +262,7 @@ const ModelSettings: React.FC<ModelSettingsProps> = ({
                     <SettingItem label="Image Generation">
                         <div className="w-full sm:w-[320px]">
                             <SelectDropdown 
+                                key={`image-select-${imageModels.length}`}
                                 options={formatModels(imageModels)} 
                                 value={imageModel} 
                                 onChange={onImageModelChange} 
@@ -274,6 +277,7 @@ const ModelSettings: React.FC<ModelSettingsProps> = ({
                     <SettingItem label="Video Generation">
                         <div className="w-full sm:w-[320px]">
                             <SelectDropdown 
+                                key={`video-select-${videoModels.length}`}
                                 options={formatModels(videoModels)} 
                                 value={videoModel} 
                                 onChange={onVideoModelChange} 
@@ -288,6 +292,7 @@ const ModelSettings: React.FC<ModelSettingsProps> = ({
                     <SettingItem label="Speech Synthesis (TTS)">
                         <div className="w-full sm:w-[320px]">
                             <SelectDropdown 
+                                key={`tts-select-${ttsModels.length}`}
                                 options={formatModels(ttsModels)} 
                                 value={ttsModel} 
                                 onChange={onTtsModelChange} 

@@ -1,4 +1,5 @@
 
+
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -86,7 +87,7 @@ const ApiKeyForm = ({ label, value, placeholder, onSave, description }: {
                     <Button
                         type="submit"
                         disabled={isSubmitting}
-                        className="w-[80px]"
+                        className="w-[80px] active:scale-95 transition-transform"
                     >
                         {isSubmitting ? (
                             <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -139,7 +140,8 @@ const OllamaHostForm = ({ value, onSave }: { value: string, onSave: (host: strin
                 <Button
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="w-[80px]"
+                    className="w-[80px] active:scale-95 transition-transform"
+                    type="button"
                 >
                     {isSaving ? (
                         <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -164,7 +166,7 @@ const ActionButton = ({
     <Button 
         variant={danger ? "destructive" : "outline"}
         onClick={onClick}
-        className={`w-full justify-start h-auto py-3 px-4 rounded-xl shadow-none ${!danger ? "bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10" : ""}`}
+        className={`w-full justify-start h-auto py-3 px-4 rounded-xl shadow-none active:scale-[0.98] transition-all ${!danger ? "bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10" : ""}`}
     >
         <Icon className="w-4 h-4 mr-3" />
         <span className="truncate">{title}</span>

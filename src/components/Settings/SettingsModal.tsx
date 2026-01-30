@@ -1,4 +1,5 @@
 
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -186,6 +187,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = (props) => {
                 )}
                 {activeTab === 'model' && (
                   <ModelSettings 
+                    key={`${props.models.length}-${props.imageModels.length}-${props.videoModels.length}`} // Force remount on model updates
                     models={props.models}
                     imageModels={props.imageModels}
                     videoModels={props.videoModels}
