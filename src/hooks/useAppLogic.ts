@@ -1,4 +1,3 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -21,7 +20,7 @@ import { useSettingsStore } from '../store/settingsStore';
 import { useUIStore } from '../store/uiStore';
 import { toast } from 'sonner';
 
-export const useAppLogic = () => {
+export const useAppLogic = (initialChatId?: string) => {
     // --- Store State ---
     const settings = useSettingsStore();
     const ui = useUIStore();
@@ -83,15 +82,22 @@ export const useAppLogic = () => {
         settings.provider === 'openrouter' ? settings.openRouterApiKey : (settings.provider === 'ollama' ? settings.ollamaApiKey : settings.apiKey),
         (msg, type) => toast[type === 'info' ? 'info' : type === 'error' ? 'error' : 'success'](msg)
     );
+    
+    // Sync initialChatId (from Router) to useChat
+    useEffect(() => {
+        if (initialChatId && initialChatId !== chat.currentChatId) {
+            chat.loadChat(initialChatId);
+        } else if (!initialChatId && chat.currentChatId) {
+            // Only clear if explicitly asked (root path), 
+            // but beware infinite loops if `chat.startNewChat` redirects immediately.
+            // handled by App.tsx useEffect logic mostly.
+        }
+    }, [initialChatId]);
 
     // --- Helper to process models from backend response ---
     const processModelData = useCallback((data: any) => {
         if (data.models) {
             settings.setAvailableModels(data.models);
-            
-            // NOTE: Auto-switching logic has been removed from here to prevent infinite loops 
-            // when model lists are unstable or fluctuate (e.g. OpenRouter).
-            // We now rely on explicit provider changes or user selection to change the active model.
         }
         if (data.imageModels) settings.setAvailableImageModels(data.imageModels);
         if (data.videoModels) settings.setAvailableVideoModels(data.videoModels);
@@ -205,13 +211,8 @@ export const useAppLogic = () => {
             } else {
                 // Otherwise fetch explicitly
                 await fetchModels();
-                // Note: fetchModels updates the store asynchronously via processModelData.
-                // We assume for the auto-select logic below that we might need to rely on the store later, 
-                // but checking `response.models` is the primary path.
             }
             
-            // Explicitly auto-select the first available model when switching providers
-            // This prevents the "invalid model" state when moving between incompatible providers (e.g. Gemini -> Ollama)
             if (modelsList.length > 0) {
                 const firstModel = modelsList[0].id;
                 settings.setActiveModel(firstModel);
@@ -229,9 +230,7 @@ export const useAppLogic = () => {
     }, [processModelData, fetchModels, settings]);
 
     const onSaveApiKey = useCallback(async (key: string, providerType: 'gemini' | 'openrouter' | 'ollama') => {
-        setModelsLoading(true); // Signal start of refresh
-        
-        // Optimistically clear models to show loading state
+        setModelsLoading(true);
         settings.setAvailableModels([]);
         
         try {
@@ -242,16 +241,13 @@ export const useAppLogic = () => {
 
             const response = await updateSettings(updatePayload);
             
-            // Update local store only AFTER success
             if (providerType === 'gemini') settings.setApiKey(key);
             if (providerType === 'openrouter') settings.setOpenRouterApiKey(key);
             if (providerType === 'ollama') settings.setOllamaApiKey(key);
             
-            // Refresh models with the new key.
             if (response.models) {
                 processModelData(response);
                 
-                // Auto-select first model if we have a fresh list (helps new users)
                 if (response.models.length > 0 && !response.models.some((m: Model) => m.id === settings.activeModel)) {
                     const firstModel = response.models[0].id;
                     settings.setActiveModel(firstModel);
@@ -271,7 +267,7 @@ export const useAppLogic = () => {
             console.error("Failed to save API key:", error);
             toast.error('Failed to save API Key. Check server logs.');
         } finally {
-            setModelsLoading(false); // Signal end
+            setModelsLoading(false); 
         }
     }, [processModelData, fetchModels, settings]);
 
@@ -279,13 +275,10 @@ export const useAppLogic = () => {
         setModelsLoading(true);
         try {
             const response = await updateSettings({ ollamaHost: host });
-            settings.setOllamaHost(host); // Update store after success
+            settings.setOllamaHost(host); 
 
-            // Always refresh models for Ollama when host changes
             if (response.models) {
                 processModelData(response);
-                
-                // Auto-select first model if needed
                 if (response.models.length > 0 && !response.models.some((m: Model) => m.id === settings.activeModel)) {
                     const firstModel = response.models[0].id;
                     settings.setActiveModel(firstModel);
@@ -299,7 +292,7 @@ export const useAppLogic = () => {
             console.error("Failed to update Ollama host:", error);
             toast.error('Failed to update Ollama host.');
         } finally {
-            setModelsLoading(false); // Signal end
+            setModelsLoading(false);
         }
     }, [processModelData, fetchModels, settings]);
 
@@ -313,7 +306,6 @@ export const useAppLogic = () => {
     const handleShowSources = useCallback((sources: any[]) => {
         setSourcesForSidebar(sources);
         setIsSourcesSidebarOpen(true);
-        // If opening sources, ensure artifact is closed to avoid visual clutter on small screens
         if (!isWideDesktop) setIsArtifactOpen(false);
     }, [isWideDesktop]);
 
@@ -325,7 +317,6 @@ export const useAppLogic = () => {
             setArtifactContent(code);
             setArtifactLanguage(language);
             setIsArtifactOpen(true);
-            // If opening artifact, ensure sources is closed to avoid visual clutter on small screens
             if (!isWideDesktop) setIsSourcesSidebarOpen(false);
         };
         window.addEventListener('open-artifact', handleOpenArtifact as EventListener);
@@ -472,10 +463,6 @@ export const useAppLogic = () => {
             mod.exportChatToClipboard(currentChat);
         });
     }, [chat.currentChatId, chat.chatHistory]);
-
-    const saveApiKey = async (key: string, providerType: 'gemini' | 'openrouter' | 'ollama') => {
-        await onSaveApiKey(key, providerType);
-    };
 
     return {
         isDesktop, isWideDesktop, visualViewportHeight,

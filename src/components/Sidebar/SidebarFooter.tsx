@@ -15,7 +15,7 @@ type SidebarFooterProps = {
 
 export const SidebarFooter = ({ isCollapsed, isDesktop, onSettingsClick }: SidebarFooterProps) => {
   return (
-    <div className="mt-auto pt-4 border-t border-gray-200/50 dark:border-white/10">
+    <div className="mt-auto pt-4 border-t border-gray-200/50 dark:border-white/10" id="settings-trigger">
         <NavItem 
             icon={
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">

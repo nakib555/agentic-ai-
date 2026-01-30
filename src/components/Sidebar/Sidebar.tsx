@@ -1,13 +1,14 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, Suspense } from 'react';
+import React, { Suspense } from 'react';
 import { motion as motionTyped, AnimatePresence, useDragControls } from 'framer-motion';
-const motion = motionTyped as any;
+import { useHotkeys } from 'react-hotkeys-hook'; // Integrated
 import type { ChatSession } from '../../types';
+
+const motion = motionTyped as any;
 
 const SidebarContent = React.lazy(() => 
     import('./SidebarContent').then(module => ({ default: module.SidebarContent }))
@@ -43,22 +44,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
     const dragControls = useDragControls();
 
-    // Keyboard shortcut (Ctrl/Cmd + K) handling is now mainly in App logic 
-    // or ChatHeader logic if needed, but keeping a listener here for Mobile overlay is fine.
-    useEffect(() => {
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
-                event.preventDefault();
-                if (isDesktop) {
-                    setIsCollapsed(!isCollapsed);
-                } else {
-                    setIsOpen(!isOpen);
-                }
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isDesktop, isCollapsed, isOpen, setIsCollapsed, setIsOpen]);
+    // Hotkey Integration
+    useHotkeys('mod+k', (e) => {
+        e.preventDefault();
+        if (isDesktop) {
+            setIsCollapsed(!isCollapsed);
+        } else {
+            setIsOpen(!isOpen);
+        }
+    }, [isDesktop, isCollapsed, isOpen]);
+    
+    useHotkeys('mod+j', (e) => {
+        e.preventDefault();
+        if (!isNewChatDisabled) onNewChat();
+    }, [isNewChatDisabled, onNewChat]);
 
     const onDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: any) => {
         if (!isDesktop) {
@@ -69,7 +68,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     };
 
     return (
-        <aside className={`h-full flex-shrink-0 ${isDesktop ? 'relative z-20 w-full' : 'fixed inset-0 z-40 pointer-events-none'}`}>
+        <aside id="sidebar" className={`h-full flex-shrink-0 ${isDesktop ? 'relative z-20 w-full' : 'fixed inset-0 z-40 pointer-events-none'}`}>
             <AnimatePresence>
                 {!isDesktop && isOpen && (
                     <motion.div 
