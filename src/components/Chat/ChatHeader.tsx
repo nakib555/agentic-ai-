@@ -122,15 +122,9 @@ export const ChatHeader = ({
         <header className="py-3 px-4 sm:px-6 md:px-8 flex items-center justify-center sticky top-0 z-10 gap-4 w-full">
             <div className="w-full max-w-4xl flex items-center justify-between">
                 {/* --- Left: Sidebar Toggle --- */}
-                <div className="flex-shrink-0 w-11 h-11 flex items-center justify-center">
-                    {/* 
-                        Show toggle if:
-                        1. Mobile (Always show to open overlay)
-                        2. Desktop AND Collapsed (To expand)
-                        
-                        If Desktop AND Expanded, the "Close" button is inside the Sidebar header.
-                    */}
-                    {(!isDesktop || isSidebarCollapsed) && (
+                {/* Only show on Mobile. On Desktop, the mini sidebar handles toggling itself. */}
+                {!isDesktop && (
+                    <div className="flex-shrink-0 w-11 h-11 flex items-center justify-center">
                         <Tooltip content="Open Sidebar" position="bottom" delay={500}>
                             <button
                                 onClick={handleToggleSidebar}
@@ -139,8 +133,11 @@ export const ChatHeader = ({
                                 <PanelLeftIcon />
                             </button>
                         </Tooltip>
-                    )}
-                </div>
+                    </div>
+                )}
+                
+                {/* Spacer for Desktop alignment if needed */}
+                {isDesktop && <div className="w-4" />}
 
                 {/* --- Center: Title --- */}
                 <div className="flex-1 min-w-0 text-center">

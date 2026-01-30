@@ -119,7 +119,7 @@ export const App = () => {
   // Handler for toggle button in ChatHeader
   const handleToggleSidebar = () => {
       if (logic.isDesktop) {
-          // On Desktop, toggle collapse state
+          // On Desktop, toggle collapse state via ref to ensure animation triggers
           if (sidebarPanelRef.current) {
               const panel = sidebarPanelRef.current;
               if (panel.isCollapsed()) {
@@ -194,7 +194,7 @@ export const App = () => {
                     minSize={15} 
                     maxSize={30} 
                     collapsible={true}
-                    collapsedSize={0} // Completely hide when collapsed
+                    collapsedSize={4} // 4% width when collapsed (Mini Sidebar Rail)
                     onCollapse={() => logic.handleSetSidebarCollapsed(true)}
                     onExpand={() => logic.handleSetSidebarCollapsed(false)}
                     ref={sidebarPanelRef}

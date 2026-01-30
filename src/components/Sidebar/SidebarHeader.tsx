@@ -26,29 +26,29 @@ type SidebarHeaderProps = {
 };
 
 export const SidebarHeader = ({ isCollapsed, isDesktop, setIsOpen, setIsCollapsed }: SidebarHeaderProps) => {
-  // If desktop and collapsed, the header (and sidebar) is mostly hidden or width 0, 
-  // so this component might not render or be visible.
-  
+  // If isCollapsed is true on Desktop, this component is NOT rendered by SidebarContent. 
+  // It is only rendered when the sidebar is OPEN.
+
   return (
-    <div className="flex items-center justify-between px-4 mb-6 mt-3 flex-shrink-0">
+    <div className="flex items-center justify-between px-4 mb-4 mt-3 flex-shrink-0">
       <div className="flex items-center gap-3 select-none">
           <div className="flex-shrink-0">
-             <Logo className="w-10 h-10" />
+             <Logo className="w-8 h-8" />
           </div>
           
           <motion.span 
               className="font-bold text-xl text-slate-800 dark:text-slate-100 font-['Space_Grotesk'] tracking-tight whitespace-nowrap overflow-hidden"
-              initial={false}
-              animate={{ opacity: 1, width: 'auto' }}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3 }}
           >
               Agentic AI
           </motion.span>
       </div>
       
-      {/* Desktop Close Button (Only when sidebar is open) */}
+      {/* Desktop Close Button */}
       {isDesktop && (
-        <Tooltip content="Close Sidebar" position="right" delay={600}>
+        <Tooltip content="Collapse Sidebar" position="right" delay={600}>
             <button
                 onClick={() => setIsCollapsed(true)}
                 className="p-1.5 rounded-lg text-slate-400 hover:bg-gray-200/50 dark:hover:bg-white/5 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
