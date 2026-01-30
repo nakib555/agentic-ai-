@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -92,7 +93,17 @@ const MenuSectionTitle: React.FC<{ children: React.ReactNode }> = ({ children })
 
 const MenuDivider = () => <li className="my-1 h-px bg-slate-100 dark:bg-white/10 mx-2" />;
 
-export const ChatHeader = ({ onImportChat, onExportChat, onShareChat, isChatActive, chatTitle }: ChatHeaderProps) => {
+export const ChatHeader = ({ 
+    handleToggleSidebar, 
+    isSidebarOpen, 
+    isSidebarCollapsed, 
+    onImportChat, 
+    onExportChat, 
+    onShareChat, 
+    isChatActive, 
+    isDesktop,
+    chatTitle 
+}: ChatHeaderProps) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
@@ -137,8 +148,22 @@ export const ChatHeader = ({ onImportChat, onExportChat, onShareChat, isChatActi
     return (
         <header className="py-3 px-4 sm:px-6 md:px-8 flex items-center justify-center sticky top-0 z-10 gap-4 w-full">
             <div className="w-full max-w-4xl flex items-center justify-between">
-                {/* --- Left Spacer (balanced) --- */}
-                <div className="flex-shrink-0 w-11 h-11" />
+                {/* --- Left Toggle --- */}
+                <div className="flex-shrink-0 w-11 h-11 flex items-center justify-center">
+                    {(!isDesktop || isSidebarCollapsed) && (
+                        <Tooltip content={isDesktop ? "Expand Sidebar" : "Open Sidebar"} position="bottom" delay={500}>
+                            <button
+                                onClick={handleToggleSidebar}
+                                className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/10 transition-colors"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+                                    <line x1="9" y1="3" x2="9" y2="21"/>
+                                </svg>
+                            </button>
+                        </Tooltip>
+                    )}
+                </div>
 
                 {/* --- Centered Title --- */}
                 <div className="flex-1 min-w-0 text-center">
