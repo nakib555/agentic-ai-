@@ -3,18 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { PREAMBLE } from './preamble';
-import { AGENTIC_WORKFLOW } from './agenticWorkflow';
-import { PERSONA_AND_UI_FORMATTING } from './persona';
-import { TOOLS_OVERVIEW } from './tools';
+import { CHAT_PERSONA_AND_UI_FORMATTING } from './chatPersona';
 
 // =================================================================================================
-// MASTER PROMPT: CORE DIRECTIVES FOR THE AGENTIC AI
+// MASTER PROMPT: CORE DIRECTIVES FOR THE AI
 // =================================================================================================
 
-export const systemInstruction = [
-    PREAMBLE,
-    AGENTIC_WORKFLOW,
-    PERSONA_AND_UI_FORMATTING,
-    TOOLS_OVERVIEW,
-].join('\n\n');
+export const systemInstruction = CHAT_PERSONA_AND_UI_FORMATTING;
