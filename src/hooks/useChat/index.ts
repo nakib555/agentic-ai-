@@ -61,34 +61,40 @@ export const useChat = (
     // Refs to access latest state inside async callbacks (XState Services)
     const chatHistoryRef = useRef(chatHistory);
     useEffect(() => { chatHistoryRef.current = chatHistory; }, [chatHistory]);
+    
     const currentChatIdRef = useRef(currentChatId);
     useEffect(() => { currentChatIdRef.current = currentChatId; }, [currentChatId]);
 
+    const settingsRef = useRef(settings);
+    useEffect(() => { settingsRef.current = settings; }, [settings]);
+
     // ------------------------------------------------------------------------
     // SERVICE ADAPTERS
-    // These functions act as the bridge between XState and the imperative backend/ReactQuery world.
     // ------------------------------------------------------------------------
 
-    const performGenerationService = async (input: any) => {
-        const { task, newMessage, updatedMessages, currentChat, settings: eventSettings, rawEvent } = input;
+    const performGenerationService = useCallback(async (input: any) => {
+        const { task, newMessage, updatedMessages, currentChat, rawEvent } = input;
         
-        let activeChatId = input.chatId;
-        let finalChatModel = currentChat?.model || initialModel;
+        // Use settings from Ref to prevent service recreation on settings change
+        const runtimeSettings = settingsRef.current;
 
+        let activeChatId = input.chatId;
+        
         // 1. Handle New Chat Creation (Optimistic)
         if (!activeChatId && task === 'chat') {
             const optimisticId = generateId();
             activeChatId = optimisticId;
             
             const settingsToUse = {
-                temperature: settings.temperature,
-                maxOutputTokens: settings.maxOutputTokens,
-                imageModel: settings.imageModel,
-                videoModel: settings.videoModel,
+                temperature: runtimeSettings.temperature,
+                maxOutputTokens: runtimeSettings.maxOutputTokens,
+                imageModel: runtimeSettings.imageModel,
+                videoModel: runtimeSettings.videoModel,
             };
 
             // Fire and forget creation, rely on optimistic ID
-            startNewChatHistory(initialModel, settingsToUse, optimisticId);
+            // We await here to ensure the chat exists in the cache before adding messages
+            await startNewChatHistory(initialModel, settingsToUse, optimisticId);
         }
 
         // 2. Handle Message Persistence (Optimistic UI)
@@ -130,7 +136,7 @@ export const useChat = (
 
         try {
             // Re-read settings for runtime accuracy
-            const chatForConfig = chatHistoryRef.current.find(c => c.id === activeChatId) || { model: initialModel, ...settings };
+            const chatForConfig = chatHistoryRef.current.find(c => c.id === activeChatId) || { model: initialModel, ...runtimeSettings };
             
             const requestPayload = {
                 chatId: activeChatId,
@@ -138,13 +144,13 @@ export const useChat = (
                 model: chatForConfig.model,
                 newMessage: task === 'chat' ? (updatedMessages ? null : { text: rawEvent.text, ...input.newMessage }) : null,
                 settings: {
-                    systemPrompt: settings.systemPrompt,
-                    aboutUser: settings.aboutUser,
-                    aboutResponse: settings.aboutResponse,
+                    systemPrompt: runtimeSettings.systemPrompt,
+                    aboutUser: runtimeSettings.aboutUser,
+                    aboutResponse: runtimeSettings.aboutResponse,
                     temperature: chatForConfig.temperature,
                     maxOutputTokens: chatForConfig.maxOutputTokens || undefined,
-                    imageModel: settings.imageModel,
-                    videoModel: settings.videoModel,
+                    imageModel: runtimeSettings.imageModel,
+                    videoModel: runtimeSettings.videoModel,
                     memoryContent,
                 }
             };
@@ -201,52 +207,46 @@ export const useChat = (
                  handlePostChatActions(activeChatId, input.messageId, apiKey);
              }
         }
-    };
+    }, [
+        initialModel, 
+        memoryContent, 
+        apiKey, 
+        startNewChatHistory, 
+        addMessagesToChat, 
+        updateChatProperty, 
+        setChatLoadingState, 
+        updateActiveResponseOnMessage, 
+        updateMessage, 
+        completeChatLoading, 
+        onShowToast
+    ]);
 
-    const persistBranchService = async (input: { chatId: string, messages: Message[] }) => {
+    const persistBranchService = useCallback(async (input: { chatId: string, messages: Message[] }) => {
         try {
             await updateChatProperty(input.chatId, { messages: input.messages });
         } catch (e) {
             if (onShowToast) onShowToast("Failed to switch branch", 'error');
             throw e;
         }
-    };
-    
+    }, [updateChatProperty, onShowToast]);
+
     // ------------------------------------------------------------------------
     // XSTATE MACHINE
     // ------------------------------------------------------------------------
 
-    const [state, send] = useMachine(chatMachine, {
-        input: {
-            chatId: currentChatId,
-            model: initialModel
-        }
-    });
+    // Memoize actors to prevent machine reset on every render
+    const actors = useMemo(() => ({
+        performGeneration: fromPromise(async ({ input }: any) => {
+            return performGenerationService(input);
+        }),
+        persistBranch: fromPromise(async ({ input }: any) => {
+            return persistBranchService(input);
+        })
+    }), [performGenerationService, persistBranchService]);
 
-    // Provide implementations for the machine's actors
-    useEffect(() => {
-        // This is a pattern to "inject" the closure-dependent services into the machine if not using Actor Context.
-        // However, with `useMachine`, we can't easily hot-swap implementations without restarting.
-        // Instead, we defined the machine to call 'performGeneration' which we map here.
-        // But `useMachine` v5 config is static.
-        // WORKAROUND: We'll pass the implementations as input or context, OR simply modify the machine setup to call these functions directly if they are stable references.
-        // Since `performGenerationService` depends on refs (chatHistoryRef), it IS stable across renders.
-        // We need to inject it.
-        // Actually, let's keep it simple: The machine calls `performGeneration` which is defined in `chatMachine.ts`.
-        // We can pass the function in `options.actors`.
-    }, []);
-    
-    // We re-initialize useMachine with options to inject actors
     const [stateWithServices, sendWithServices] = useMachine(chatMachine, {
         input: { chatId: currentChatId, model: initialModel },
-        actors: {
-            performGeneration: fromPromise(async ({ input }: any) => {
-                return performGenerationService(input);
-            }),
-            persistBranch: fromPromise(async ({ input }: any) => {
-                return persistBranchService(input);
-            })
-        }
+        actors
     } as any);
 
     // ------------------------------------------------------------------------
@@ -281,9 +281,9 @@ export const useChat = (
             type: 'REGENERATE', 
             messageId, 
             currentChat, 
-            settings: { ...settings } 
+            settings: { ...settingsRef.current } 
         });
-    }, [sendWithServices, settings]);
+    }, [sendWithServices]);
 
     const editMessage = useCallback((messageId: string, newText: string) => {
         abortCurrent();
@@ -296,9 +296,9 @@ export const useChat = (
             messageId,
             newText,
             currentChat,
-            settings: { ...settings }
+            settings: { ...settingsRef.current }
         });
-    }, [sendWithServices, settings]);
+    }, [sendWithServices]);
 
     const navigateBranch = useCallback((messageId: string, direction: 'next' | 'prev') => {
         abortCurrent();
@@ -331,8 +331,6 @@ export const useChat = (
     }, [sendWithServices]);
 
     const handlePostChatActions = async (chatId: string, messageId: string, key: string) => {
-        // ... (Same logic as before for title generation and suggestions)
-        // Kept for compatibility, logic copied from previous implementation
         const finalChatState = chatHistoryRef.current.find(c => c.id === chatId);
         if (!finalChatState || !finalChatState.messages) return;
 
@@ -372,7 +370,6 @@ export const useChat = (
         const currentChat = chatHistoryRef.current.find(c => c.id === currentChatIdRef.current);
         if (!currentChat) return;
         
-        // Manual logic reused from branching.ts principle but for absolute index
         const updatedMessages = JSON.parse(JSON.stringify(currentChat.messages)) as Message[];
         const targetMessage = updatedMessages.find(m => m.id === messageId);
         if (!targetMessage || !targetMessage.responses) return;
@@ -393,7 +390,9 @@ export const useChat = (
     }, [updateChatProperty]);
 
     return { 
-        chatHistory, currentChatId, isHistoryLoading,
+        chatHistory: chatHistory.map(c => c.id === currentChatId ? (chatHistoryRef.current.find(refC => refC.id === c.id) || c) : c), 
+        currentChatId, 
+        isHistoryLoading,
         updateChatTitle, updateChatProperty, loadChat: loadChatHistory, deleteChat: deleteChatHistory, clearAllChats: clearAllChatsHistory, importChat, startNewChat: startNewChatHistory,
         messages: chatHistory.find(c => c.id === currentChatId)?.messages || [], 
         sendMessage, 
