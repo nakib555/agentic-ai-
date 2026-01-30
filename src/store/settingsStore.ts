@@ -51,7 +51,7 @@ interface SettingsState {
   setVideoModel: (model: string) => void;
   setTtsModel: (model: string) => void;
   
-  setTemperature: (temp: number) => void;
+  setTemperature: (temperature: number) => void;
   setMaxTokens: (tokens: number) => void;
   
   setAboutUser: (text: string) => void;

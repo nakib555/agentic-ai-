@@ -4,13 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { GoogleGenAI, FinishReason, Modality } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import type { AIProvider, ChatOptions, CompletionOptions, ModelLists } from './types';
 import type { Model as AppModel } from '../../src/types';
-import { generateContentWithRetry, generateContentStreamWithRetry, getText, generateImagesWithRetry, generateVideosWithRetry } from '../utils/geminiUtils';
+import { generateContentWithRetry, generateContentStreamWithRetry, getText } from '../utils/geminiUtils';
 import { transformHistoryToGeminiFormat } from '../utils/historyTransformer';
-import { toolDeclarations } from '../tools/declarations';
-import { runAgenticLoop } from '../services/agenticLoop/index';
 
 // Helper to sort models alpha-numerically
 const sortModelsByName = (models: AppModel[]): AppModel[] => {
@@ -33,7 +31,6 @@ const getModelCategory = (model: any): 'chat' | 'image' | 'video' | 'tts' | 'emb
     }
 
     if (methods.includes('generateImages') || lowerId.includes('imagen') || lowerId.includes('flash-image') || lowerId.includes('image-preview')) {
-        // Some older Imagen models might be duplicates or deprecated, we generally keep them
         return 'image';
     }
 
@@ -62,21 +59,16 @@ const GeminiProvider: AIProvider = {
                 return { chatModels: [], imageModels: [], videoModels: [], ttsModels: [] };
             }
 
-            // Using header authentication only to avoid leaking key in URL logs
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models`, {
                 headers: { 'x-goog-api-key': cleanKey }
             });
             
             if (!response.ok) {
                 const errorBody = await response.text();
-                
-                // Handle 400 Bad Request (Invalid Key or Location issue) gracefully
                 if (response.status === 400) {
                     console.warn('[GeminiProvider] Bad Request during model fetch:', errorBody);
-                    // Return empty list instead of throwing to prevent app crash on invalid key
                     return { chatModels: [], imageModels: [], videoModels: [], ttsModels: [] };
                 }
-
                 throw new Error(`Failed to fetch models: ${response.status} ${response.statusText} - ${errorBody}`);
             }
     
@@ -108,7 +100,6 @@ const GeminiProvider: AIProvider = {
                 }
             }
     
-            // Ensure fallback/default TTS model is present if not fetched
             const knownTtsModelId = 'gemini-2.5-flash-preview-tts';
             if (!lists.ttsModels.some(m => m.id === knownTtsModelId)) {
                  lists.ttsModels.push({
@@ -126,16 +117,15 @@ const GeminiProvider: AIProvider = {
             };
         } catch (error: any) {
             console.error('[GeminiProvider] Model fetch failed:', error.message);
-            // Return empty list on failure to prevent app crash
             return { chatModels: [], imageModels: [], videoModels: [], ttsModels: [] };
         }
     },
 
     async chat(options: ChatOptions): Promise<void> {
         const { 
-            model, messages, newMessage, systemInstruction, 
+            model, messages, systemInstruction, 
             temperature, maxTokens, apiKey, callbacks, 
-            isAgentMode, toolExecutor, signal, chatId 
+            signal
         } = options;
         
         if (!apiKey) throw new Error("Gemini API Key missing");
@@ -145,35 +135,6 @@ const GeminiProvider: AIProvider = {
         
         // Transform history once
         const fullHistory = transformHistoryToGeminiFormat(messages);
-
-        // --- AGENT MODE ---
-        if (isAgentMode && toolExecutor && chatId) {
-             await runAgenticLoop({
-                 ai,
-                 model,
-                 history: fullHistory,
-                 toolExecutor,
-                 callbacks: {
-                     ...callbacks,
-                     onNewToolCalls: callbacks.onNewToolCalls || (() => {}),
-                     onToolResult: callbacks.onToolResult || (() => {}),
-                     onPlanReady: callbacks.onPlanReady || (async () => false),
-                     onFrontendToolRequest: callbacks.onFrontendToolRequest || (() => {}),
-                     onCancel: callbacks.onCancel || (() => {}),
-                     onComplete: (finalText, groundingMetadata) => {
-                        callbacks.onComplete({ finalText, groundingMetadata });
-                     }
-                 },
-                 settings: {
-                     temperature,
-                     maxOutputTokens: maxTokens,
-                     systemInstruction
-                 },
-                 signal: signal!,
-                 threadId: chatId
-             });
-             return;
-        }
 
         // --- STANDARD STREAMING CHAT ---
         try {
@@ -226,14 +187,12 @@ const GeminiProvider: AIProvider = {
                 }
              }
              
-             // Attempt to retrieve metadata from final response
              try {
                 const response = await result.response;
                 if (response?.candidates?.[0]) {
                      groundingMetadata = response.candidates[0].groundingMetadata;
                 }
              } catch (e) {
-                // Ignore if we have text but metadata fetch failed (common in stream interruptions)
                 if (!fullText) throw e;
                 console.warn('[GeminiProvider] Stream finished but final response object was missing.', e);
              }

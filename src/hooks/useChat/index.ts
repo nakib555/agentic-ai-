@@ -79,7 +79,7 @@ export const useChat = (
         messageId: string, 
         newMessage: Message | null,
         chatConfig: Pick<ChatSession, 'model' | 'temperature' | 'maxOutputTokens' | 'imageModel' | 'videoModel'>,
-        runtimeSettings: { isAgentMode: boolean } & ChatSettings
+        runtimeSettings: ChatSettings
     ) => {
         const controller = new AbortController();
         abortControllerRef.current = controller;
@@ -232,7 +232,7 @@ export const useChat = (
                         modelPlaceholder.id,
                         userMessageObj,
                         chatForSettings,
-                        { ...settings, isAgentMode: false }
+                        { ...settings }
                     );
                 }
 
@@ -270,7 +270,7 @@ export const useChat = (
                         aiMessageId, 
                         null, 
                         currentChat, 
-                        { ...settings, isAgentMode: false }
+                        { ...settings }
                     );
                 }
             })
@@ -498,18 +498,13 @@ export const useChat = (
         
         // Using direct backend call wrapper to bypass simplified machine event for regenerate
         // because REGENERATE event expects an existing messageId, but here we created a fresh one.
-        // We reuse logic by manually creating the promise if needed, or better, leverage machine logic.
-        // For simplicity in this XState refactor, let's use the executeBackendRequest directly here
-        // or trigger a SEND like event.
-        
-        // Let's use the unified executor since XState is "driving" the UI state
         await executeBackendRequest(
             'regenerate', 
             chatId,
             modelPlaceholder.id,
             null, 
             currentChat, 
-            { ...settings, isAgentMode: false }
+            { ...settings }
         );
 
     }, [isLoading, cancelGeneration, updateChatProperty, addMessagesToChat, setChatLoadingState, settings]);
