@@ -88,6 +88,10 @@ export const useAppLogic = () => {
     const processModelData = useCallback((data: any) => {
         if (data.models) {
             settings.setAvailableModels(data.models);
+            
+            // NOTE: Auto-switching logic has been removed from here to prevent infinite loops 
+            // when model lists are unstable or fluctuate (e.g. OpenRouter).
+            // We now rely on explicit provider changes or user selection to change the active model.
         }
         if (data.imageModels) settings.setAvailableImageModels(data.imageModels);
         if (data.videoModels) settings.setAvailableVideoModels(data.videoModels);
@@ -201,9 +205,13 @@ export const useAppLogic = () => {
             } else {
                 // Otherwise fetch explicitly
                 await fetchModels();
+                // Note: fetchModels updates the store asynchronously via processModelData.
+                // We assume for the auto-select logic below that we might need to rely on the store later, 
+                // but checking `response.models` is the primary path.
             }
             
             // Explicitly auto-select the first available model when switching providers
+            // This prevents the "invalid model" state when moving between incompatible providers (e.g. Gemini -> Ollama)
             if (modelsList.length > 0) {
                 const firstModel = modelsList[0].id;
                 settings.setActiveModel(firstModel);
@@ -305,6 +313,7 @@ export const useAppLogic = () => {
     const handleShowSources = useCallback((sources: any[]) => {
         setSourcesForSidebar(sources);
         setIsSourcesSidebarOpen(true);
+        // If opening sources, ensure artifact is closed to avoid visual clutter on small screens
         if (!isWideDesktop) setIsArtifactOpen(false);
     }, [isWideDesktop]);
 
@@ -316,6 +325,7 @@ export const useAppLogic = () => {
             setArtifactContent(code);
             setArtifactLanguage(language);
             setIsArtifactOpen(true);
+            // If opening artifact, ensure sources is closed to avoid visual clutter on small screens
             if (!isWideDesktop) setIsSourcesSidebarOpen(false);
         };
         window.addEventListener('open-artifact', handleOpenArtifact as EventListener);

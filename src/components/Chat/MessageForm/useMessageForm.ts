@@ -1,4 +1,3 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -50,7 +49,7 @@ export const useMessageForm = (
     return lastVisibleMessage.text || '';
   }, [messages]);
 
-  // Always pass false for agent mode to placeholder hook since agent mode is removed
+  // Always pass false for agent mode to placeholder hook
   const placeholder = usePlaceholder(!inputValue.trim() && !isFocused, lastMessageText, false, hasApiKey);
 
   useEffect(() => {
