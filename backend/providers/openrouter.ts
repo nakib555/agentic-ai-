@@ -78,7 +78,7 @@ const OpenRouterProvider: AIProvider = {
     async chat(options: ChatOptions): Promise<void> {
         const { model, messages, systemInstruction, temperature, maxTokens, apiKey, callbacks, signal } = options;
 
-        if (!apiKey) throw new Error("OpenRouter API Key missing");
+        if (!apiKey) throw new Error("OpenRouter API Key missing. Please check your settings.");
         
         const cleanKey = apiKey.trim();
 
@@ -124,7 +124,17 @@ const OpenRouterProvider: AIProvider = {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`OpenRouter Error: ${errorText}`);
+                let errorMsg = errorText;
+                try {
+                    const json = JSON.parse(errorText);
+                    if (json.error && typeof json.error === 'object') {
+                        errorMsg = json.error.message || JSON.stringify(json.error);
+                    } else if (json.error) {
+                         errorMsg = json.error;
+                    }
+                } catch(e) {}
+                
+                throw new Error(`OpenRouter Error (${response.status}): ${errorMsg}`);
             }
 
             if (!response.body) throw new Error("No response body");
@@ -160,6 +170,11 @@ const OpenRouterProvider: AIProvider = {
 
                         try {
                             const data = JSON.parse(dataStr);
+                            // OpenRouter occasionally returns errors inside the stream data chunk
+                            if (data.error) {
+                                throw new Error(data.error.message || "Stream Error");
+                            }
+                            
                             const delta = data.choices[0]?.delta?.content;
                             if (delta) {
                                 fullText += delta;
@@ -167,6 +182,8 @@ const OpenRouterProvider: AIProvider = {
                             }
                         } catch (e) {
                              // Ignore parse errors for partial chunks (though buffering should prevent this)
+                             // But re-throw actual API errors if found
+                             if ((e as Error).message.includes("Stream Error")) throw e;
                              console.warn("OpenRouter stream parse warning:", e);
                         }
                     }

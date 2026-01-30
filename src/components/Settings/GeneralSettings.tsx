@@ -48,28 +48,26 @@ type ApiKeyFormData = z.infer<typeof apiKeySchema>;
 const ApiKeyForm = ({ label, value, placeholder, onSave, description }: { 
     label: string, value: string, placeholder: string, onSave: (key: string) => Promise<void>, description?: string 
 }) => {
-    const { register, handleSubmit, reset, formState: { errors, isSubmitting, isSubmitSuccessful } } = useForm<ApiKeyFormData>({
+    const [showSuccess, setShowSuccess] = useState(false);
+    
+    const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<ApiKeyFormData>({
         resolver: zodResolver(apiKeySchema), 
         defaultValues: { key: value }
     });
 
-    // Keep form in sync if props change (e.g. key loaded from storage later)
+    // Sync form with external value prop when it changes (e.g. initial load or provider switch)
     useEffect(() => {
         reset({ key: value });
     }, [value, reset]);
 
-    // Automatically revert the success state after 2 seconds to allow re-submission
-    useEffect(() => {
-        if (isSubmitSuccessful) {
-            const timer = setTimeout(() => {
-                reset({ key: value }, { keepValues: true }); 
-            }, 2000);
-            return () => clearTimeout(timer);
-        }
-    }, [isSubmitSuccessful, reset, value]);
-
     const onSubmit = async (data: ApiKeyFormData) => {
-        await onSave(data.key);
+        try {
+            await onSave(data.key);
+            setShowSuccess(true);
+            setTimeout(() => setShowSuccess(false), 2000);
+        } catch (e) {
+            // Error handling is done by parent via toast, but we catch here to stop success state
+        }
     };
 
     return (
@@ -91,7 +89,7 @@ const ApiKeyForm = ({ label, value, placeholder, onSave, description }: {
                     >
                         {isSubmitting ? (
                             <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : isSubmitSuccessful ? (
+                        ) : showSuccess ? (
                             <Check className="h-4 w-4" />
                         ) : (
                             'Save'
