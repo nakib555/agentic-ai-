@@ -48,11 +48,19 @@ export const updateSettings = async (req: any, res: any) => {
 
         // Check if critical settings changed (Provider or API Key)
         const providerChanged = updates.provider && updates.provider !== currentSettings.provider;
+        
+        // For Gemini/OpenRouter, check specific keys
         const keyChanged = (newSettings.provider === 'gemini' && updates.apiKey !== currentSettings.apiKey) ||
-                           (newSettings.provider === 'openrouter' && updates.openRouterApiKey !== currentSettings.openRouterApiKey) ||
-                           (newSettings.provider === 'ollama' && (updates.ollamaApiKey !== currentSettings.ollamaApiKey || updates.ollamaHost !== currentSettings.ollamaHost)); 
+                           (newSettings.provider === 'openrouter' && updates.openRouterApiKey !== currentSettings.openRouterApiKey);
 
-        if (providerChanged || keyChanged) {
+        // For Ollama, we act more aggressively: if the user is saving configuration (sending host or key),
+        // we should try to fetch models, even if the value hasn't strictly changed (e.g. retrying connection).
+        // This ensures that clicking "Save" on the form forces a refresh.
+        const isOllamaRefresh = newSettings.provider === 'ollama' && (
+            'ollamaHost' in updates || 'ollamaApiKey' in updates || providerChanged
+        );
+
+        if (providerChanged || keyChanged || isOllamaRefresh) {
             try {
                 // Fetch models based on the NEW provider and NEW key/host
                 const activeKey = newSettings.provider === 'openrouter' 
@@ -63,12 +71,14 @@ export const updateSettings = async (req: any, res: any) => {
                 
                 // Strictly require a key to fetch models, unless provider is Ollama which supports keyless local operation
                 if (activeKey || newSettings.provider === 'ollama') {
+                    // Force refresh to bypass cache
                     const { chatModels, imageModels, videoModels, ttsModels } = await listAvailableModels(activeKey || '', true);
                     res.status(200).json({ ...newSettings, models: chatModels, imageModels, videoModels, ttsModels });
                     return;
                 }
             } catch (error) {
                 // If fetching models fails (invalid key/host), just return settings
+                console.error("Auto-fetch models failed:", error);
             }
         }
 

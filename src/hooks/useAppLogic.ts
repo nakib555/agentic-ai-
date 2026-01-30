@@ -204,7 +204,8 @@ export const useAppLogic = () => {
             const response = await updateSettings({ provider: newProvider });
             
             // If the backend returned new models for this provider, update them
-            if (response.models && response.models.length > 0) {
+            // Check if models property exists (even if empty) to ensure we clear old models
+            if (response.models) {
                 processModelData(response);
             } else {
                 // Otherwise fetch explicitly
@@ -232,9 +233,7 @@ export const useAppLogic = () => {
             const response = await updateSettings(updatePayload);
             
             // Refresh models with the new key.
-            // If the backend returned models (optimized path), use them.
-            // Otherwise, force a fetch (fallback path).
-            if (response.models && response.models.length > 0) {
+            if (response.models) {
                 processModelData(response);
             } else {
                 await fetchModels();
@@ -252,7 +251,7 @@ export const useAppLogic = () => {
         try {
             const response = await updateSettings({ ollamaHost: host });
             // Always refresh models for Ollama when host changes
-            if (response.models && response.models.length > 0) {
+            if (response.models) {
                 processModelData(response);
             } else {
                 await fetchModels();
@@ -435,9 +434,6 @@ export const useAppLogic = () => {
     }, [chat.currentChatId, chat.chatHistory]);
 
     const saveApiKey = async (key: string, providerType: 'gemini' | 'openrouter' | 'ollama') => {
-        // This wrapper is used by the settings modal, but the logic is inside onSaveApiKey via useCallback
-        // We actually pass onSaveApiKey directly to SettingsModal props in the return below.
-        // This function exists for type compatibility if needed, but onSaveApiKey is the one to use.
         await onSaveApiKey(key, providerType);
     };
 
