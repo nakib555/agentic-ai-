@@ -70,12 +70,11 @@ const OllamaProvider: AIProvider = {
             
             console.log(`[OllamaProvider] Fetching installed models from: ${url}`);
             
+            // For listing tags/models, we typically do not need the API key/Authorization header,
+            // even if one is configured for the chat endpoint (e.g. via a proxy).
             const headers: Record<string, string> = {
                 'Content-Type': 'application/json'
             };
-            if (apiKey) {
-                headers['Authorization'] = `Bearer ${apiKey}`;
-            }
 
             const response = await fetchWithFallback(url, { 
                 method: 'GET', 
@@ -144,6 +143,7 @@ const OllamaProvider: AIProvider = {
             const headers: Record<string, string> = {
                 'Content-Type': 'application/json'
             };
+            // We DO use the API key for chat/generation requests
             if (apiKey) {
                 headers['Authorization'] = `Bearer ${apiKey}`;
             }
@@ -233,6 +233,7 @@ const OllamaProvider: AIProvider = {
              const headers: Record<string, string> = {
                 'Content-Type': 'application/json'
             };
+            // We DO use the API key for completion requests
             if (apiKey) {
                 headers['Authorization'] = `Bearer ${apiKey}`;
             }
