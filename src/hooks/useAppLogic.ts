@@ -204,7 +204,7 @@ export const useAppLogic = () => {
             const response = await updateSettings({ provider: newProvider });
             
             // If the backend returned new models for this provider, update them
-            // Check if models property exists (even if empty) to ensure we clear old models
+            // Check if models property exists to ensure we clear old models
             if (response.models) {
                 processModelData(response);
             } else {
@@ -235,13 +235,15 @@ export const useAppLogic = () => {
             const response = await updateSettings(updatePayload);
             
             // Refresh models with the new key.
+            // If response.models is present (even if empty), use it. 
+            // The backend guarantees to send models: [] on failure during refresh.
             if (response.models) {
                 processModelData(response);
             } else {
                 await fetchModels();
             }
             
-            toast.success('API Key saved successfully.');
+            toast.success('API Key saved and models refreshed.');
         } catch (error) {
             console.error("Failed to save API key:", error);
             toast.error('Failed to save API Key.');
@@ -262,7 +264,7 @@ export const useAppLogic = () => {
             } else {
                 await fetchModels();
             }
-            toast.success('Ollama host updated.');
+            toast.success('Ollama host updated and models refreshed.');
         } catch (error) {
             console.error("Failed to update Ollama host:", error);
             toast.error('Failed to update Ollama host.');

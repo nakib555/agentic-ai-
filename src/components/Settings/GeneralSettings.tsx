@@ -57,6 +57,16 @@ const ApiKeyForm = ({ label, value, placeholder, onSave, description }: {
         reset({ key: value });
     }, [value, reset]);
 
+    // Automatically revert the success state after 2 seconds to allow re-submission
+    useEffect(() => {
+        if (isSubmitSuccessful) {
+            const timer = setTimeout(() => {
+                reset({ key: value }, { keepValues: true }); 
+            }, 2000);
+            return () => clearTimeout(timer);
+        }
+    }, [isSubmitSuccessful, reset, value]);
+
     const onSubmit = async (data: ApiKeyFormData) => {
         await onSave(data.key);
     };
@@ -70,6 +80,7 @@ const ApiKeyForm = ({ label, value, placeholder, onSave, description }: {
                         {...register('key')}
                         type="password"
                         placeholder={placeholder}
+                        autoComplete="off"
                         className={errors.key ? 'border-red-500 focus-visible:ring-red-500' : ''}
                     />
                     <Button

@@ -89,8 +89,18 @@ export const updateSettings = async (req: any, res: any) => {
                     return;
                 }
             } catch (error) {
-                // If fetching models fails (invalid key/host), just return settings so the UI can show the error elsewhere if needed
+                // If fetching models fails (invalid key/host), we explicitly return empty arrays.
+                // This ensures the frontend clears its list immediately and doesn't fall back to a stale 'fetchModels' call.
                 console.error("Auto-fetch models failed:", error);
+                
+                res.status(200).json({ 
+                    ...newSettings, 
+                    models: [], 
+                    imageModels: [], 
+                    videoModels: [], 
+                    ttsModels: [] 
+                });
+                return;
             }
         }
 
