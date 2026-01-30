@@ -1,10 +1,10 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
 
 import { useMemo, useCallback, useRef, useEffect } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import { type Message, type ChatSession, ModelResponse } from '../../types';
 import { fileToBase64 } from '../../utils/fileUtils';
 import { useChatHistory } from '../useChatHistory';
@@ -13,7 +13,7 @@ import { fetchFromApi } from '../../utils/api';
 import { processBackendStream } from '../../services/agenticLoop/stream-processor';
 import { createStreamCallbacks } from './chat-callbacks';
 
-const generateId = () => Math.random().toString(36).substring(2, 9);
+const generateId = () => uuidv4();
 
 type ChatSettings = { 
     systemPrompt: string; 

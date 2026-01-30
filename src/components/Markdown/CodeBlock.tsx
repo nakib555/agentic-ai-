@@ -1,12 +1,10 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { useSyntaxTheme } from '../../hooks/useSyntaxTheme';
+import React, { useState, useMemo, useEffect } from 'react';
+import { createHighlighter, type Highlighter } from 'shiki';
 import { fetchFromApi } from '../../utils/api';
 import { AnimatePresence, motion as motionTyped } from 'framer-motion';
 
@@ -91,15 +89,36 @@ type CodeBlockProps = {
     isDisabled?: boolean;
 };
 
+// Singleton highlighter loader
+let highlighterPromise: Promise<Highlighter> | null = null;
+
+const getShiki = () => {
+  if (!highlighterPromise) {
+    highlighterPromise = createHighlighter({
+      themes: ['vitesse-dark', 'one-light'],
+      langs: ['javascript', 'typescript', 'python', 'html', 'css', 'json', 'bash', 'markdown', 'tsx', 'jsx', 'go', 'rust', 'c', 'cpp', 'java', 'csharp']
+    });
+  }
+  return highlighterPromise;
+};
+
 export const CodeBlock: React.FC<CodeBlockProps> = ({ language, children, isStreaming, onRunCode, isDisabled }) => {
     const [isCopied, setIsCopied] = useState(false);
     const [isRunning, setIsRunning] = useState(false);
     const [runOutput, setRunOutput] = useState<string | null>(null);
     const [showOutput, setShowOutput] = useState(false);
-    
-    const syntaxStyle = useSyntaxTheme();
+    const [html, setHtml] = useState<string>('');
+    const [isDark, setIsDark] = useState(false);
 
     const codeContent = String(children).replace(/\n$/, '');
+
+    useEffect(() => {
+        const checkDark = () => setIsDark(document.documentElement.classList.contains('dark'));
+        checkDark();
+        const observer = new MutationObserver(checkDark);
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        return () => observer.disconnect();
+    }, []);
 
     const handleCopy = () => {
         if (!codeContent) return;
@@ -117,13 +136,34 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ language, children, isStre
         // Formatted name for display
         let display = raw;
         if (language) {
-             // Heuristic for capitalizing commonly used languages correctly
              if (['html', 'css', 'json', 'xml', 'sql', 'php'].includes(raw)) display = raw.toUpperCase();
              else display = raw.charAt(0).toUpperCase() + raw.slice(1);
         }
 
         return { highlighterLang: mapped, displayLang: display };
     }, [language]);
+
+    useEffect(() => {
+        let mounted = true;
+        
+        const loadHighlight = async () => {
+             const highlighter = await getShiki();
+             if (!mounted) return;
+             
+             // Check if lang is supported by shiki instance
+             const loadedLangs = highlighter.getLoadedLanguages();
+             const langToUse = loadedLangs.includes(highlighterLang) ? highlighterLang : 'text';
+             
+             const theme = isDark ? 'vitesse-dark' : 'one-light';
+             const highlighted = highlighter.codeToHtml(codeContent, { lang: langToUse, theme });
+             
+             if (mounted) setHtml(highlighted);
+        };
+        
+        loadHighlight();
+        return () => { mounted = false; };
+    }, [codeContent, highlighterLang, isDark]);
+
 
     const handleOpenArtifact = () => {
         window.dispatchEvent(new CustomEvent('open-artifact', { 
@@ -162,9 +202,9 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ language, children, isStre
     };
 
     return (
-      <div className="my-6 rounded-lg shadow-sm font-sans group bg-code-surface transition-colors duration-300 border border-border-subtle relative">
+      <div className="my-6 rounded-lg shadow-sm font-sans group bg-code-surface transition-colors duration-300 border border-border-subtle relative overflow-hidden">
         {/* Header */}
-        <div className="sticky top-0 z-10 flex justify-between items-center px-4 py-2 bg-layer-2/80 border-b border-border-subtle select-none backdrop-blur-md rounded-t-lg">
+        <div className="sticky top-0 z-10 flex justify-between items-center px-4 py-2 bg-layer-2/80 border-b border-border-subtle select-none backdrop-blur-md">
           <div className="flex items-center gap-3">
              <span className="text-xs font-semibold text-content-tertiary font-mono">
                 {displayLang}
@@ -222,27 +262,12 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ language, children, isStre
         </div>
         
         {/* Editor Body */}
-        <div className="relative overflow-x-auto text-[13px] leading-6 custom-scrollbar">
-            <SyntaxHighlighter
-              language={highlighterLang === 'html' ? 'markup' : highlighterLang} 
-              style={syntaxStyle}
-              customStyle={{
-                margin: 0,
-                padding: '1.25rem',
-                background: 'transparent',
-                fontFamily: "'Fira Code', 'Consolas', monospace",
-                borderRadius: 0,
-                border: 'none',
-              }}
-              codeTagProps={{
-                  style: { fontFamily: "inherit" }
-              }}
-              wrapLines={true}
-              wrapLongLines={false}
-              fallbackLanguage="text"
-            >
-              {codeContent}
-            </SyntaxHighlighter>
+        <div className="relative overflow-x-auto text-[13px] leading-6 custom-scrollbar bg-code-surface p-4">
+            {html ? (
+                <div dangerouslySetInnerHTML={{ __html: html }} className="font-mono" />
+            ) : (
+                <pre className="font-mono text-sm">{codeContent}</pre>
+            )}
         </div>
 
         {/* Execution Output Panel */}

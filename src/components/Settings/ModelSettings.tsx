@@ -7,6 +7,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import type { Model } from '../../types';
 import { SelectDropdown } from '../UI/SelectDropdown';
 import { SettingItem } from './SettingItem';
+import { useDebouncedCallback } from 'use-debounce';
 
 // Modern Icons
 const SparklesIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /><path d="M5 3v4" /><path d="M9 5H3" /><path d="M19 19v4" /><path d="M21 21h-4" /></svg>;
@@ -18,22 +19,20 @@ const SpeakerIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2
 const TemperatureControl = ({ value, onChange, disabled }: { value: number, onChange: (v: number) => void, disabled?: boolean }) => {
     // Local state for immediate UI feedback during drag
     const [localValue, setLocalValue] = useState(value);
-    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Sync local state if external prop changes (e.g. reset/load settings)
     useEffect(() => {
         setLocalValue(value);
     }, [value]);
 
+    const debouncedOnChange = useDebouncedCallback((newValue) => {
+        onChange(newValue);
+    }, 300);
+
     const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newValue = parseFloat(e.target.value);
         setLocalValue(newValue);
-
-        // Debounce the parent update to prevent API flooding
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        timeoutRef.current = setTimeout(() => {
-            onChange(newValue);
-        }, 300); // 300ms delay before saving/updating global state
+        debouncedOnChange(newValue);
     };
 
     const getLabel = (v: number) => {

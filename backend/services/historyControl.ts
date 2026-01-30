@@ -1,4 +1,3 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -8,6 +7,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { HISTORY_PATH, HISTORY_INDEX_PATH, TIME_GROUPS_PATH, readData, writeData } from '../data-store';
 import type { ChatSession } from '../../src/types';
+import { isToday, isYesterday, isThisWeek } from 'date-fns';
 
 // Minimal metadata stored in the master index for fast listing
 type ChatIndexEntry = {
@@ -129,21 +129,16 @@ class HistoryControlService {
             'Older': []
         };
 
-        const now = new Date();
-        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-        const yesterdayStart = todayStart - 86400000;
-        const weekStart = todayStart - (86400000 * 7);
-
         for (const entry of index) {
-            if (entry.updatedAt >= todayStart) {
+            const date = new Date(entry.updatedAt);
+            if (isToday(date)) {
                 groups['Today'].push(entry);
-            } else if (entry.updatedAt >= yesterdayStart) {
+            } else if (isYesterday(date)) {
                 groups['Yesterday'].push(entry);
-            } else if (entry.updatedAt >= weekStart) {
+            } else if (isThisWeek(date)) {
                 groups['Previous 7 Days'].push(entry);
             } else {
                 // Group older items by Month Year
-                const date = new Date(entry.updatedAt);
                 const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric' });
                 if (!groups[monthYear]) groups[monthYear] = [];
                 groups[monthYear].push(entry);

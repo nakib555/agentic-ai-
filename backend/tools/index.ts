@@ -13,8 +13,9 @@ import { executeCalculator } from "./calculator";
 import { executeListFiles, executeDisplayFile, executeDeleteFile, executeWriteFile } from "./fileTools";
 import { executeDisplayMap } from "./map";
 import { executeBrowser } from "./browser";
+import { v4 as uuidv4 } from 'uuid';
 
-const generateId = () => Math.random().toString(36).substring(2, 9);
+const generateId = () => uuidv4();
 
 // We define a custom type for the tool executor to handle the optional onUpdate callback
 type ToolImplementation = (ai: GoogleGenAI, args: any, apiKey: string, chatId: string, onUpdate?: (data: any) => void) => Promise<string>;

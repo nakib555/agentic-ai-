@@ -1,4 +1,3 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -10,6 +9,7 @@ import { Virtuoso } from 'react-virtuoso';
 import type { ChatSession } from '../../types';
 import { HistoryItem } from './HistoryItem';
 import { Skeleton } from '../UI/Skeleton';
+import { isToday, isYesterday, isThisWeek, parseISO } from 'date-fns';
 
 const motion = motionTyped as any;
 
@@ -31,22 +31,19 @@ type FlattenedItem =
 
 const groupChats = (chats: ChatSession[]): { [key: string]: ChatSession[] } => {
     const groups: { [key: string]: ChatSession[] } = {};
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const yesterdayStart = todayStart - 86400000;
-    const lastWeekStart = todayStart - (86400000 * 7);
 
     chats.forEach(chat => {
         let groupKey: string;
-        // Check timestamps (assuming chat.createdAt is in ms)
-        if (chat.createdAt >= todayStart) {
+        const date = new Date(chat.createdAt);
+        
+        if (isToday(date)) {
             groupKey = 'Today';
-        } else if (chat.createdAt >= yesterdayStart) {
+        } else if (isYesterday(date)) {
             groupKey = 'Yesterday';
-        } else if (chat.createdAt >= lastWeekStart) {
+        } else if (isThisWeek(date)) {
             groupKey = 'Previous 7 Days';
         } else {
-            groupKey = new Date(chat.createdAt).toLocaleString('default', { month: 'long', year: 'numeric' });
+            groupKey = date.toLocaleString('default', { month: 'long', year: 'numeric' });
         }
 
         if (!groups[groupKey]) {

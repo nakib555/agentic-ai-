@@ -1,4 +1,3 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -7,6 +6,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion as motionTyped } from 'framer-motion';
 import { SelectDropdown } from '../UI/SelectDropdown';
+import { useDebounce } from 'use-debounce';
 
 const motion = motionTyped as any;
 
@@ -36,20 +36,6 @@ const INTENSITY_OPTIONS = [
     { id: 'default', label: 'Default' },
     { id: 'more', label: 'More' },
 ];
-
-// --- Hook for Debouncing ---
-function useDebounce<T>(value: T, delay: number): T {
-    const [debouncedValue, setDebouncedValue] = useState(value);
-    useEffect(() => {
-        const handler = setTimeout(() => {
-            setDebouncedValue(value);
-        }, delay);
-        return () => {
-            clearTimeout(handler);
-        };
-    }, [value, delay]);
-    return debouncedValue;
-}
 
 // --- UI Components ---
 
@@ -181,10 +167,10 @@ const PersonalizeSettings: React.FC<PersonalizeSettingsProps> = ({
     const [saveState, setSaveState] = useState<'saved' | 'saving' | 'pending'>('saved');
 
     // Debounce state only for free-form text inputs to prevent typing lag
-    const debouncedNickname = useDebounce(nickname, 300);
-    const debouncedOccupation = useDebounce(occupation, 300);
-    const debouncedMore = useDebounce(moreAboutUser, 300);
-    const debouncedInstructions = useDebounce(customInstructions, 300);
+    const [debouncedNickname] = useDebounce(nickname, 300);
+    const [debouncedOccupation] = useDebounce(occupation, 300);
+    const [debouncedMore] = useDebounce(moreAboutUser, 300);
+    const [debouncedInstructions] = useDebounce(customInstructions, 300);
 
     const parseAboutUser = useCallback((text: string) => {
         const nicknameMatch = text.match(/Nickname:\s*([^\n]+)/);

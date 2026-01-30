@@ -1,4 +1,3 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -8,6 +7,7 @@ import { GoogleGenAI, Part, FunctionCall, FinishReason, Content } from "@google/
 import { parseApiError } from "../../utils/apiError";
 import { ToolCallEvent } from "../../types";
 import { getText, generateContentStreamWithRetry } from "../../utils/geminiUtils";
+import { v4 as uuidv4 } from 'uuid';
 
 // --- Types & Interfaces ---
 
@@ -33,7 +33,7 @@ type RunAgenticLoopParams = {
     threadId: string;
 };
 
-const generateId = () => Math.random().toString(36).substring(2, 9);
+const generateId = () => uuidv4();
 const MAX_RETRIES = 2; // Max retries per tool call failure
 const MAX_TURNS = 20;  // Max conversation turns to prevent infinite loops
 

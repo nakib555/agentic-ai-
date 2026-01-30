@@ -5,8 +5,9 @@
 
 import { historyControl } from './services/historyControl';
 import type { ChatSession } from '../src/types';
+import { v4 as uuidv4 } from 'uuid';
 
-const generateId = () => Math.random().toString(36).substring(2, 9);
+const generateId = () => uuidv4();
 
 export const getHistory = async (req: any, res: any) => {
     try {
