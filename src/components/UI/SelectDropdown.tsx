@@ -24,7 +24,6 @@ type SelectDropdownProps = {
     className?: string;
     triggerClassName?: string;
     placeholder?: string;
-    id?: string; // Added id prop
 };
 
 export const SelectDropdown: React.FC<SelectDropdownProps> = ({ 
@@ -37,8 +36,7 @@ export const SelectDropdown: React.FC<SelectDropdownProps> = ({
     disabled, 
     className = '',
     triggerClassName,
-    placeholder = "Select an option",
-    id
+    placeholder = "Select an option"
 }) => {
     return (
         <div className={cn("flex flex-col gap-2", className)}>
@@ -52,7 +50,7 @@ export const SelectDropdown: React.FC<SelectDropdownProps> = ({
             )}
             
             <Select value={value} onValueChange={onChange} disabled={disabled}>
-                <SelectTrigger id={id} className={cn("w-full h-12", triggerClassName)}>
+                <SelectTrigger className={cn("w-full h-12", triggerClassName)}>
                     <div className="flex items-center gap-2.5 truncate">
                         {startIcon && (
                             <span className="flex-shrink-0 text-indigo-600 dark:text-indigo-400">

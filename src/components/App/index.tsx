@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -5,13 +6,11 @@
 
 import React, { Suspense, useState, useEffect, useRef } from 'react';
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
-import { useParams, useNavigate } from 'react-router-dom';
 import { useAppLogic } from '../../hooks/useAppLogic';
 import { AppSkeleton } from '../UI/AppSkeleton';
 import { ChatSkeleton } from '../UI/ChatSkeleton';
 import { VersionMismatchOverlay } from '../UI/VersionMismatchOverlay';
 import type { ChatSession } from '../../types';
-import { Tour } from '../UI/Tour'; // Added Tour
 import { DEFAULT_TEMPERATURE, DEFAULT_MAX_TOKENS } from './constants';
 
 // Helper for safe lazy loading named exports
@@ -62,21 +61,7 @@ const AppModals = lazyLoad(() => import('./AppModals'), 'AppModals');
 const TestRunner = lazyLoad(() => import('../Testing'), 'TestRunner');
 
 export const App = () => {
-  // Sync URL params with Logic
-  const { chatId } = useParams();
-  const navigate = useNavigate();
-  
-  // Initialize logic passing the ID from URL
-  const logic = useAppLogic(chatId);
-
-  // Sync Logic state change back to URL (e.g. New Chat created)
-  useEffect(() => {
-     if (logic.currentChatId && logic.currentChatId !== chatId) {
-         navigate(`/chat/${logic.currentChatId}`, { replace: true });
-     } else if (!logic.currentChatId && chatId) {
-         navigate('/', { replace: true });
-     }
-  }, [logic.currentChatId, chatId, navigate]);
+  const logic = useAppLogic();
 
   const currentChat = logic.currentChatId
     ? logic.chatHistory.find((c: ChatSession) => c.id === logic.currentChatId)
@@ -87,20 +72,6 @@ export const App = () => {
   const [stableHeight, setStableHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 0);
   const widthRef = useRef(typeof window !== 'undefined' ? window.innerWidth : 0);
   const sidebarPanelRef = useRef<any>(null);
-
-  // Tour State
-  const [runTour, setRunTour] = useState(false);
-  useEffect(() => {
-     const hasSeenTour = localStorage.getItem('hasSeenTour');
-     if (!hasSeenTour) {
-         setRunTour(true);
-     }
-  }, []);
-
-  const handleTourFinish = () => {
-      setRunTour(false);
-      localStorage.setItem('hasSeenTour', 'true');
-  };
 
   useEffect(() => {
       const handleResize = () => {
@@ -214,7 +185,6 @@ export const App = () => {
         }}
     >
       {logic.versionMismatch && <VersionMismatchOverlay />}
-      <Tour run={runTour} onFinish={handleTourFinish} />
       
       <Suspense fallback={<AppSkeleton />}>
         {logic.isDesktop ? (
@@ -228,7 +198,7 @@ export const App = () => {
                     onCollapse={() => logic.handleSetSidebarCollapsed(true)}
                     onExpand={() => logic.handleSetSidebarCollapsed(false)}
                     ref={sidebarPanelRef}
-                    id="sidebar-panel"
+                    id="sidebar"
                     order={1}
                 >
                     <Sidebar

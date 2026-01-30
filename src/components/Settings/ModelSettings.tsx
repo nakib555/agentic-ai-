@@ -156,6 +156,10 @@ const ModelSettings: React.FC<ModelSettingsProps> = ({
             // 2. Minimal filtering: Just ensure it's not obviously an embedding model
             const id = m.id.toLowerCase();
             if (id.includes('embedding') || id.includes('embed')) return false;
+
+            // We relax other string-based filters because backend providers (especially OpenRouter/Ollama)
+            // might have chat models with "image" or "vision" in the name (e.g. Llama 3.2 Vision).
+            // We rely on the backend to send us the correct 'chatModels' list.
             
             return true;
         });
@@ -218,7 +222,6 @@ const ModelSettings: React.FC<ModelSettingsProps> = ({
                     >
                         <div className="w-full sm:w-[320px]">
                             <SelectDropdown 
-                                id="model-selector-trigger" // ID for Tour targeting
                                 key={`model-select-${filteredReasoningModels.length}-${provider}-${filteredReasoningModels[0]?.id || 'empty'}`}
                                 options={formatModels(filteredReasoningModels)} 
                                 value={selectedModel} 

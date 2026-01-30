@@ -7,7 +7,6 @@ import React, { forwardRef, useState, Suspense, useCallback } from 'react';
 import { AnimatePresence, motion as motionTyped } from 'framer-motion';
 import { useDropzone } from 'react-dropzone';
 import { Mic, Send, Paperclip, Sparkles, X, Plus } from 'lucide-react';
-import TextareaAutosize from 'react-textarea-autosize'; // Integrated
 import { useMessageForm } from './useMessageForm';
 import { UploadMenu } from './UploadMenu';
 import { VoiceVisualizer } from '../../UI/VoiceVisualizer';
@@ -16,7 +15,6 @@ import { Message } from '../../../types';
 import { TextType } from '../../UI/TextType';
 import { Tooltip } from '../../UI/Tooltip';
 import { AttachedFilePreview } from './AttachedFilePreview';
-import { useTranslation } from 'react-i18next'; // Integrated
 
 const motion = motionTyped as any;
 
@@ -41,8 +39,6 @@ export const MessageForm = forwardRef<MessageFormHandle, MessageFormProps>((prop
     onSubmit, isLoading, isAppLoading, backendStatus, onCancel, 
     hasApiKey 
   } = props;
-  
-  const { t } = useTranslation(); // Localization
 
   const logic = useMessageForm(
     (msg, files, options) => onSubmit(msg, files, { ...options, isThinkingModeEnabled: false }),
@@ -171,7 +167,7 @@ export const MessageForm = forwardRef<MessageFormHandle, MessageFormProps>((prop
                </div>
             )}
             
-            <TextareaAutosize
+            <textarea
                 id="main-chat-input"
                 ref={logic.inputRef}
                 value={logic.inputValue}
@@ -181,10 +177,10 @@ export const MessageForm = forwardRef<MessageFormHandle, MessageFormProps>((prop
                 onFocus={() => logic.setIsFocused(true)}
                 onBlur={() => logic.setIsFocused(false)}
                 disabled={isGeneratingResponse}
-                minRows={1}
-                maxRows={8}
+                rows={1}
                 aria-label="Message Input"
-                className="w-full bg-transparent text-content-primary px-4 pt-3 pb-2 focus:outline-none resize-none leading-relaxed custom-scrollbar placeholder:text-transparent z-10"
+                className="w-full bg-transparent text-content-primary px-4 pt-3 pb-2 max-h-[120px] focus:outline-none resize-none overflow-y-auto leading-relaxed custom-scrollbar placeholder:text-transparent z-10"
+                style={{ minHeight: '3rem' }}
             />
         </div>
 

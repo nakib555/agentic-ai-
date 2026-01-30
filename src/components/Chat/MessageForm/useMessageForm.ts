@@ -3,7 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+// This is the simplified main hook for the MessageForm component.
+// It composes smaller, more focused hooks for file handling and input enhancements.
+
+import React, { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
 import { type MessageFormHandle, type ProcessedFile } from './types';
 import { useFileHandling } from './useFileHandling';
 import { useInputEnhancements } from './useInputEnhancements';
@@ -29,6 +32,9 @@ export const useMessageForm = (
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const attachButtonRef = useRef<HTMLButtonElement>(null);
   const uploadMenuRef = useRef<HTMLDivElement>(null);
+  
+  // Track previous length to optimize resizing logic
+  const prevValueLength = useRef(0);
 
   const fileHandling = useFileHandling(ref);
   const enhancements = useInputEnhancements(inputValue, setInputValue, fileHandling.processedFiles.length > 0, onSubmit);
@@ -43,6 +49,7 @@ export const useMessageForm = (
     return lastVisibleMessage.text || '';
   }, [messages]);
 
+  // Always pass false for agent mode to placeholder hook
   const placeholder = usePlaceholder(!inputValue.trim() && !isFocused, lastMessageText, false, hasApiKey);
 
   useEffect(() => {
@@ -52,6 +59,7 @@ export const useMessageForm = (
             const savedText = await storage.loadTextDraft();
             if (savedText) {
                 setInputValue(savedText);
+                prevValueLength.current = savedText.length;
             }
         } catch (e) { /* ignore */ }
         finally {
@@ -74,6 +82,44 @@ export const useMessageForm = (
     const timer = setTimeout(save, 500);
     return () => clearTimeout(timer);
   }, [inputValue]);
+  
+  // Optimized Resize Logic with RAF to prevent forced synchronous reflow
+  useLayoutEffect(() => {
+    const element = inputRef.current;
+    if (!element) return;
+
+    const rafId = requestAnimationFrame(() => {
+        const currentLength = inputValue.length;
+        const isDeleting = currentLength < prevValueLength.current;
+        prevValueLength.current = currentLength;
+
+        // Reset to auto ONLY if deleting or empty to allow shrinkage.
+        // Doing this inside RAF batches the DOM write with the subsequent read.
+        if (isDeleting || currentLength === 0) {
+            element.style.height = 'auto';
+        }
+        
+        const scrollHeight = element.scrollHeight;
+        
+        const MAX_HEIGHT_PX = 120;
+        const SINGLE_LINE_THRESHOLD = 32; 
+        
+        const shouldBeExpanded = scrollHeight > SINGLE_LINE_THRESHOLD || fileHandling.processedFiles.length > 0;
+        if (isExpanded !== shouldBeExpanded) {
+            setIsExpanded(shouldBeExpanded);
+        }
+        
+        if (scrollHeight > MAX_HEIGHT_PX) {
+            element.style.height = `${MAX_HEIGHT_PX}px`;
+            element.style.overflowY = 'auto';
+        } else {
+            element.style.height = `${scrollHeight}px`;
+            element.style.overflowY = 'hidden';
+        }
+    });
+
+    return () => cancelAnimationFrame(rafId);
+  }, [inputValue, fileHandling.processedFiles.length, isExpanded]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -87,6 +133,7 @@ export const useMessageForm = (
 
   const clearDraft = () => {
     setInputValue('');
+    prevValueLength.current = 0;
     fileHandling.clearFiles(); 
     setPreviewFile(null);
     storage.clearAllDrafts().catch(console.error);

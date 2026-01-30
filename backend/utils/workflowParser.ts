@@ -23,8 +23,7 @@ const SUPPORTED_COMPONENTS = [
     'VEO_API_KEY_SELECTION_COMPONENT',
     'LOCATION_PERMISSION_REQUEST',
     'ARTIFACT_CODE',
-    'ARTIFACT_DATA',
-    'DATA_TABLE_COMPONENT'
+    'ARTIFACT_DATA'
 ];
 
 /**
@@ -35,14 +34,13 @@ export const parseContentSegments = (text: string): RenderSegment[] => {
     if (!text) return [];
 
     // Regex to capture component tags and their content
-    const tagsPattern = SUPPORTED_COMPONENTS.join('|');
-    const componentRegex = new RegExp(`(\\[(?:${tagsPattern})\\][\\s\\S]*?\\[\\/(?:${tagsPattern})\\])`, 'g');
+    const componentRegex = new RegExp(`(\\[(?:${SUPPORTED_COMPONENTS.join('|')})\\][\\s\\S]*?\\[\\/(?:${SUPPORTED_COMPONENTS.join('|')})\\])`, 'g');
     
     const parts = text.split(componentRegex).filter(part => part);
 
     return parts.map((part): RenderSegment | null => {
         // Regex to identify which specific tag this part is
-        const matchPattern = new RegExp(`^\\[(${tagsPattern})\\]([\\s\\S]*?)\\[\\/\\1\\]$`);
+        const matchPattern = new RegExp(`^\\[(${SUPPORTED_COMPONENTS.join('|')})\\]([\\s\\S]*?)\\[\\/\\1\\]$`);
         const componentMatch = part.match(matchPattern);
         
         if (componentMatch) {
@@ -64,8 +62,7 @@ export const parseContentSegments = (text: string): RenderSegment[] => {
                     'VEO_API_KEY_SELECTION_COMPONENT': 'VEO_API_KEY', // UI specific
                     'LOCATION_PERMISSION_REQUEST': 'LOCATION_PERMISSION', // UI specific
                     'ARTIFACT_CODE': 'ARTIFACT_CODE',
-                    'ARTIFACT_DATA': 'ARTIFACT_DATA',
-                    'DATA_TABLE_COMPONENT': 'DATA_TABLE'
+                    'ARTIFACT_DATA': 'ARTIFACT_DATA'
                 };
 
                 // Special handling for simple text-wrapped components vs JSON components
@@ -90,12 +87,9 @@ export const parseContentSegments = (text: string): RenderSegment[] => {
         }
         
         // Handle incomplete tags at the very end of the stream (during typing)
-        // We strip the opening tag to prevent the user seeing raw "[IMAGE_COMPONENT]" text before data arrives
-        const incompleteTagRegex = new RegExp(`\\[(?:${tagsPattern})\\]$`);
+        const incompleteTagRegex = new RegExp(`\\[(?:${SUPPORTED_COMPONENTS.join('|')})\\]$`);
         const cleanedPart = part.replace(incompleteTagRegex, '');
         
-        // CRITICAL FIX: Do not trim() the content check. 
-        // We must preserve whitespace-only segments (like newlines) to maintain markdown structure (lists, tables).
         if (cleanedPart.length === 0 && part.length > 0 && !part.match(incompleteTagRegex)) {
              return null;
         }
@@ -116,41 +110,40 @@ export const parseAgenticWorkflow = (
   let executionText = '';
   let finalAnswerText = '';
 
-  // 1. Check for Agentic Workflow Markers
+  // 1. Check for Briefing/Plan
   const briefingMatch = rawText.match(/\[BRIEFING\]([\s\S]*?)\[\/BRIEFING\]/);
-  const planMarker = '[STEP] Strategic Plan:'; // Legacy Fallback
+  // Fallback to old format
+  const planMarker = '[STEP] Strategic Plan:';
+  const planMarkerIndex = rawText.indexOf(planMarker);
+
+  let contentStartIndex = 0;
+
+  if (briefingMatch) {
+      planText = briefingMatch[1].trim();
+      contentStartIndex = briefingMatch.index! + briefingMatch[0].length;
+  } else if (planMarkerIndex !== -1) {
+      const planStart = planMarkerIndex + planMarker.length;
+      let planEnd = rawText.indexOf('[STEP]', planStart);
+      if (planEnd === -1) planEnd = rawText.length;
+      planText = rawText.substring(planStart, planEnd).trim();
+      contentStartIndex = planEnd;
+  }
+
+  // 2. Extract Final Answer
   const finalAnswerMarker = '[STEP] Final Answer:';
   const finalAnswerIndex = rawText.lastIndexOf(finalAnswerMarker);
-
+  
+  // Logic to determine if we are in Agent Mode
   const hasSteps = rawText.includes('[STEP]') || !!briefingMatch;
 
   if (!hasSteps) {
       // Chat Mode: Everything is the final answer
       finalAnswerText = rawText;
   } else {
-      // Agent Mode: Parse Steps
-      let contentStartIndex = 0;
-
-      // Extract Plan / Briefing
-      if (briefingMatch) {
-          planText = briefingMatch[1].trim();
-          contentStartIndex = briefingMatch.index! + briefingMatch[0].length;
-      } else {
-          // Fallback parsing for legacy "Strategic Plan" steps
-          const planMarkerIndex = rawText.indexOf(planMarker);
-          if (planMarkerIndex !== -1) {
-              const planStart = planMarkerIndex + planMarker.length;
-              let planEnd = rawText.indexOf('[STEP]', planStart);
-              if (planEnd === -1) planEnd = rawText.length;
-              planText = rawText.substring(planStart, planEnd).trim();
-              contentStartIndex = planEnd;
-          }
-      }
-
-      // Extract Final Answer
+      // Agent Mode
       if (finalAnswerIndex !== -1) {
           finalAnswerText = rawText.substring(finalAnswerIndex + finalAnswerMarker.length);
-          // Extract execution text (between plan and final answer)
+          // Execution text is between plan and final answer
           if (contentStartIndex < finalAnswerIndex) {
               executionText = rawText.substring(contentStartIndex, finalAnswerIndex);
           }
@@ -161,10 +154,8 @@ export const parseAgenticWorkflow = (
   }
 
   // Cleanup strings
-  planText = planText.replace(/\[AGENT:.*?\]\s*/g, '').replace(/\[USER_APPROVAL_REQUIRED\]/g, '').trim();
-  
-  // Clean Agent tags from Final Answer
-  finalAnswerText = finalAnswerText.replace(/^\s*:?\s*\[AGENT:\s*[^\]]+\]\s*/g, '').replace(/\[AUTO_CONTINUE\]/g, '').trim();
+  planText = planText.replace(/\[AGENT:.*?\]\s*/, '').replace(/\[USER_APPROVAL_REQUIRED\]/, '').trim();
+  finalAnswerText = finalAnswerText.replace(/^\s*:?\s*\[AGENT:\s*[^\]]+\]\s*/, '').replace(/\[AUTO_CONTINUE\]/g, '').trim();
 
   // Parse Execution Log
   const textNodes: WorkflowNodeData[] = [];
@@ -172,15 +163,12 @@ export const parseAgenticWorkflow = (
   
   let match;
   let stepIndex = 0;
-  
-  let currentContextAgent = 'System'; 
-
   while ((match = stepRegex.exec(executionText)) !== null) {
     let title = match[1].trim().replace(/:$/, '').trim();
     let details = match[2].trim().replace(/\[AUTO_CONTINUE\]/g, '').trim();
     const lowerCaseTitle = title.toLowerCase();
 
-    if (lowerCaseTitle === 'final answer' || lowerCaseTitle === 'strategic plan') continue;
+    if (lowerCaseTitle === 'final answer') continue;
 
     let type: WorkflowNodeType = 'plan';
     let agentName: string | undefined;
@@ -189,36 +177,30 @@ export const parseAgenticWorkflow = (
     const agentMatch = details.match(/^\[AGENT:\s*([^\]]+)\]\s*/);
     if (agentMatch) {
         agentName = agentMatch[1].trim();
-        currentContextAgent = agentName; 
         details = details.replace(agentMatch[0], '').trim();
-    } else {
-        agentName = currentContextAgent;
     }
 
     const handoffMatch = title.match(/^Handoff:\s*(.*?)\s*->\s*(.*)/i);
-    
     if (handoffMatch) {
         type = 'handoff';
         handoff = { from: handoffMatch[1].trim(), to: handoffMatch[2].trim() };
-        currentContextAgent = handoff.to; 
     } else if (lowerCaseTitle.startsWith('validate')) {
         type = 'validation';
     } else if (lowerCaseTitle.startsWith('corrective action')) {
         type = 'correction';
     } else if (lowerCaseTitle === 'think' || lowerCaseTitle === 'adapt') {
         type = 'thought';
-        details = details || title; 
-        title = 'Reasoning';
+        details = `${title}: ${details}`;
+        title = agentName ? `Thinking` : 'Thinking';
     } else if (lowerCaseTitle === 'observe') {
         type = 'observation';
         title = 'Observation';
     } else if (ACTION_KEYWORDS.has(lowerCaseTitle)) {
         type = 'act_marker';
     } else if (GENERIC_STEP_KEYWORDS.has(lowerCaseTitle)) {
-        // Fallback
+        details = `${title}: ${details}`;
+        title = '';
     }
-
-    if (title.length > 50) title = title.substring(0, 50) + '...';
 
     textNodes.push({
         id: `step-${stepIndex++}`,
@@ -246,40 +228,46 @@ export const parseAgenticWorkflow = (
         status: nodeStatus,
         details: event,
         duration: duration,
-        agentName: currentContextAgent 
     } as WorkflowNodeData;
   });
 
   const executionLog: WorkflowNodeData[] = [];
-  
+  let lastAgentName: string | undefined;
+
+  // Interleave text steps and tool steps logic
   for (const textNode of textNodes) {
+    if (textNode.agentName) {
+        lastAgentName = textNode.agentName;
+    }
+
     if (textNode.type === 'act_marker') {
         if (toolNodesQueue.length > 0) {
+            // Assign one or more tools to this Act block
             const toolNode = toolNodesQueue.shift();
             if (toolNode) {
-                toolNode.agentName = textNode.agentName || currentContextAgent;
+                toolNode.agentName = lastAgentName;
                 executionLog.push(toolNode);
             }
-        }
-        if (textNode.details && textNode.details !== 'No details provided.') {
-             executionLog.push(textNode);
         }
     } else {
         executionLog.push(textNode);
     }
   }
   
+  // Append any remaining tools that didn't match an explicit 'Act' block
   for (const toolNode of toolNodesQueue) {
+      toolNode.agentName = lastAgentName || 'System';
       executionLog.push(toolNode);
   }
 
+  // Post-processing for status updates
   if (error) {
     let failureAssigned = false;
     for (let i = executionLog.length - 1; i >= 0; i--) {
         const node = executionLog[i];
         if (node.status === 'active' || node.status === 'pending') {
             node.status = 'failed';
-            node.details = error; 
+            node.details = error;
             failureAssigned = true;
             break;
         }
@@ -289,6 +277,7 @@ export const parseAgenticWorkflow = (
         executionLog[executionLog.length - 1].details = error;
     }
     
+    // Mark everything before the failure as done
     let failurePointReached = false;
     executionLog.forEach(node => {
         if (node.status === 'failed') failurePointReached = true;
@@ -300,6 +289,7 @@ export const parseAgenticWorkflow = (
       if (node.status !== 'failed') node.status = 'done';
     });
   } else {
+    // Determine active state for ongoing stream
     let lastActiveNodeFound = false;
     for (let i = executionLog.length - 1; i >= 0; i--) {
         const node = executionLog[i];

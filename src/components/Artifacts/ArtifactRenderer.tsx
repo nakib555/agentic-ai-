@@ -51,7 +51,7 @@ export const ArtifactRenderer: React.FC<ArtifactRendererProps> = ({ type, conten
 
     // Determines if we can render this language visually
     const isRenderable = useMemo(() => {
-        if (type === 'data') return false; // Data is now just source view in artifact renderer
+        if (type === 'data') return false;
         const l = (language || '').toLowerCase();
         return ['html', 'svg', 'javascript', 'js', 'jsx', 'ts', 'tsx', 'css', 'react', 'vue', 'svelte', 'python'].includes(l);
     }, [type, language]);
@@ -71,8 +71,41 @@ export const ArtifactRenderer: React.FC<ArtifactRendererProps> = ({ type, conten
 
     const renderPreview = () => {
         if (type === 'data') {
-             // Fallback for data types if we are in preview mode somehow
-             return <pre className="p-4 text-xs font-mono overflow-auto">{content}</pre>;
+            try {
+                // Basic CSV/JSON table renderer
+                const isJson = content.trim().startsWith('{') || content.trim().startsWith('[');
+                let data = isJson ? JSON.parse(content) : null;
+                
+                // If simple array of objects, render table
+                if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object') {
+                    const headers = Object.keys(data[0]);
+                    return (
+                        <div className="overflow-auto max-h-[400px]">
+                            <table className="min-w-full text-sm">
+                                <thead className="bg-gray-100 dark:bg-white/5 sticky top-0">
+                                    <tr>
+                                        {headers.map(h => (
+                                            <th key={h} className="px-4 py-2 text-left font-semibold text-slate-700 dark:text-slate-200">{h}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {data.map((row: any, i: number) => (
+                                        <tr key={i} className="border-t border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/5">
+                                            {headers.map(h => (
+                                                <td key={h} className="px-4 py-2 text-slate-600 dark:text-slate-400">{String(row[h])}</td>
+                                            ))}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    );
+                }
+                return <pre className="p-4 text-xs font-mono">{JSON.stringify(data, null, 2)}</pre>;
+            } catch (e) {
+                return <div className="p-4 text-red-500">Failed to parse data artifact.</div>;
+            }
         }
 
         return (
@@ -110,7 +143,7 @@ export const ArtifactRenderer: React.FC<ArtifactRendererProps> = ({ type, conten
                     {title || (type === 'code' ? 'Code Snippet' : 'Data View')}
                 </span>
                 <div className="flex items-center gap-2">
-                    {isRenderable && activeTab === 'preview' && type !== 'data' && (
+                    {isRenderable && activeTab === 'preview' && (
                          <button 
                             onClick={handleRefresh}
                             className="p-1.5 rounded-md text-gray-500 dark:text-gray-400 hover:text-indigo-500 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
