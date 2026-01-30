@@ -10,7 +10,7 @@ type TourProps = {
 
 export const Tour: React.FC<TourProps> = ({ run, onFinish }) => {
   const { theme } = useTheme();
-  const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const isDark = theme === 'dark' || (theme === 'system' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   const steps = [
     {
@@ -34,7 +34,7 @@ export const Tour: React.FC<TourProps> = ({ run, onFinish }) => {
 
   const handleJoyrideCallback = (data: CallBackProps) => {
     const { status } = data;
-    if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status)) {
+    if (([STATUS.FINISHED, STATUS.SKIPPED] as string[]).includes(status)) {
       onFinish();
     }
   };
