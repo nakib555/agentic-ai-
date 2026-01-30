@@ -204,7 +204,6 @@ export const ChatArea = ({
           messageFormRef={messageFormRef}
           onRegenerate={onRegenerate}
           onSetActiveResponseIndex={handleSetActiveResponseIndex}
-          isAgentMode={false} // Permanently disabled
           onEditMessage={onEditMessage}
           onNavigateBranch={onNavigateBranch}
       />
