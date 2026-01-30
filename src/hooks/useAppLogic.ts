@@ -89,27 +89,14 @@ export const useAppLogic = () => {
         if (data.models) {
             settings.setAvailableModels(data.models);
             
-            // Auto-switch model if current active model is not in the new list.
-            // This is critical when switching providers (e.g. Gemini -> Ollama) to prevent
-            // sending a Gemini model ID to Ollama which causes 404s.
-            const currentModelValid = data.models.some((m: Model) => m.id === settings.activeModel);
-            if (!currentModelValid && data.models.length > 0) {
-                const newModel = data.models[0].id;
-                console.log(`[App] Auto-switching model from ${settings.activeModel} to ${newModel}`);
-                
-                settings.setActiveModel(newModel);
-                updateSettings({ activeModel: newModel }).catch(console.error);
-                
-                // Update the current active chat session to use the new model immediately
-                if (chat.currentChatId) {
-                    chat.updateChatModel(chat.currentChatId, newModel);
-                }
-            }
+            // NOTE: Auto-switching logic has been removed from here to prevent infinite loops 
+            // when model lists are unstable or fluctuate (e.g. OpenRouter).
+            // We now rely on explicit provider changes or user selection to change the active model.
         }
         if (data.imageModels) settings.setAvailableImageModels(data.imageModels);
         if (data.videoModels) settings.setAvailableVideoModels(data.videoModels);
         if (data.ttsModels) settings.setAvailableTtsModels(data.ttsModels);
-    }, [settings, chat]);
+    }, [settings]);
 
     // --- Initial Data Loading ---
     const fetchModels = useCallback(async () => {
@@ -210,13 +197,25 @@ export const useAppLogic = () => {
         try {
             const response = await updateSettings({ provider: newProvider });
             
+            let modelsList = response.models || [];
+
             // If the backend returned new models for this provider, update them
-            // Check if models property exists to ensure we clear old models
             if (response.models) {
                 processModelData(response);
             } else {
                 // Otherwise fetch explicitly
                 await fetchModels();
+                // Note: fetchModels updates the store asynchronously via processModelData.
+                // We assume for the auto-select logic below that we might need to rely on the store later, 
+                // but checking `response.models` is the primary path.
+            }
+            
+            // Explicitly auto-select the first available model when switching providers
+            // This prevents the "invalid model" state when moving between incompatible providers (e.g. Gemini -> Ollama)
+            if (modelsList.length > 0) {
+                const firstModel = modelsList[0].id;
+                settings.setActiveModel(firstModel);
+                await updateSettings({ activeModel: firstModel });
             }
             
             toast.success(`Switched provider to ${newProvider === 'gemini' ? 'Google Gemini' : newProvider === 'openrouter' ? 'OpenRouter' : 'Ollama'}.`);
@@ -251,6 +250,14 @@ export const useAppLogic = () => {
             // Refresh models with the new key.
             if (response.models) {
                 processModelData(response);
+                
+                // Auto-select first model if we have a fresh list (helps new users)
+                if (response.models.length > 0 && !response.models.some((m: Model) => m.id === settings.activeModel)) {
+                    const firstModel = response.models[0].id;
+                    settings.setActiveModel(firstModel);
+                    updateSettings({ activeModel: firstModel }).catch(console.error);
+                }
+
                 if (response.models.length === 0) {
                      toast.warning('API Key saved, but no models were found. Check your key permissions.');
                 } else {
@@ -277,6 +284,13 @@ export const useAppLogic = () => {
             // Always refresh models for Ollama when host changes
             if (response.models) {
                 processModelData(response);
+                
+                // Auto-select first model if needed
+                if (response.models.length > 0 && !response.models.some((m: Model) => m.id === settings.activeModel)) {
+                    const firstModel = response.models[0].id;
+                    settings.setActiveModel(firstModel);
+                    updateSettings({ activeModel: firstModel }).catch(console.error);
+                }
             } else {
                 await fetchModels();
             }
