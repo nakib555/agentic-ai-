@@ -549,6 +549,17 @@ export const useChat = (
         
         const updatedMessages = JSON.parse(JSON.stringify(currentChat.messages)) as Message[];
         const targetMessage = updatedMessages[messageIndex];
+
+        // Ensure responses array is properly initialized for legacy messages
+        if (!targetMessage.responses || targetMessage.responses.length === 0) {
+            targetMessage.responses = [{
+                text: targetMessage.text,
+                startTime: Date.now(),
+                toolCallEvents: []
+            }];
+            targetMessage.activeResponseIndex = 0;
+        }
+
         const currentResponseIndex = targetMessage.activeResponseIndex;
 
         // Save current response future
@@ -559,7 +570,9 @@ export const useChat = (
 
         // Create new response branch
         const newResponse: ModelResponse = { text: '', toolCallEvents: [], startTime: Date.now() };
+        // Ensure array exists (double safety though above block covers it)
         if (!targetMessage.responses) targetMessage.responses = [];
+        
         targetMessage.responses.push(newResponse);
         targetMessage.activeResponseIndex = targetMessage.responses.length - 1;
         targetMessage.isThinking = true;
