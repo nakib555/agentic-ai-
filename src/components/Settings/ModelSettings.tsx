@@ -222,7 +222,7 @@ const ModelSettings: React.FC<ModelSettingsProps> = ({
                     >
                         <div className="w-full sm:w-[320px]">
                             <SelectDropdown 
-                                key={`model-select-${filteredReasoningModels.length}-${provider}`} // Force remount on model list update
+                                key={`model-select-${filteredReasoningModels.length}-${provider}-${filteredReasoningModels[0]?.id || 'empty'}`}
                                 options={formatModels(filteredReasoningModels)} 
                                 value={selectedModel} 
                                 onChange={onModelChange} 

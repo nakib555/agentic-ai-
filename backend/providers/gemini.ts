@@ -55,7 +55,7 @@ const GeminiProvider: AIProvider = {
         try {
             console.log('[GeminiProvider] Fetching models...');
             const cleanKey = apiKey ? apiKey.trim() : '';
-            const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models', {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}`, {
                 headers: { 'x-goog-api-key': cleanKey }
             });
             
