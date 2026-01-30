@@ -4,7 +4,8 @@
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { createHighlighter, type Highlighter } from 'shiki';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { useSyntaxTheme } from '../../hooks/useSyntaxTheme';
 import { fetchFromApi } from '../../utils/api';
 import { AnimatePresence, motion as motionTyped } from 'framer-motion';
 
@@ -22,7 +23,7 @@ const languageMap: { [key: string]: string } = {
     // Shell
     sh: 'bash', bash: 'bash', shell: 'bash', zsh: 'bash', console: 'bash',
     
-    // Web - Updated to preserve 'html' for better UI labels
+    // Web
     html: 'html', xml: 'xml', svg: 'svg', markup: 'html',
     css: 'css', scss: 'scss', sass: 'scss', less: 'less',
     
@@ -89,36 +90,15 @@ type CodeBlockProps = {
     isDisabled?: boolean;
 };
 
-// Singleton highlighter loader
-let highlighterPromise: Promise<Highlighter> | null = null;
-
-const getShiki = () => {
-  if (!highlighterPromise) {
-    highlighterPromise = createHighlighter({
-      themes: ['vitesse-dark', 'one-light'],
-      langs: ['javascript', 'typescript', 'python', 'html', 'css', 'json', 'bash', 'markdown', 'tsx', 'jsx', 'go', 'rust', 'c', 'cpp', 'java', 'csharp']
-    });
-  }
-  return highlighterPromise;
-};
-
 export const CodeBlock: React.FC<CodeBlockProps> = ({ language, children, isStreaming, onRunCode, isDisabled }) => {
     const [isCopied, setIsCopied] = useState(false);
     const [isRunning, setIsRunning] = useState(false);
     const [runOutput, setRunOutput] = useState<string | null>(null);
     const [showOutput, setShowOutput] = useState(false);
-    const [html, setHtml] = useState<string>('');
-    const [isDark, setIsDark] = useState(false);
+    
+    const syntaxStyle = useSyntaxTheme();
 
     const codeContent = String(children).replace(/\n$/, '');
-
-    useEffect(() => {
-        const checkDark = () => setIsDark(document.documentElement.classList.contains('dark'));
-        checkDark();
-        const observer = new MutationObserver(checkDark);
-        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-        return () => observer.disconnect();
-    }, []);
 
     const handleCopy = () => {
         if (!codeContent) return;
@@ -142,27 +122,6 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ language, children, isStre
 
         return { highlighterLang: mapped, displayLang: display };
     }, [language]);
-
-    useEffect(() => {
-        let mounted = true;
-        
-        const loadHighlight = async () => {
-             const highlighter = await getShiki();
-             if (!mounted) return;
-             
-             // Check if lang is supported by shiki instance
-             const loadedLangs = highlighter.getLoadedLanguages();
-             const langToUse = loadedLangs.includes(highlighterLang) ? highlighterLang : 'text';
-             
-             const theme = isDark ? 'vitesse-dark' : 'one-light';
-             const highlighted = highlighter.codeToHtml(codeContent, { lang: langToUse, theme });
-             
-             if (mounted) setHtml(highlighted);
-        };
-        
-        loadHighlight();
-        return () => { mounted = false; };
-    }, [codeContent, highlighterLang, isDark]);
 
 
     const handleOpenArtifact = () => {
@@ -262,12 +221,25 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ language, children, isStre
         </div>
         
         {/* Editor Body */}
-        <div className="relative overflow-x-auto text-[13px] leading-6 custom-scrollbar bg-code-surface p-4">
-            {html ? (
-                <div dangerouslySetInnerHTML={{ __html: html }} className="font-mono" />
-            ) : (
-                <pre className="font-mono text-sm">{codeContent}</pre>
-            )}
+        <div className="relative overflow-x-auto text-[13px] leading-6 custom-scrollbar bg-code-surface">
+            <SyntaxHighlighter
+                language={highlighterLang}
+                style={syntaxStyle}
+                customStyle={{ 
+                    margin: 0, 
+                    padding: '1.5rem', 
+                    fontSize: '13px', 
+                    lineHeight: '1.5',
+                    fontFamily: "'Fira Code', monospace",
+                    background: 'transparent',
+                }}
+                showLineNumbers={true}
+                wrapLines={false}
+                lineNumberStyle={{ minWidth: '3em', paddingRight: '1em', opacity: 0.3 }}
+                fallbackLanguage="text"
+            >
+                {codeContent}
+            </SyntaxHighlighter>
         </div>
 
         {/* Execution Output Panel */}
