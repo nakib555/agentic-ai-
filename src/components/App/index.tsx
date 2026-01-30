@@ -9,11 +9,11 @@ import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { useAppLogic } from '../../hooks/useAppLogic';
 import { AppSkeleton } from '../UI/AppSkeleton';
 import { ChatSkeleton } from '../UI/ChatSkeleton';
-import { DEFAULT_TEMPERATURE, DEFAULT_MAX_TOKENS } from './constants';
 import { VersionMismatchOverlay } from '../UI/VersionMismatchOverlay';
 import type { ChatSession } from '../../types';
+import { DEFAULT_TEMPERATURE, DEFAULT_MAX_TOKENS } from './constants';
 
-// Helper for safe lazy loading named exports with auto-reload logic for chunks
+// Helper for safe lazy loading named exports
 function lazyLoad<T extends React.ComponentType<any>>(
   importFactory: () => Promise<{ [key: string]: any }>,
   name: string
@@ -116,23 +116,29 @@ export const App = () => {
     }
   }, [logic.isDesktop, logic.isSidebarCollapsed]);
 
+  // Handler for toggle button in ChatHeader
+  const handleToggleSidebar = () => {
+      if (logic.isDesktop) {
+          // On Desktop, toggle collapse state
+          if (sidebarPanelRef.current) {
+              const panel = sidebarPanelRef.current;
+              if (panel.isCollapsed()) {
+                  panel.expand();
+              } else {
+                  panel.collapse();
+              }
+          }
+      } else {
+          // On Mobile, toggle open state overlay
+          logic.handleToggleSidebar();
+      }
+  };
 
   const renderMainContent = () => (
     <div className="flex-1 flex flex-col w-full min-h-0 h-full bg-page transition-colors duration-300">
         <ChatHeader 
             isDesktop={logic.isDesktop}
-            handleToggleSidebar={() => {
-                if (logic.isDesktop && sidebarPanelRef.current) {
-                    const isCollapsed = sidebarPanelRef.current.isCollapsed();
-                    if (isCollapsed) {
-                        sidebarPanelRef.current.expand();
-                    } else {
-                        sidebarPanelRef.current.collapse();
-                    }
-                } else {
-                    logic.handleToggleSidebar();
-                }
-            }}
+            handleToggleSidebar={handleToggleSidebar}
             isSidebarOpen={logic.isSidebarOpen}
             isSidebarCollapsed={logic.isSidebarCollapsed}
             onImportChat={logic.handleImportChat}
@@ -188,7 +194,7 @@ export const App = () => {
                     minSize={15} 
                     maxSize={30} 
                     collapsible={true}
-                    collapsedSize={4}
+                    collapsedSize={0} // Completely hide when collapsed
                     onCollapse={() => logic.handleSetSidebarCollapsed(true)}
                     onExpand={() => logic.handleSetSidebarCollapsed(false)}
                     ref={sidebarPanelRef}
@@ -213,7 +219,7 @@ export const App = () => {
                     />
                 </Panel>
                 
-                <PanelResizeHandle className="w-1 bg-border-default hover:bg-primary-main transition-colors duration-200 focus:outline-none" />
+                <PanelResizeHandle className={`w-1 bg-transparent hover:bg-primary-main/50 transition-colors duration-200 focus:outline-none z-30 ${logic.isSidebarCollapsed ? 'hidden' : 'block'}`} />
 
                 <Panel order={2} minSize={30}>
                     {renderMainContent()}
@@ -221,7 +227,7 @@ export const App = () => {
 
                 {(logic.isSourcesSidebarOpen || logic.isArtifactOpen) && (
                     <>
-                        <PanelResizeHandle className="w-1 bg-border-default hover:bg-primary-main transition-colors duration-200 focus:outline-none" />
+                        <PanelResizeHandle className="w-1 bg-transparent hover:bg-primary-main/50 transition-colors duration-200 focus:outline-none z-30" />
                         <Panel defaultSize={25} minSize={20} maxSize={40} order={3} id="right-sidebar">
                             {logic.isSourcesSidebarOpen ? (
                                 <SourcesSidebar
@@ -242,14 +248,14 @@ export const App = () => {
                 )}
             </PanelGroup>
         ) : (
-            // Mobile Layout (Unchanged structure)
+            // Mobile Layout
             <>
                 <Sidebar
                     isDesktop={false}
                     isOpen={logic.isSidebarOpen} 
                     setIsOpen={logic.setIsSidebarOpen}
-                    isCollapsed={logic.isSidebarCollapsed}
-                    setIsCollapsed={logic.handleSetSidebarCollapsed}
+                    isCollapsed={false} // Never collapsed on mobile
+                    setIsCollapsed={() => {}}
                     history={logic.chatHistory}
                     isHistoryLoading={logic.isHistoryLoading}
                     currentChatId={logic.currentChatId}

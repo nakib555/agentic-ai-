@@ -4,11 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, Suspense } from 'react';
 import { motion as motionTyped, AnimatePresence, useDragControls } from 'framer-motion';
 const motion = motionTyped as any;
 import type { ChatSession } from '../../types';
-import { PanelLeftClose } from 'lucide-react';
 
 const SidebarContent = React.lazy(() => 
     import('./SidebarContent').then(module => ({ default: module.SidebarContent }))
@@ -44,17 +43,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
     const dragControls = useDragControls();
 
+    // Keyboard shortcut (Ctrl/Cmd + K) handling is now mainly in App logic 
+    // or ChatHeader logic if needed, but keeping a listener here for Mobile overlay is fine.
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
             if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
                 event.preventDefault();
-                if (isCollapsed) setIsCollapsed(false);
-                if (!isOpen && !isDesktop) setIsOpen(true);
+                if (isDesktop) {
+                    setIsCollapsed(!isCollapsed);
+                } else {
+                    setIsOpen(!isOpen);
+                }
             }
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isCollapsed, isDesktop, isOpen, setIsCollapsed, setIsOpen]);
+    }, [isDesktop, isCollapsed, isOpen, setIsCollapsed, setIsOpen]);
 
     const onDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: any) => {
         if (!isDesktop) {
@@ -144,17 +148,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         />
                     </Suspense>
                 </div>
-                
-                {isDesktop && isCollapsed && (
-                    <button
-                        onClick={() => setIsCollapsed(false)}
-                        className="absolute -right-3 top-12 w-6 h-12 bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-white/10 rounded-r-lg flex items-center justify-center text-slate-400 hover:text-indigo-500 shadow-sm cursor-pointer z-50 opacity-0 group-hover:opacity-100 transition-opacity delay-300"
-                        title="Expand sidebar"
-                        aria-label="Expand sidebar"
-                    >
-                        <PanelLeftClose className="w-4 h-4 rotate-180" />
-                    </button>
-                )}
             </motion.div>
         </aside>
     );
