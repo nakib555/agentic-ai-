@@ -4,14 +4,14 @@
  */
 
 import React, { type ReactNode, type ReactElement } from 'react';
-import { ErrorBoundary as ReactErrorBoundary } from 'react-error-boundary';
+import { ErrorBoundary as ReactErrorBoundary, type FallbackProps } from 'react-error-boundary';
 
-interface ErrorBoundaryProps {
+export interface CustomErrorBoundaryProps {
   children?: ReactNode;
-  fallback?: ReactElement;
+  fallback?: ReactElement | null;
 }
 
-const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) => {
+const ErrorFallback = ({ error }: FallbackProps) => {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-page p-4 text-center z-[9999]">
       <div className="bg-white dark:bg-layer-1 p-8 rounded-2xl shadow-xl border border-border max-w-md w-full">
@@ -37,7 +37,7 @@ const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error, resetError
   );
 };
 
-export const ErrorBoundary = ({ children, fallback }: ErrorBoundaryProps) => {
+export const ErrorBoundary = ({ children, fallback }: CustomErrorBoundaryProps) => {
   if (fallback) {
     return (
       <ReactErrorBoundary fallback={fallback} onReset={() => window.location.reload()}>
