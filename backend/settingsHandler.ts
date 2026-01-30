@@ -1,6 +1,4 @@
 
-
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -48,43 +46,50 @@ export const updateSettings = async (req: any, res: any) => {
         // Persist to Disk
         await writeData(SETTINGS_FILE_PATH, newSettings);
 
-        // Check if critical settings changed (Provider or API Key)
-        const providerChanged = updates.provider && updates.provider !== currentSettings.provider;
-        
-        // For Gemini/OpenRouter, check specific keys
-        // Fix: Check for presence in updates to allow force refresh even if key string is same
-        const keyChanged = (newSettings.provider === 'gemini' && 'apiKey' in updates) ||
-                           (newSettings.provider === 'openrouter' && 'openRouterApiKey' in updates);
+        // Check if any configuration that affects models has been touched in this request.
+        // We check for the presence of keys in 'updates' to ensure that even if the value 
+        // hasn't changed (e.g. user clicking Save again), we still force a refresh as requested.
+        const shouldRefreshModels = 
+            (updates.provider && updates.provider !== currentSettings.provider) ||
+            'apiKey' in updates ||
+            'openRouterApiKey' in updates ||
+            'ollamaApiKey' in updates ||
+            'ollamaHost' in updates;
 
-        // For Ollama, we act more aggressively: if the user is saving configuration (sending host or key),
-        // we should try to fetch models, even if the value hasn't strictly changed (e.g. retrying connection).
-        // This ensures that clicking "Save" on the form forces a refresh.
-        const isOllamaRefresh = newSettings.provider === 'ollama' && (
-            'ollamaHost' in updates || 'ollamaApiKey' in updates || providerChanged
-        );
-
-        if (providerChanged || keyChanged || isOllamaRefresh) {
+        if (shouldRefreshModels) {
             try {
-                // Fetch models based on the NEW provider and NEW key/host
-                const activeKey = newSettings.provider === 'openrouter' 
-                    ? newSettings.openRouterApiKey 
-                    : newSettings.provider === 'ollama'
-                        ? newSettings.ollamaApiKey
-                        : newSettings.apiKey;
+                // Determine the active key based on the provider we are switching to (or are currently on)
+                const activeProvider = newSettings.provider;
+                let activeKey = '';
+
+                if (activeProvider === 'openrouter') {
+                    activeKey = newSettings.openRouterApiKey;
+                } else if (activeProvider === 'ollama') {
+                    activeKey = newSettings.ollamaApiKey;
+                } else {
+                    activeKey = newSettings.apiKey;
+                }
                 
                 // Strictly require a key to fetch models, unless provider is Ollama which supports keyless local operation
-                if (activeKey || newSettings.provider === 'ollama') {
-                    // Force refresh to bypass cache
+                if (activeKey || activeProvider === 'ollama') {
+                    // Force refresh (second param = true) to bypass cache and get latest models
                     const { chatModels, imageModels, videoModels, ttsModels } = await listAvailableModels(
                         activeKey || '', 
                         true,
-                        newSettings.provider // Explicitly pass the provider we just updated to avoid race conditions
+                        activeProvider
                     );
-                    res.status(200).json({ ...newSettings, models: chatModels, imageModels, videoModels, ttsModels });
+                    
+                    res.status(200).json({ 
+                        ...newSettings, 
+                        models: chatModels, 
+                        imageModels, 
+                        videoModels, 
+                        ttsModels 
+                    });
                     return;
                 }
             } catch (error) {
-                // If fetching models fails (invalid key/host), just return settings
+                // If fetching models fails (invalid key/host), just return settings so the UI can show the error elsewhere if needed
                 console.error("Auto-fetch models failed:", error);
             }
         }

@@ -224,6 +224,8 @@ export const useAppLogic = () => {
         if (providerType === 'openrouter') settings.setOpenRouterApiKey(key);
         if (providerType === 'ollama') settings.setOllamaApiKey(key);
         
+        setModelsLoading(true); // Signal start of refresh
+        
         try {
             const updatePayload: Partial<AppSettings> = { provider: providerType };
             if (providerType === 'gemini') updatePayload.apiKey = key;
@@ -243,11 +245,15 @@ export const useAppLogic = () => {
         } catch (error) {
             console.error("Failed to save API key:", error);
             toast.error('Failed to save API Key.');
+        } finally {
+            setModelsLoading(false); // Signal end
         }
     }, [processModelData, fetchModels, settings]);
 
     const onSaveOllamaHost = useCallback(async (host: string) => {
         settings.setOllamaHost(host);
+        setModelsLoading(true); // Signal start of refresh
+        
         try {
             const response = await updateSettings({ ollamaHost: host });
             // Always refresh models for Ollama when host changes
@@ -260,6 +266,8 @@ export const useAppLogic = () => {
         } catch (error) {
             console.error("Failed to update Ollama host:", error);
             toast.error('Failed to update Ollama host.');
+        } finally {
+            setModelsLoading(false); // Signal end
         }
     }, [processModelData, fetchModels, settings]);
 
