@@ -27,21 +27,9 @@ export const getApiBaseUrl = (): string => {
         }
     } catch (e) {}
 
-    // 3. Development/Localhost logic
-    if (typeof window !== 'undefined') {
-        const { hostname, port, protocol } = window.location;
-        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
-
-        if (isLocal) {
-            if (port !== '3001') {
-                return `${protocol}//${hostname}:3001`;
-            }
-            return '';
-        }
-        
-        return ''; 
-    }
-
+    // 3. Default to Relative Path (Works for Prod Monolith AND Dev Proxy)
+    // We removed the hardcoded localhost:3001 check to allow the Vite proxy 
+    // to handle routing correctly for LAN/Mobile devices.
     return '';
 };
 
