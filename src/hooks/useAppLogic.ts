@@ -339,8 +339,8 @@ export const useAppLogic = () => {
     }, [chat.importChat]);
 
     const handleExportAllChats = useCallback(() => {
-        import('../utils/exportUtils').then(mod => {
-            (mod as any).exportAllChatsToJson(chat.chatHistory);
+        import('../utils/exportUtils/index').then(mod => {
+            mod.exportAllChatsToJson(chat.chatHistory);
         });
     }, [chat.chatHistory]);
 
@@ -446,10 +446,10 @@ export const useAppLogic = () => {
         const currentChat = chat.chatHistory.find(c => c.id === chat.currentChatId);
         if (!currentChat) return;
 
-        import('../utils/exportUtils').then(mod => {
-            if (format === 'json') (mod as any).exportChatToJson(currentChat);
-            else if (format === 'md') (mod as any).exportChatToMarkdown(currentChat);
-            else if (format === 'pdf') (mod as any).exportChatToPdf(currentChat);
+        import('../utils/exportUtils/index').then(mod => {
+            if (format === 'json') mod.exportChatToJson(currentChat);
+            else if (format === 'md') mod.exportChatToMarkdown(currentChat);
+            else if (format === 'pdf') mod.exportChatToPdf(currentChat);
         });
     }, [chat.currentChatId, chat.chatHistory]);
 
@@ -458,8 +458,8 @@ export const useAppLogic = () => {
         const currentChat = chat.chatHistory.find(c => c.id === chat.currentChatId);
         if (!currentChat) return;
         
-        import('../utils/exportUtils').then(mod => {
-            (mod as any).exportChatToClipboard(currentChat);
+        import('../utils/exportUtils/index').then(mod => {
+            mod.exportChatToClipboard(currentChat);
         });
     }, [chat.currentChatId, chat.chatHistory]);
 

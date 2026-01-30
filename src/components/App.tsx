@@ -1,9 +1,2 @@
-
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-// DEPRECATED: This component has been refactored.
-// Please use `src/components/App/index.tsx` instead.
+// DEPRECATED: Use src/components/App/index.tsx
 export {};
