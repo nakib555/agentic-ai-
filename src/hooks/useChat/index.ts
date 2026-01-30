@@ -55,8 +55,10 @@ export const useChat = (
     const testResolverRef = useRef<((value: Message | PromiseLike<Message>) => void) | null>(null);
     const hasAttemptedReconnection = useRef(false);
     
+    // Track title generation attempts to avoid duplicate calls per session
     const titleGenerationAttemptedRef = useRef<Set<string>>(new Set());
 
+    // Refs to access latest state inside async callbacks
     const chatHistoryRef = useRef(chatHistory);
     useEffect(() => { chatHistoryRef.current = chatHistory; }, [chatHistory]);
     const currentChatIdRef = useRef(currentChatId);
@@ -71,6 +73,7 @@ export const useChat = (
         return chatHistory.find(c => c.id === currentChatId)?.isLoading ?? false;
     }, [chatHistory, currentChatId]);
 
+    // Test harness resolver
     useEffect(() => {
         if (!isLoading && testResolverRef.current && currentChatId) {
             const chat = chatHistory.find(c => c.id === currentChatId);
@@ -87,32 +90,34 @@ export const useChat = (
     const cancelGeneration = useCallback(() => {
         abortControllerRef.current?.abort();
         
-        if (currentChatIdRef.current) {
+        const chatId = currentChatIdRef.current;
+        if (!chatId) return;
+
+        // Inform backend of cancellation
+        if (chatId) {
             fetchFromApi('/api/handler?task=cancel', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ requestId: currentChatIdRef.current }),
-            }).catch(error => console.error('[FRONTEND] Failed to send cancel request:', error));
+                body: JSON.stringify({ requestId: chatId }),
+                silent: true
+            }).catch(console.error);
         }
         
-        const chatId = currentChatIdRef.current;
-        if (chatId) {
-            const currentChat = chatHistoryRef.current.find(c => c.id === chatId);
+        // Update local state
+        const currentChat = chatHistoryRef.current.find(c => c.id === chatId);
+        if (currentChat?.messages?.length) {
+            const lastMessage = currentChat.messages[currentChat.messages.length - 1];
             
-            if (currentChat?.messages?.length) {
-                const lastMessage = currentChat.messages[currentChat.messages.length - 1];
-                
-                updateActiveResponseOnMessage(chatId, lastMessage.id, () => ({
-                    error: { 
-                        code: 'STOPPED_BY_USER', 
-                        message: 'Generation stopped by user.',
-                        details: 'You interrupted the model.'
-                    },
-                    endTime: Date.now()
-                }));
-                updateMessage(chatId, lastMessage.id, { isThinking: false });
-                completeChatLoading(chatId);
-            }
+            updateActiveResponseOnMessage(chatId, lastMessage.id, () => ({
+                error: { 
+                    code: 'STOPPED_BY_USER', 
+                    message: 'Generation stopped by user.',
+                    details: 'You interrupted the model.'
+                },
+                endTime: Date.now()
+            }));
+            updateMessage(chatId, lastMessage.id, { isThinking: false });
+            completeChatLoading(chatId);
         }
     }, [updateActiveResponseOnMessage, updateMessage, completeChatLoading]);
     
@@ -158,7 +163,7 @@ export const useChat = (
                 updateActiveResponseOnMessage,
                 updateMessage,
                 completeChatLoading,
-                handleFrontendToolExecution: () => {}, // No-op for chat mode
+                handleFrontendToolExecution: () => {}, // No-op for reconnection
                 onCancel: () => {
                     updateMessage(chatId, messageId, { isThinking: false });
                     completeChatLoading(chatId);
@@ -178,6 +183,7 @@ export const useChat = (
         }
     }, [updateActiveResponseOnMessage, updateMessage, completeChatLoading, setChatLoadingState]);
 
+    // Check for active streams on load
     useEffect(() => {
         if (hasAttemptedReconnection.current || !currentChatId) return;
         
@@ -193,11 +199,12 @@ export const useChat = (
         }
     }, [currentChatId, connectToActiveStream]);
 
+    // Reset reconnection flag on chat switch
     useEffect(() => {
         hasAttemptedReconnection.current = false;
     }, [currentChatId]);
 
-
+    // Core function to initiate chat interaction with the backend
     const startBackendChat = async (
         task: 'chat' | 'regenerate',
         chatId: string,
@@ -210,13 +217,14 @@ export const useChat = (
         abortControllerRef.current = controller;
 
         try {
+            // Construct the payload for the backend handler
             const requestPayload = {
-                chatId: chatId,
-                messageId: messageId,
+                chatId,
+                messageId,
                 model: chatConfig.model,
-                newMessage: newMessage,
+                newMessage, // Only present for 'chat' task
                 settings: {
-                    isAgentMode: false,
+                    isAgentMode: false, // Legacy flag, always false for standard chat
                     systemPrompt: runtimeSettings.systemPrompt,
                     aboutUser: runtimeSettings.aboutUser,
                     aboutResponse: runtimeSettings.aboutResponse,
@@ -237,22 +245,11 @@ export const useChat = (
 
             if (!response.ok) {
                 let errorMessage = `Request failed with status ${response.status}`;
-                let errorDetails: any = null;
                 try {
                     const errorJson = await response.json();
-                    const struct = errorJson.error || errorJson;
-                    errorMessage = struct.message || errorMessage;
-                    errorDetails = struct;
-                } catch (e) {
-                    errorMessage = await response.text() || errorMessage;
-                }
-                const error = new Error(errorMessage);
-                if (errorDetails) {
-                    (error as any).code = errorDetails.code;
-                    (error as any).details = errorDetails.details;
-                    (error as any).suggestion = errorDetails.suggestion;
-                }
-                throw error;
+                    errorMessage = errorJson.error?.message || errorJson.error || errorMessage;
+                } catch { /* use default message */ }
+                throw new Error(errorMessage);
             }
             
             if (!response.body) throw new Error("Response body is missing");
@@ -265,105 +262,104 @@ export const useChat = (
                 completeChatLoading,
                 handleFrontendToolExecution: () => {},
                 onStart: (requestId) => { requestIdRef.current = requestId; },
-                onCancel: () => {
-                    if (controller && !controller.signal.aborted) {
-                        controller.abort();
-                    }
-                }
+                onCancel: () => controller.abort()
             });
 
             await processBackendStream(response, callbacks, controller.signal);
 
-        } catch (error) {
-            if ((error as Error).message === 'Version mismatch') {
-                // Handled globally
-            } else if ((error as Error).name !== 'AbortError') {
+        } catch (error: any) {
+            if (error.message === 'Version mismatch') {
+                // Global handler takes care of this
+            } else if (error.name !== 'AbortError') {
                 console.error('[FRONTEND] Backend stream failed.', error);
                 updateActiveResponseOnMessage(chatId, messageId, () => ({ error: parseApiError(error), endTime: Date.now() }));
             }
         } finally {
-            if (!controller.signal.aborted) {
+            const wasAborted = controller.signal.aborted;
+            
+            // Cleanup controller reference if it matches current
+            if (abortControllerRef.current === controller) {
+                abortControllerRef.current = null;
+                requestIdRef.current = null;
+            }
+
+            if (!wasAborted) {
                 updateMessage(chatId, messageId, { isThinking: false });
                 completeChatLoading(chatId);
-                
-                if (abortControllerRef.current === controller) {
-                    abortControllerRef.current = null;
-                    requestIdRef.current = null;
-                }
-                
-                const finalChatState = chatHistoryRef.current.find(c => c.id === chatId);
-                
-                if (finalChatState && apiKey && finalChatState.messages) {
-                    if (finalChatState.title === "New Chat" && finalChatState.messages.length >= 2 && !titleGenerationAttemptedRef.current.has(chatId)) {
-                        titleGenerationAttemptedRef.current.add(chatId);
-                        
-                        generateChatTitle(finalChatState.messages, finalChatState.model)
-                            .then(newTitle => {
-                                const finalTitle = newTitle.length > 45 ? newTitle.substring(0, 42) + '...' : newTitle;
-                                updateChatTitle(chatId, finalTitle);
-                            })
-                            .catch(err => console.error("Failed to generate chat title:", err));
-                    }
-
-                    const suggestions = await generateFollowUpSuggestions(finalChatState.messages, finalChatState.model);
-                     if (suggestions.length > 0) {
-                        updateActiveResponseOnMessage(chatId, messageId, () => ({ suggestedActions: suggestions }));
-                        
-                        const currentChatSnapshot = chatHistoryRef.current.find(c => c.id === chatId);
-                        if (currentChatSnapshot && currentChatSnapshot.messages) {
-                            const updatedMessages = currentChatSnapshot.messages.map(m => {
-                                if (m.id === messageId) {
-                                    const responses = m.responses ? [...m.responses] : [];
-                                    if (responses[m.activeResponseIndex]) {
-                                        responses[m.activeResponseIndex] = {
-                                            ...responses[m.activeResponseIndex],
-                                            suggestedActions: suggestions
-                                        };
-                                    }
-                                    return { ...m, responses, isThinking: false };
-                                }
-                                return m;
-                            });
-                            updateChatProperty(chatId, { messages: updatedMessages });
-                        }
-                    }
-                }
-
-                setTimeout(() => {
-                    const chatToPersist = chatHistoryRef.current.find(c => c.id === chatId);
-                    if (chatToPersist && chatToPersist.messages) {
-                        const cleanMessages = chatToPersist.messages.map(m => 
-                            m.id === messageId ? { ...m, isThinking: false } : m
-                        );
-                        updateChatProperty(chatId, { messages: cleanMessages });
-                    }
-                }, 200);
-
+                handlePostChatActions(chatId, messageId, apiKey);
             } else {
+                 // Explicitly set state on abort to ensure UI reflects cancellation
                 updateMessage(chatId, messageId, { isThinking: false });
                 completeChatLoading(chatId);
-                if (abortControllerRef.current === controller) {
-                    abortControllerRef.current = null;
-                    requestIdRef.current = null;
-                }
             }
         }
     };
     
-    const sendMessage = async (userMessage: string, files?: File[], options: { isHidden?: boolean; isThinkingModeEnabled?: boolean } = {}) => {
-        if (isLoading) {
-            return;
+    // Post-chat operations (Title generation, Suggestions) extracted for cleanliness
+    const handlePostChatActions = async (chatId: string, messageId: string, key: string) => {
+        const finalChatState = chatHistoryRef.current.find(c => c.id === chatId);
+        if (!finalChatState || !finalChatState.messages) return;
+
+        // 1. Generate Title if New Chat
+        if (finalChatState.title === "New Chat" && finalChatState.messages.length >= 2 && !titleGenerationAttemptedRef.current.has(chatId)) {
+            titleGenerationAttemptedRef.current.add(chatId);
+            generateChatTitle(finalChatState.messages, finalChatState.model)
+                .then(newTitle => {
+                    const finalTitle = newTitle.length > 45 ? newTitle.substring(0, 42) + '...' : newTitle;
+                    updateChatTitle(chatId, finalTitle);
+                })
+                .catch(err => console.error("Failed to generate chat title:", err));
         }
-        
+
+        // 2. Generate Follow-up Suggestions
+        if (key) {
+            const suggestions = await generateFollowUpSuggestions(finalChatState.messages, finalChatState.model);
+            if (suggestions.length > 0) {
+                updateActiveResponseOnMessage(chatId, messageId, () => ({ suggestedActions: suggestions }));
+                
+                // Persist suggestion update
+                const currentChatSnapshot = chatHistoryRef.current.find(c => c.id === chatId);
+                if (currentChatSnapshot && currentChatSnapshot.messages) {
+                     const updatedMessages = currentChatSnapshot.messages.map(m => {
+                        if (m.id === messageId) {
+                            const responses = m.responses ? [...m.responses] : [];
+                            if (responses[m.activeResponseIndex]) {
+                                responses[m.activeResponseIndex] = {
+                                    ...responses[m.activeResponseIndex],
+                                    suggestedActions: suggestions
+                                };
+                            }
+                            return { ...m, responses, isThinking: false };
+                        }
+                        return m;
+                    });
+                    updateChatProperty(chatId, { messages: updatedMessages });
+                }
+            }
+        }
+
+        // 3. Ensure final persistence (catch-all for state consistency)
+        setTimeout(() => {
+            const chatToPersist = chatHistoryRef.current.find(c => c.id === chatId);
+            if (chatToPersist && chatToPersist.messages) {
+                const cleanMessages = chatToPersist.messages.map(m => 
+                    m.id === messageId ? { ...m, isThinking: false } : m
+                );
+                updateChatProperty(chatId, { messages: cleanMessages });
+            }
+        }, 200);
+    };
+
+    const sendMessage = async (userMessage: string, files?: File[], options: { isHidden?: boolean; isThinkingModeEnabled?: boolean } = {}) => {
+        if (isLoading) return;
         requestIdRef.current = null; 
     
         const currentHistory = chatHistoryRef.current;
-        const activeChatIdFromRef = currentChatIdRef.current;
-        
-        let activeChatId = activeChatIdFromRef;
+        let activeChatId = currentChatIdRef.current;
         let currentChat = activeChatId ? currentHistory.find(c => c.id === activeChatId) : undefined;
         let chatCreationPromise: Promise<ChatSession | null> | null = null;
 
+        // Create new chat if needed
         if (!activeChatId || !currentChat) {
             const optimisticId = generateId(); 
             activeChatId = optimisticId;
@@ -388,8 +384,10 @@ export const useChat = (
             } as ChatSession;
         }
     
+        // Process Attachments
         const attachmentsData = files?.length ? await Promise.all(files.map(async f => ({ name: f.name, mimeType: f.type, data: await fileToBase64(f) }))) : undefined;
     
+        // Optimistic UI Updates
         const userMessageObj: Message = { id: generateId(), role: 'user', text: userMessage, isHidden: options.isHidden, attachments: attachmentsData, activeResponseIndex: 0 };
         addMessagesToChat(activeChatId, [userMessageObj]);
     
@@ -397,16 +395,17 @@ export const useChat = (
         addMessagesToChat(activeChatId, [modelPlaceholder]);
         setChatLoadingState(activeChatId, true);
     
-        const chatForSettings = currentChat || { model: initialModel, ...settings };
-
+        // Ensure creation finished before starting stream
         if (chatCreationPromise) {
             const created = await chatCreationPromise;
             if (!created) return;
         }
 
+        const chatForSettings = currentChat || { model: initialModel, ...settings };
+
         await startBackendChat(
             'chat',
-            activeChatId as string, // Safe cast as we ensure it's set above
+            activeChatId as string,
             modelPlaceholder.id, 
             userMessageObj,
             chatForSettings, 
@@ -425,6 +424,7 @@ export const useChat = (
         const messageIndex = currentChat.messages.findIndex(m => m.id === messageId);
         if (messageIndex === -1) return;
 
+        // Branching Logic
         const updatedMessages = JSON.parse(JSON.stringify(currentChat.messages)) as Message[];
         const targetMessage = updatedMessages[messageIndex];
         const futureMessages = updatedMessages.slice(messageIndex + 1);
@@ -509,9 +509,11 @@ export const useChat = (
         
         if (newIndex === currentIndex) return;
 
+        // Save current history payload
         const currentFuture = updatedMessages.slice(messageIndex + 1);
         targetMessage.versions[currentIndex].historyPayload = currentFuture;
 
+        // Restore target history payload
         const targetVersion = targetMessage.versions[newIndex];
         const restoredFuture = targetVersion.historyPayload || [];
 
@@ -549,11 +551,13 @@ export const useChat = (
         const targetMessage = updatedMessages[messageIndex];
         const currentResponseIndex = targetMessage.activeResponseIndex;
 
+        // Save current response future
         const futureMessages = updatedMessages.slice(messageIndex + 1);
         if (targetMessage.responses && targetMessage.responses[currentResponseIndex]) {
             targetMessage.responses[currentResponseIndex].historyPayload = futureMessages;
         }
 
+        // Create new response branch
         const newResponse: ModelResponse = { text: '', toolCallEvents: [], startTime: Date.now() };
         if (!targetMessage.responses) targetMessage.responses = [];
         targetMessage.responses.push(newResponse);
@@ -563,7 +567,6 @@ export const useChat = (
         const truncatedList = [...updatedMessages.slice(0, messageIndex), targetMessage];
 
         await updateChatProperty(currentChatId, { messages: truncatedList });
-        
         setChatLoadingState(currentChatId, true);
 
         await startBackendChat(
@@ -597,6 +600,7 @@ export const useChat = (
         if (index < 0 || index >= targetMessage.responses.length) return;
         if (index === currentIndex) return;
 
+        // Swap branches
         const currentFuture = updatedMessages.slice(messageIndex + 1);
         targetMessage.responses[currentIndex].historyPayload = currentFuture;
 
