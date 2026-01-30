@@ -70,7 +70,7 @@ export const useTokenCounter = (
                     body: JSON.stringify({
                         chatId,
                         model,
-                        isAgentMode,
+                        isAgentMode: false,
                         newMessage
                     }),
                     silent: true // Suppress errors for background tasks

@@ -22,7 +22,6 @@ export type AppSettings = {
     isMemoryEnabled: boolean;
     ttsVoice: string;
     ttsModel: string; 
-    isAgentMode: boolean;
     activeModel: string;
 };
 

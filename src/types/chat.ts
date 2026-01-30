@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -15,5 +16,4 @@ export type ChatSession = {
     maxOutputTokens?: number;
     imageModel?: string;
     videoModel?: string;
-    isAgentMode?: boolean;
 };

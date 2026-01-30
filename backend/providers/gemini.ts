@@ -9,8 +9,6 @@ import type { AIProvider, ChatOptions, CompletionOptions, ModelLists } from './t
 import type { Model as AppModel } from '../../src/types';
 import { generateContentWithRetry, generateContentStreamWithRetry, getText, generateImagesWithRetry, generateVideosWithRetry } from '../utils/geminiUtils';
 import { transformHistoryToGeminiFormat } from '../utils/historyTransformer';
-import { toolDeclarations } from '../tools/declarations';
-import { runAgenticLoop } from '../services/agenticLoop/index';
 
 // Helper to sort models alpha-numerically
 const sortModelsByName = (models: AppModel[]): AppModel[] => {
@@ -133,9 +131,9 @@ const GeminiProvider: AIProvider = {
 
     async chat(options: ChatOptions): Promise<void> {
         const { 
-            model, messages, newMessage, systemInstruction, 
+            model, messages, systemInstruction, 
             temperature, maxTokens, apiKey, callbacks, 
-            isAgentMode, toolExecutor, signal, chatId 
+            signal 
         } = options;
         
         if (!apiKey) throw new Error("Gemini API Key missing");
@@ -145,35 +143,6 @@ const GeminiProvider: AIProvider = {
         
         // Transform history once
         const fullHistory = transformHistoryToGeminiFormat(messages);
-
-        // --- AGENT MODE ---
-        if (isAgentMode && toolExecutor && chatId) {
-             await runAgenticLoop({
-                 ai,
-                 model,
-                 history: fullHistory,
-                 toolExecutor,
-                 callbacks: {
-                     ...callbacks,
-                     onNewToolCalls: callbacks.onNewToolCalls || (() => {}),
-                     onToolResult: callbacks.onToolResult || (() => {}),
-                     onPlanReady: callbacks.onPlanReady || (async () => false),
-                     onFrontendToolRequest: callbacks.onFrontendToolRequest || (() => {}),
-                     onCancel: callbacks.onCancel || (() => {}),
-                     onComplete: (finalText, groundingMetadata) => {
-                        callbacks.onComplete({ finalText, groundingMetadata });
-                     }
-                 },
-                 settings: {
-                     temperature,
-                     maxOutputTokens: maxTokens,
-                     systemInstruction
-                 },
-                 signal: signal!,
-                 threadId: chatId
-             });
-             return;
-        }
 
         // --- STANDARD STREAMING CHAT ---
         try {

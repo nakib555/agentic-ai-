@@ -34,7 +34,6 @@ type MessageListProps = {
   messageFormRef: React.RefObject<MessageFormHandle>;
   onRegenerate: (messageId: string) => void;
   onSetActiveResponseIndex: (messageId: string, index: number) => void;
-  isAgentMode: boolean; // Retained as unused or always false for now to avoid deeper breaking changes, but functionally disabled.
   onEditMessage?: (messageId: string, newText: string) => void;
   onNavigateBranch?: (messageId: string, direction: 'next' | 'prev') => void;
 };
@@ -141,7 +140,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({
   const contextProps = useMemo(() => ({
       sendMessage, isLoading, ttsVoice, ttsModel, currentChatId,
       onShowSources, messageFormRef,
-      onRegenerate, onSetActiveResponseIndex, isAgentMode: false, onEditMessage,
+      onRegenerate, onSetActiveResponseIndex, onEditMessage,
       onNavigateBranch
   }), [
       sendMessage, isLoading, ttsVoice, ttsModel, currentChatId,

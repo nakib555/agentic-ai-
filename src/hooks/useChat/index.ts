@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -84,7 +85,6 @@ export const useChat = (
                 maxOutputTokens: settings.maxOutputTokens,
                 imageModel: settings.imageModel,
                 videoModel: settings.videoModel,
-                isAgentMode: false,
             };
 
             // Fire and forget creation, rely on optimistic ID
@@ -138,7 +138,6 @@ export const useChat = (
                 model: chatForConfig.model,
                 newMessage: task === 'chat' ? (updatedMessages ? null : { text: rawEvent.text, ...input.newMessage }) : null,
                 settings: {
-                    isAgentMode: false,
                     systemPrompt: settings.systemPrompt,
                     aboutUser: settings.aboutUser,
                     aboutResponse: settings.aboutResponse,
@@ -282,7 +281,7 @@ export const useChat = (
             type: 'REGENERATE', 
             messageId, 
             currentChat, 
-            settings: { ...settings, isAgentMode: false } 
+            settings: { ...settings } 
         });
     }, [sendWithServices, settings]);
 
@@ -297,7 +296,7 @@ export const useChat = (
             messageId,
             newText,
             currentChat,
-            settings: { ...settings, isAgentMode: false }
+            settings: { ...settings }
         });
     }, [sendWithServices, settings]);
 
