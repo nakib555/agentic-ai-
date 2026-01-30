@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSidebar } from './useSidebar';
 import { useTheme } from './useTheme';
 import { useViewport } from './useViewport';
@@ -66,32 +66,36 @@ export const useAppLogic = () => {
 
     // --- Memory Hook ---
     const memory = useMemory(settings.isMemoryEnabled);
-
+    
     // --- Chat Hook ---
+    const chatSettings = useMemo(() => ({
+        systemPrompt: "",
+        aboutUser: settings.aboutUser,
+        aboutResponse: settings.aboutResponse,
+        temperature: settings.temperature, 
+        maxOutputTokens: settings.maxTokens,
+        imageModel: settings.imageModel,
+        videoModel: settings.videoModel
+    }), [settings.aboutUser, settings.aboutResponse, settings.temperature, settings.maxTokens, settings.imageModel, settings.videoModel]);
+
+    const activeApiKey = settings.provider === 'openrouter' ? settings.openRouterApiKey : (settings.provider === 'ollama' ? settings.ollamaApiKey : settings.apiKey);
+
+    const handleToast = useCallback((msg: string, type: 'info' | 'success' | 'error') => {
+        toast[type === 'info' ? 'info' : type === 'error' ? 'error' : 'success'](msg);
+    }, []);
+
     const chat = useChat(
         settings.activeModel, 
-        { 
-            systemPrompt: "",
-            aboutUser: settings.aboutUser,
-            aboutResponse: settings.aboutResponse,
-            temperature: settings.temperature, 
-            maxOutputTokens: settings.maxTokens,
-            imageModel: settings.imageModel,
-            videoModel: settings.videoModel
-        }, 
+        chatSettings,
         memory.memoryContent, 
-        settings.provider === 'openrouter' ? settings.openRouterApiKey : (settings.provider === 'ollama' ? settings.ollamaApiKey : settings.apiKey),
-        (msg, type) => toast[type === 'info' ? 'info' : type === 'error' ? 'error' : 'success'](msg)
+        activeApiKey,
+        handleToast
     );
 
     // --- Helper to process models from backend response ---
     const processModelData = useCallback((data: any) => {
         if (data.models) {
             settings.setAvailableModels(data.models);
-            
-            // NOTE: Auto-switching logic has been removed from here to prevent infinite loops 
-            // when model lists are unstable or fluctuate (e.g. OpenRouter).
-            // We now rely on explicit provider changes or user selection to change the active model.
         }
         if (data.imageModels) settings.setAvailableImageModels(data.imageModels);
         if (data.videoModels) settings.setAvailableVideoModels(data.videoModels);
@@ -205,13 +209,9 @@ export const useAppLogic = () => {
             } else {
                 // Otherwise fetch explicitly
                 await fetchModels();
-                // Note: fetchModels updates the store asynchronously via processModelData.
-                // We assume for the auto-select logic below that we might need to rely on the store later, 
-                // but checking `response.models` is the primary path.
             }
             
             // Explicitly auto-select the first available model when switching providers
-            // This prevents the "invalid model" state when moving between incompatible providers (e.g. Gemini -> Ollama)
             if (modelsList.length > 0) {
                 const firstModel = modelsList[0].id;
                 settings.setActiveModel(firstModel);
@@ -472,10 +472,6 @@ export const useAppLogic = () => {
             mod.exportChatToClipboard(currentChat);
         });
     }, [chat.currentChatId, chat.chatHistory]);
-
-    const saveApiKey = async (key: string, providerType: 'gemini' | 'openrouter' | 'ollama') => {
-        await onSaveApiKey(key, providerType);
-    };
 
     return {
         isDesktop, isWideDesktop, visualViewportHeight,

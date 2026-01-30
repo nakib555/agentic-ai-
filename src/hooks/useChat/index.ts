@@ -58,26 +58,57 @@ export const useChat = (
     const requestIdRef = useRef<string | null>(null); 
     const testResolverRef = useRef<((value: Message | PromiseLike<Message>) => void) | null>(null);
 
-    // Refs to access latest state inside async callbacks (XState Services)
-    const chatHistoryRef = useRef(chatHistory);
-    useEffect(() => { chatHistoryRef.current = chatHistory; }, [chatHistory]);
-    
-    const currentChatIdRef = useRef(currentChatId);
-    useEffect(() => { currentChatIdRef.current = currentChatId; }, [currentChatId]);
+    // --- DEPENDENCY REF PATTERN ---
+    // We bundle all external dependencies into a ref.
+    // This allows the service functions (performGenerationService) to be defined with [] dependencies,
+    // ensuring strictly stable identity. This prevents the XState machine from re-initializing 
+    // and killing active streams when React re-renders.
+    const depsRef = useRef({
+        chatHistory,
+        currentChatId,
+        settings,
+        initialModel,
+        memoryContent,
+        apiKey,
+        startNewChatHistory,
+        addMessagesToChat,
+        updateChatProperty,
+        setChatLoadingState,
+        updateActiveResponseOnMessage,
+        updateMessage,
+        completeChatLoading,
+        onShowToast,
+        updateChatTitle
+    });
 
-    const settingsRef = useRef(settings);
-    useEffect(() => { settingsRef.current = settings; }, [settings]);
+    useEffect(() => {
+        depsRef.current = {
+            chatHistory,
+            currentChatId,
+            settings,
+            initialModel,
+            memoryContent,
+            apiKey,
+            startNewChatHistory,
+            addMessagesToChat,
+            updateChatProperty,
+            setChatLoadingState,
+            updateActiveResponseOnMessage,
+            updateMessage,
+            completeChatLoading,
+            onShowToast,
+            updateChatTitle
+        };
+    });
 
     // ------------------------------------------------------------------------
-    // SERVICE ADAPTERS
+    // SERVICE ADAPTERS (Stable References)
     // ------------------------------------------------------------------------
 
     const performGenerationService = useCallback(async (input: any) => {
+        const deps = depsRef.current; // Access latest deps
         const { task, newMessage, updatedMessages, currentChat, rawEvent } = input;
         
-        // Use settings from Ref to prevent service recreation on settings change
-        const runtimeSettings = settingsRef.current;
-
         let activeChatId = input.chatId;
         
         // 1. Handle New Chat Creation (Optimistic)
@@ -86,20 +117,19 @@ export const useChat = (
             activeChatId = optimisticId;
             
             const settingsToUse = {
-                temperature: runtimeSettings.temperature,
-                maxOutputTokens: runtimeSettings.maxOutputTokens,
-                imageModel: runtimeSettings.imageModel,
-                videoModel: runtimeSettings.videoModel,
+                temperature: deps.settings.temperature,
+                maxOutputTokens: deps.settings.maxOutputTokens,
+                imageModel: deps.settings.imageModel,
+                videoModel: deps.settings.videoModel,
             };
 
             // Fire and forget creation, rely on optimistic ID
-            // We await here to ensure the chat exists in the cache before adding messages
-            await startNewChatHistory(initialModel, settingsToUse, optimisticId);
+            await deps.startNewChatHistory(deps.initialModel, settingsToUse, optimisticId);
         }
 
         // 2. Handle Message Persistence (Optimistic UI)
         if (task === 'chat' && newMessage && rawEvent) {
-             // Process Attachments if any (from the raw event files)
+             // Process Attachments
              const files = rawEvent.files;
              const attachmentsData = files?.length ? await Promise.all(files.map(async (f: File) => ({ name: f.name, mimeType: f.type, data: await fileToBase64(f) }))) : undefined;
              
@@ -117,17 +147,16 @@ export const useChat = (
              };
 
              // Persist
-             addMessagesToChat(activeChatId, [userMsg, aiMsg]);
-             setChatLoadingState(activeChatId, true);
+             deps.addMessagesToChat(activeChatId, [userMsg, aiMsg]);
+             deps.setChatLoadingState(activeChatId, true);
              
              // Define target ID for streaming
              input.messageId = aiMsg.id; 
         } 
         else if (updatedMessages) {
-             // For Regenerate/Edit, we receive the fully computed tree.
-             // We must persist this state before starting the stream so the UI reflects the branch.
-             await updateChatProperty(activeChatId, { messages: updatedMessages });
-             setChatLoadingState(activeChatId, true);
+             // For Regenerate/Edit
+             await deps.updateChatProperty(activeChatId, { messages: updatedMessages });
+             deps.setChatLoadingState(activeChatId, true);
         }
 
         // 3. Initiate Stream
@@ -135,8 +164,7 @@ export const useChat = (
         abortControllerRef.current = controller;
 
         try {
-            // Re-read settings for runtime accuracy
-            const chatForConfig = chatHistoryRef.current.find(c => c.id === activeChatId) || { model: initialModel, ...runtimeSettings };
+            const chatForConfig = deps.chatHistory.find(c => c.id === activeChatId) || { model: deps.initialModel, ...deps.settings };
             
             const requestPayload = {
                 chatId: activeChatId,
@@ -144,14 +172,14 @@ export const useChat = (
                 model: chatForConfig.model,
                 newMessage: task === 'chat' ? (updatedMessages ? null : { text: rawEvent.text, ...input.newMessage }) : null,
                 settings: {
-                    systemPrompt: runtimeSettings.systemPrompt,
-                    aboutUser: runtimeSettings.aboutUser,
-                    aboutResponse: runtimeSettings.aboutResponse,
+                    systemPrompt: deps.settings.systemPrompt,
+                    aboutUser: deps.settings.aboutUser,
+                    aboutResponse: deps.settings.aboutResponse,
                     temperature: chatForConfig.temperature,
                     maxOutputTokens: chatForConfig.maxOutputTokens || undefined,
-                    imageModel: runtimeSettings.imageModel,
-                    videoModel: runtimeSettings.videoModel,
-                    memoryContent,
+                    imageModel: deps.settings.imageModel,
+                    videoModel: deps.settings.videoModel,
+                    memoryContent: deps.memoryContent,
                 }
             };
             
@@ -177,9 +205,9 @@ export const useChat = (
             const callbacks = createStreamCallbacks({
                 chatId: activeChatId,
                 messageId: input.messageId,
-                updateActiveResponseOnMessage,
-                updateMessage,
-                completeChatLoading,
+                updateActiveResponseOnMessage: deps.updateActiveResponseOnMessage,
+                updateMessage: deps.updateMessage,
+                completeChatLoading: deps.completeChatLoading,
                 handleFrontendToolExecution: () => {},
                 onStart: (requestId) => { requestIdRef.current = requestId; },
                 onCancel: () => controller.abort()
@@ -190,8 +218,8 @@ export const useChat = (
         } catch (error: any) {
             if (error.name !== 'AbortError') {
                 console.error('[CHAT_MACHINE] Stream error:', error);
-                updateActiveResponseOnMessage(activeChatId, input.messageId, () => ({ error: parseApiError(error), endTime: Date.now() }));
-                if (onShowToast) onShowToast("Generation failed", 'error');
+                deps.updateActiveResponseOnMessage(activeChatId, input.messageId, () => ({ error: parseApiError(error), endTime: Date.now() }));
+                if (deps.onShowToast) deps.onShowToast("Generation failed", 'error');
             }
             throw error;
         } finally {
@@ -200,41 +228,39 @@ export const useChat = (
                 abortControllerRef.current = null;
                 requestIdRef.current = null;
              }
-             updateMessage(activeChatId, input.messageId, { isThinking: false });
-             completeChatLoading(activeChatId);
+             deps.updateMessage(activeChatId, input.messageId, { isThinking: false });
+             deps.completeChatLoading(activeChatId);
              
              if (!wasAborted) {
-                 handlePostChatActions(activeChatId, input.messageId, apiKey);
+                 // Handle Post Chat Actions (Title Gen)
+                 const finalChatState = deps.chatHistory.find(c => c.id === activeChatId);
+                 if (finalChatState && finalChatState.messages && finalChatState.title === "New Chat" && finalChatState.messages.length >= 2) {
+                     generateChatTitle(finalChatState.messages, finalChatState.model)
+                        .then(newTitle => {
+                            const finalTitle = newTitle.length > 45 ? newTitle.substring(0, 42) + '...' : newTitle;
+                            deps.updateChatTitle(activeChatId, finalTitle);
+                        })
+                        .catch(() => {});
+                 }
              }
         }
-    }, [
-        initialModel, 
-        memoryContent, 
-        apiKey, 
-        startNewChatHistory, 
-        addMessagesToChat, 
-        updateChatProperty, 
-        setChatLoadingState, 
-        updateActiveResponseOnMessage, 
-        updateMessage, 
-        completeChatLoading, 
-        onShowToast
-    ]);
+    }, []); // ZERO DEPENDENCIES = STABLE REFERENCE
 
     const persistBranchService = useCallback(async (input: { chatId: string, messages: Message[] }) => {
+        const deps = depsRef.current;
         try {
-            await updateChatProperty(input.chatId, { messages: input.messages });
+            await deps.updateChatProperty(input.chatId, { messages: input.messages });
         } catch (e) {
-            if (onShowToast) onShowToast("Failed to switch branch", 'error');
+            if (deps.onShowToast) deps.onShowToast("Failed to switch branch", 'error');
             throw e;
         }
-    }, [updateChatProperty, onShowToast]);
+    }, []); // ZERO DEPENDENCIES = STABLE REFERENCE
 
     // ------------------------------------------------------------------------
     // XSTATE MACHINE
     // ------------------------------------------------------------------------
 
-    // Memoize actors to prevent machine reset on every render
+    // Memoize actors. Since service adapters are stable (empty deps), actors object is stable.
     const actors = useMemo(() => ({
         performGeneration: fromPromise(async ({ input }: any) => {
             return performGenerationService(input);
@@ -272,23 +298,25 @@ export const useChat = (
     }, [sendWithServices, initialModel]);
 
     const regenerateResponse = useCallback((messageId: string) => {
+        const deps = depsRef.current;
         abortCurrent();
-        if (!currentChatIdRef.current) return;
-        const currentChat = chatHistoryRef.current.find(c => c.id === currentChatIdRef.current);
+        if (!deps.currentChatId) return;
+        const currentChat = deps.chatHistory.find(c => c.id === deps.currentChatId);
         if (!currentChat) return;
 
         sendWithServices({ 
             type: 'REGENERATE', 
             messageId, 
             currentChat, 
-            settings: { ...settingsRef.current } 
+            settings: { ...deps.settings } 
         });
     }, [sendWithServices]);
 
     const editMessage = useCallback((messageId: string, newText: string) => {
+        const deps = depsRef.current;
         abortCurrent();
-        if (!currentChatIdRef.current) return;
-        const currentChat = chatHistoryRef.current.find(c => c.id === currentChatIdRef.current);
+        if (!deps.currentChatId) return;
+        const currentChat = deps.chatHistory.find(c => c.id === deps.currentChatId);
         if (!currentChat) return;
         
         sendWithServices({
@@ -296,14 +324,15 @@ export const useChat = (
             messageId,
             newText,
             currentChat,
-            settings: { ...settingsRef.current }
+            settings: { ...deps.settings }
         });
     }, [sendWithServices]);
 
     const navigateBranch = useCallback((messageId: string, direction: 'next' | 'prev') => {
+        const deps = depsRef.current;
         abortCurrent();
-        if (!currentChatIdRef.current) return;
-        const currentChat = chatHistoryRef.current.find(c => c.id === currentChatIdRef.current);
+        if (!deps.currentChatId) return;
+        const currentChat = deps.chatHistory.find(c => c.id === deps.currentChatId);
         if (!currentChat) return;
 
         sendWithServices({
@@ -315,34 +344,18 @@ export const useChat = (
     }, [sendWithServices]);
 
     const cancelGeneration = useCallback(() => {
-        // Abort the fetch
+        const deps = depsRef.current;
         abortCurrent();
-        // Inform backend
-        if (currentChatIdRef.current) {
+        if (deps.currentChatId) {
              fetchFromApi('/api/handler?task=cancel', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ requestId: currentChatIdRef.current }),
+                body: JSON.stringify({ requestId: deps.currentChatId }),
                 silent: true
             }).catch(console.error);
         }
-        // Tell machine to stop
         sendWithServices({ type: 'STOP' });
     }, [sendWithServices]);
-
-    const handlePostChatActions = async (chatId: string, messageId: string, key: string) => {
-        const finalChatState = chatHistoryRef.current.find(c => c.id === chatId);
-        if (!finalChatState || !finalChatState.messages) return;
-
-        if (finalChatState.title === "New Chat" && finalChatState.messages.length >= 2) {
-             generateChatTitle(finalChatState.messages, finalChatState.model)
-                .then(newTitle => {
-                    const finalTitle = newTitle.length > 45 ? newTitle.substring(0, 42) + '...' : newTitle;
-                    updateChatTitle(chatId, finalTitle);
-                })
-                .catch(() => {});
-        }
-    };
     
     // Legacy bridging for Test Harness
     const sendMessageForTest = (userMessage: string, options?: any): Promise<Message> => {
@@ -366,8 +379,9 @@ export const useChat = (
 
     // Helpers
     const setResponseIndex = useCallback(async (messageId: string, index: number) => {
-        if (!currentChatIdRef.current) return;
-        const currentChat = chatHistoryRef.current.find(c => c.id === currentChatIdRef.current);
+        const deps = depsRef.current;
+        if (!deps.currentChatId) return;
+        const currentChat = deps.chatHistory.find(c => c.id === deps.currentChatId);
         if (!currentChat) return;
         
         const updatedMessages = JSON.parse(JSON.stringify(currentChat.messages)) as Message[];
@@ -385,12 +399,12 @@ export const useChat = (
         const restoredFuture = targetResponse.historyPayload || [];
         
         const newMessagesList = [...updatedMessages.slice(0, updatedMessages.indexOf(targetMessage)), targetMessage, ...restoredFuture];
-        updateChatProperty(currentChatIdRef.current, { messages: newMessagesList });
+        deps.updateChatProperty(deps.currentChatId, { messages: newMessagesList });
         
-    }, [updateChatProperty]);
+    }, []); // Zero deps
 
     return { 
-        chatHistory: chatHistory.map(c => c.id === currentChatId ? (chatHistoryRef.current.find(refC => refC.id === c.id) || c) : c), 
+        chatHistory, 
         currentChatId, 
         isHistoryLoading,
         updateChatTitle, updateChatProperty, loadChat: loadChatHistory, deleteChat: deleteChatHistory, clearAllChats: clearAllChatsHistory, importChat, startNewChat: startNewChatHistory,
