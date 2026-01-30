@@ -1,5 +1,6 @@
 
 
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -51,8 +52,9 @@ export const updateSettings = async (req: any, res: any) => {
         const providerChanged = updates.provider && updates.provider !== currentSettings.provider;
         
         // For Gemini/OpenRouter, check specific keys
-        const keyChanged = (newSettings.provider === 'gemini' && updates.apiKey !== currentSettings.apiKey) ||
-                           (newSettings.provider === 'openrouter' && updates.openRouterApiKey !== currentSettings.openRouterApiKey);
+        // Fix: Check for presence in updates to allow force refresh even if key string is same
+        const keyChanged = (newSettings.provider === 'gemini' && 'apiKey' in updates) ||
+                           (newSettings.provider === 'openrouter' && 'openRouterApiKey' in updates);
 
         // For Ollama, we act more aggressively: if the user is saving configuration (sending host or key),
         // we should try to fetch models, even if the value hasn't strictly changed (e.g. retrying connection).

@@ -225,7 +225,7 @@ export const useAppLogic = () => {
         if (providerType === 'ollama') settings.setOllamaApiKey(key);
         
         try {
-            const updatePayload: Partial<AppSettings> = {};
+            const updatePayload: Partial<AppSettings> = { provider: providerType };
             if (providerType === 'gemini') updatePayload.apiKey = key;
             if (providerType === 'openrouter') updatePayload.openRouterApiKey = key;
             if (providerType === 'ollama') updatePayload.ollamaApiKey = key; 
