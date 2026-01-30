@@ -3,6 +3,7 @@
 
 
 
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -501,19 +502,22 @@ ${personalizationSection}
                 break;
             }
             case 'enhance': {
-                const { userInput } = req.body;
-                const prompt = `
+                const { userInput, prompt } = req.body;
+                // Support both userInput (legacy) and prompt (AI SDK compatible)
+                const input = userInput || prompt;
+                
+                const enhancementPrompt = `
 You are an expert Prompt Engineer. Rewrite this input into a highly effective prompt.
 
-USER INPUT: "${userInput}"
+USER INPUT: "${input}"
 
 Output ONLY the raw text of the improved prompt.
 `;
                 res.setHeader('Content-Type', 'text/plain');
                 try {
-                    const text = await generateProviderCompletion(activeProviderName, chatApiKey, 'gemini-3-flash-preview', prompt); 
+                    const text = await generateProviderCompletion(activeProviderName, chatApiKey, 'gemini-3-flash-preview', enhancementPrompt); 
                     res.write(text);
-                } catch (e) { res.write(userInput); }
+                } catch (e) { res.write(input); }
                 res.end();
                 break;
             }

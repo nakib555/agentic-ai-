@@ -48,6 +48,7 @@
     "express": "^4.19.2",
     "framer-motion": "11.2.10",
     "html2canvas": "1.4.1",
+    "idb-keyval": "^6.2.1",
     "jszip": "^3.10.1",
     "katex": "^0.16.9",
     "lucide-react": "^0.363.0",

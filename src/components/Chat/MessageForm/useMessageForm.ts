@@ -1,4 +1,3 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -13,6 +12,7 @@ import { useFileHandling } from './useFileHandling';
 import { useInputEnhancements } from './useInputEnhancements';
 import type { Message } from '../../../types';
 import { usePlaceholder } from '../../../hooks/usePlaceholder';
+import { storage } from '../../../utils/storage';
 
 export const useMessageForm = (
   onSubmit: (message: string, files?: File[], options?: { isThinkingModeEnabled?: boolean }) => void,
@@ -27,6 +27,7 @@ export const useMessageForm = (
   const [isUploadMenuOpen, setIsUploadMenuOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [previewFile, setPreviewFile] = useState<ProcessedFile | null>(null);
+  const isHydrated = useRef(false);
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const attachButtonRef = useRef<HTMLButtonElement>(null);
@@ -52,26 +53,35 @@ export const useMessageForm = (
   const placeholder = usePlaceholder(!inputValue.trim() && !isFocused, lastMessageText, false, hasApiKey);
 
   useEffect(() => {
-    // Restore text draft from local storage on initial load
-    try {
-        const savedText = localStorage.getItem('messageDraft_text');
-        if (savedText) {
-          setInputValue(savedText);
-          prevValueLength.current = savedText.length;
+    // Restore text draft from IDB on initial load
+    const restore = async () => {
+        try {
+            const savedText = await storage.loadTextDraft();
+            if (savedText) {
+                setInputValue(savedText);
+                prevValueLength.current = savedText.length;
+            }
+        } catch (e) { /* ignore */ }
+        finally {
+            isHydrated.current = true;
         }
-    } catch (e) { /* ignore */ }
+    };
+    restore();
   }, []);
 
   useEffect(() => {
-    // Save text draft to local storage
-    try {
-        if (inputValue.trim() || fileHandling.processedFiles.length > 0) {
-          localStorage.setItem('messageDraft_text', inputValue);
-        } else {
-          localStorage.removeItem('messageDraft_text');
-        }
-    } catch (e) { /* ignore */ }
-  }, [inputValue, fileHandling.processedFiles.length]);
+    if (!isHydrated.current) return;
+
+    // Save text draft to IDB
+    const save = async () => {
+        try {
+            await storage.saveTextDraft(inputValue);
+        } catch (e) { /* ignore */ }
+    };
+
+    const timer = setTimeout(save, 500);
+    return () => clearTimeout(timer);
+  }, [inputValue]);
   
   // Optimized Resize Logic with RAF to prevent forced synchronous reflow
   useLayoutEffect(() => {
@@ -126,10 +136,7 @@ export const useMessageForm = (
     prevValueLength.current = 0;
     fileHandling.clearFiles(); 
     setPreviewFile(null);
-    try {
-        localStorage.removeItem('messageDraft_text');
-        localStorage.removeItem('messageDraft_files');
-    } catch (e) { /* ignore */ }
+    storage.clearAllDrafts().catch(console.error);
   };
 
   const isProcessingFiles = fileHandling.processedFiles.some(f => f.progress < 100 && !f.error);

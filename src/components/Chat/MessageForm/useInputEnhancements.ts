@@ -1,15 +1,15 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
 
 // This hook manages features that enhance the user's text input,
-// such as voice input, prompt enhancement.
+// such as voice input, prompt enhancement via AI SDK UI.
 
 import { useState } from 'react';
 import { useVoiceInput } from '../../../hooks/useVoiceInput';
-import { enhanceUserPromptStream } from '../../../services/promptImprover';
+import { useCompletion } from 'ai/react';
+import { toast } from 'sonner';
 
 export const useInputEnhancements = (
     inputValue: string,
@@ -17,7 +17,22 @@ export const useInputEnhancements = (
     hasFiles: boolean,
     onSubmit: (message: string, files?: File[], options?: { isThinkingModeEnabled?: boolean }) => void
 ) => {
-  const [isEnhancing, setIsEnhancing] = useState(false);
+  
+  // Use Vercel AI SDK for prompt enhancement
+  // We use streamProtocol: 'text' because the backend sends raw text chunks
+  const { complete, isLoading: isEnhancing } = useCompletion({
+    api: '/api/handler?task=enhance',
+    streamProtocol: 'text',
+    onFinish: (prompt, completion) => {
+        setInputValue(completion);
+    },
+    onError: (err) => {
+        console.error("Prompt enhancement failed:", err);
+        toast.error("Failed to enhance prompt.");
+        // Restore original if needed, though useCompletion usually handles input state separately.
+        // Since we update `inputValue` live via `onResponse` logic below or via useEffect, we are good.
+    }
+  });
 
   // --- Voice Input ---
   const { isRecording, startRecording, stopRecording, isSupported } = useVoiceInput({
@@ -29,45 +44,26 @@ export const useInputEnhancements = (
     const originalPrompt = inputValue;
     if (!originalPrompt.trim() || isEnhancing) return;
 
-    setIsEnhancing(true);
-    setInputValue(''); // Clear input once at the start
-
-    let animationFrameId: number | null = null;
+    if (originalPrompt.trim().split(' ').length < 3) {
+        toast.info("Prompt is too short to enhance.");
+        return;
+    }
 
     try {
-        const stream = enhanceUserPromptStream(originalPrompt);
-        let accumulatedText = '';
-        let isUpdatePending = false;
-
-        const updateInputValue = () => {
-            setInputValue(accumulatedText);
-            isUpdatePending = false;
-        };
-
-        for await (const chunk of stream) {
-            accumulatedText += chunk;
-            if (!isUpdatePending) {
-                isUpdatePending = true;
-                animationFrameId = requestAnimationFrame(updateInputValue);
-            }
-        }
-
-        // After the loop, ensure the final state is set and cancel any pending frame
-        if (animationFrameId) {
-            cancelAnimationFrame(animationFrameId);
-        }
-        setInputValue(accumulatedText); // Set final value
+        // Clear input to show it rewriting
+        setInputValue(''); 
         
-        // If the stream was empty or failed, restore the original prompt
-        if (!accumulatedText.trim()) {
-            setInputValue(originalPrompt);
+        // Trigger completion. 
+        // Note: useCompletion sends the prompt in the body automatically.
+        // We pass the prompt to `complete` which handles the fetch.
+        // We use the returned promise or just let the hook state update.
+        const result = await complete(originalPrompt);
+        
+        if (result) {
+            setInputValue(result);
         }
-
     } catch (e) {
-        console.error("Error during prompt enhancement:", e);
         setInputValue(originalPrompt); // Restore on error
-    } finally {
-        setIsEnhancing(false);
     }
   };
 

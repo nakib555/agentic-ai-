@@ -1,4 +1,3 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -10,11 +9,13 @@
 import React, { useState, useRef, useEffect, useCallback, useImperativeHandle } from 'react';
 import { fileToBase64WithProgress, base64ToFile } from '../../../utils/fileUtils';
 import { type MessageFormHandle, type SavedFile, type ProcessedFile, type FileWithEditKey } from './types';
+import { storage } from '../../../utils/storage';
 
 export const useFileHandling = (ref: React.ForwardedRef<MessageFormHandle>) => {
   const [processedFiles, setProcessedFiles] = useState<ProcessedFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+  const isHydrated = useRef(false);
 
   const processAndSetFiles = useCallback((filesToProcess: FileWithEditKey[]) => {
     const newProcessedFiles: ProcessedFile[] = filesToProcess.map(file => ({
@@ -65,49 +66,52 @@ export const useFileHandling = (ref: React.ForwardedRef<MessageFormHandle>) => {
     }
   }));
 
-  // Restore file drafts from localStorage on initial load
+  // Restore file drafts from IDB on initial load
   useEffect(() => {
-    try {
-        const savedFilesJSON = localStorage.getItem('messageDraft_files');
-        if (savedFilesJSON) {
-          const savedFiles: SavedFile[] = JSON.parse(savedFilesJSON);
-          if (Array.isArray(savedFiles)) {
-            const restoredFiles: ProcessedFile[] = savedFiles.map(sf => {
-              const file = base64ToFile(sf.data, sf.name, sf.mimeType);
-              return {
-                id: `${file.name}-${file.size}-${Date.now()}`,
-                file, progress: 100, base64Data: sf.data, error: null,
-              };
-            });
-            setProcessedFiles(restoredFiles);
-          }
-        }
-    } catch (error) {
-        console.error("Failed to parse or restore saved files:", error);
+    const restore = async () => {
         try {
-            localStorage.removeItem('messageDraft_files');
-        } catch (e) { /* ignore */ }
-    }
+            const savedFiles = await storage.loadFileDrafts();
+            if (Array.isArray(savedFiles) && savedFiles.length > 0) {
+                const restoredFiles: ProcessedFile[] = savedFiles.map(sf => {
+                    const file = base64ToFile(sf.data, sf.name, sf.mimeType);
+                    return {
+                        id: `${file.name}-${file.size}-${Date.now()}`,
+                        file, 
+                        progress: 100, 
+                        base64Data: sf.data, 
+                        error: null,
+                    };
+                });
+                setProcessedFiles(restoredFiles);
+            }
+        } catch (error) {
+            console.error("Failed to restore saved files:", error);
+        } finally {
+            isHydrated.current = true;
+        }
+    };
+    restore();
   }, []);
 
-  // Save file drafts to localStorage
+  // Save file drafts to IDB
   useEffect(() => {
-    try {
-        const filesToSave: SavedFile[] = processedFiles.filter(pf => pf.base64Data).map(pf => ({ name: pf.file.name, mimeType: pf.file.type, data: pf.base64Data! }));
-        if (filesToSave.length > 0) {
-            try {
-                localStorage.setItem('messageDraft_files', JSON.stringify(filesToSave));
-            } catch (error) {
-                 if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-                  // alert('Draft files are too large for localStorage and were not saved. Your text has been saved.');
-                } else {
-                  console.error("Error saving files for draft:", error);
-                }
-            }
-        } else {
-            localStorage.removeItem('messageDraft_files');
+    if (!isHydrated.current) return;
+
+    const save = async () => {
+        try {
+            const filesToSave: SavedFile[] = processedFiles
+                .filter(pf => pf.base64Data)
+                .map(pf => ({ name: pf.file.name, mimeType: pf.file.type, data: pf.base64Data! }));
+            
+            await storage.saveFileDrafts(filesToSave);
+        } catch (e) {
+            console.error("Error saving file drafts:", e);
         }
-    } catch (e) { /* ignore */ }
+    };
+
+    // Debounce saves slightly
+    const timer = setTimeout(save, 500);
+    return () => clearTimeout(timer);
   }, [processedFiles]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -127,6 +131,7 @@ export const useFileHandling = (ref: React.ForwardedRef<MessageFormHandle>) => {
   
   const clearFiles = () => {
     setProcessedFiles([]);
+    storage.clearFileDrafts().catch(console.error);
   };
 
   return {
