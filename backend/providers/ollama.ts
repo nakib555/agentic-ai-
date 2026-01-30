@@ -70,12 +70,16 @@ const OllamaProvider: AIProvider = {
             
             console.log(`[OllamaProvider] Fetching installed models from: ${url}`);
             
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json'
+            };
+            if (apiKey) {
+                headers['Authorization'] = `Bearer ${apiKey}`;
+            }
+
             const response = await fetchWithFallback(url, { 
                 method: 'GET', 
-                headers: { 
-                    'Content-Type': 'application/json',
-                    ...(apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {})
-                } 
+                headers: headers
             });
             
             if (!response.ok) {
@@ -137,12 +141,16 @@ const OllamaProvider: AIProvider = {
             const endpoint = `${effectiveEndpoint}/api/chat`;
             console.log(`[OllamaProvider] Connecting to chat endpoint: ${endpoint}`);
             
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json'
+            };
+            if (apiKey) {
+                headers['Authorization'] = `Bearer ${apiKey}`;
+            }
+
             const response = await fetchWithFallback(endpoint, {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    ...(apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {})
-                },
+                headers: headers,
                 body: JSON.stringify({
                     model,
                     messages: ollamaMessages,
@@ -221,12 +229,17 @@ const OllamaProvider: AIProvider = {
              messages.push({ role: 'user', content: prompt });
              
              const endpoint = `${effectiveEndpoint}/api/chat`;
+
+             const headers: Record<string, string> = {
+                'Content-Type': 'application/json'
+            };
+            if (apiKey) {
+                headers['Authorization'] = `Bearer ${apiKey}`;
+            }
+
              const resp = await fetchWithFallback(endpoint, {
                  method: 'POST',
-                 headers: { 
-                    'Content-Type': 'application/json',
-                    ...(apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {})
-                 },
+                 headers: headers,
                  body: JSON.stringify({
                      model: model,
                      messages,

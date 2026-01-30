@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -93,6 +93,57 @@ const ApiKeyForm = ({ label, value, placeholder, onSave, description }: {
     );
 };
 
+const OllamaHostForm = ({ value, onSave }: { value: string, onSave: (host: string) => Promise<void> | void }) => {
+    const [host, setHost] = useState(value);
+    const [isSaving, setIsSaving] = useState(false);
+    const [success, setSuccess] = useState(false);
+
+    useEffect(() => {
+        setHost(value);
+    }, [value]);
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        setSuccess(false);
+        try {
+            await onSave(host);
+            setSuccess(true);
+            setTimeout(() => setSuccess(false), 2000);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <div className="flex flex-col gap-2 w-full">
+             <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest px-1">Ollama Host URL</label>
+             <div className="flex gap-2 flex-wrap sm:flex-nowrap">
+                <Input 
+                    type="text" 
+                    value={host}
+                    onChange={(e) => setHost(e.target.value)}
+                    placeholder="http://localhost:11434"
+                    onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+                />
+                <Button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="w-[80px]"
+                >
+                    {isSaving ? (
+                        <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : success ? (
+                        <Check className="h-4 w-4" />
+                    ) : (
+                        'Save'
+                    )}
+                </Button>
+             </div>
+             <p className="text-[11px] text-slate-500 px-1">Ensure your Ollama server allows CORS.</p>
+        </div>
+    );
+};
+
 const ActionButton = ({ 
     icon: Icon, 
     title, 
@@ -120,7 +171,7 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
                 <div className="flex items-center gap-4">
                     <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl shadow-lg shadow-blue-500/20 text-white">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
-                            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V4a2 2 0 0 0-2-2z"></path>
+                            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V4a2 2 0 0 0-2-2z"></path>
                             <circle cx="12" cy="12" r="3"></circle>
                         </svg>
                     </div>
@@ -174,18 +225,11 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
                 
                 {provider === 'ollama' && (
                      <div className="space-y-6 pt-2 animate-in fade-in slide-in-from-top-2 duration-300 w-full">
-                        <div className="flex flex-col gap-2">
-                             <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest px-1">Ollama Host URL</label>
-                             <div className="flex gap-2">
-                                <Input 
-                                    type="text" 
-                                    defaultValue={ollamaHost}
-                                    placeholder="http://localhost:11434"
-                                    onBlur={(e) => onSaveOllamaHost && onSaveOllamaHost(e.target.value)}
-                                />
-                             </div>
-                             <p className="text-[11px] text-slate-500 px-1">Ensure your Ollama server allows CORS.</p>
-                        </div>
+                        <OllamaHostForm 
+                            value={ollamaHost || 'http://localhost:11434'}
+                            onSave={onSaveOllamaHost || (async () => {})}
+                        />
+                        
                         <ApiKeyForm
                             label="Ollama API Key (Optional)" 
                             value={ollamaApiKey || ''} 
