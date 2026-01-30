@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Key, Globe, Layout, Link, Database, Trash2, Download, Activity, Terminal, Check } from 'lucide-react';
+import { Key, Globe, Layout, Link, Database, Trash2, Download, Activity, Terminal, Check, Eye, EyeOff } from 'lucide-react';
 import { SettingItem } from './SettingItem';
 import { ThemeToggle } from '../Sidebar/ThemeToggle';
 import type { Theme } from '../../hooks/useTheme';
@@ -48,6 +48,7 @@ const ApiKeyForm = ({ label, value, placeholder, onSave, description }: {
     label: string, value: string, placeholder: string, onSave: (key: string) => Promise<void>, description?: string 
 }) => {
     const [showSuccess, setShowSuccess] = useState(false);
+    const [isVisible, setIsVisible] = useState(false);
     
     const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<ApiKeyFormData>({
         resolver: zodResolver(apiKeySchema), 
@@ -61,7 +62,10 @@ const ApiKeyForm = ({ label, value, placeholder, onSave, description }: {
 
     const onSubmit = async (data: ApiKeyFormData) => {
         try {
-            await onSave(data.key);
+            // Aggressively sanitize input: remove all whitespace/newlines
+            // This fixes issues where copying long keys (like OpenRouter) introduces hidden newlines or spaces
+            const cleanKey = data.key.replace(/\s+/g, '');
+            await onSave(cleanKey);
             setShowSuccess(true);
             setTimeout(() => setShowSuccess(false), 2000);
         } catch (e) {
@@ -73,21 +77,32 @@ const ApiKeyForm = ({ label, value, placeholder, onSave, description }: {
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-2 w-full">
             <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest px-1">{label}</label>
-                <div className="flex gap-2 flex-wrap sm:flex-nowrap">
-                    <Input
-                        {...register('key')}
-                        type="password"
-                        placeholder={placeholder}
-                        autoComplete="off"
-                        autoCapitalize="off"
-                        autoCorrect="off"
-                        spellCheck="false"
-                        className={errors.key ? 'border-red-500 focus-visible:ring-red-500' : ''}
-                    />
+                <div className="flex gap-2 flex-wrap sm:flex-nowrap items-stretch">
+                    <div className="relative flex-1">
+                        <Input
+                            {...register('key')}
+                            type={isVisible ? "text" : "password"}
+                            placeholder={placeholder}
+                            autoComplete="off"
+                            autoCapitalize="off"
+                            autoCorrect="off"
+                            spellCheck="false"
+                            className={`pr-10 ${errors.key ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setIsVisible(!isVisible)}
+                            className="absolute right-0 top-0 h-full px-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors focus:outline-none"
+                            tabIndex={-1}
+                            title={isVisible ? "Hide API Key" : "Show API Key"}
+                        >
+                            {isVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                    </div>
                     <Button
                         type="submit"
                         disabled={isSubmitting}
-                        className="w-[80px] active:scale-95 transition-transform"
+                        className="w-[80px] active:scale-95 transition-transform shrink-0"
                     >
                         {isSubmitting ? (
                             <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -144,7 +159,7 @@ const OllamaHostForm = ({ value, onSave }: { value: string, onSave: (host: strin
                 <Button
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="w-[80px] active:scale-95 transition-transform"
+                    className="w-[80px] active:scale-95 transition-transform shrink-0"
                     type="button"
                 >
                     {isSaving ? (
@@ -235,7 +250,7 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
                             value={openRouterApiKey} 
                             placeholder="sk-or-..." 
                             onSave={(key) => onSaveApiKey(key, 'openrouter')}
-                            description="Required for OpenRouter models."
+                            description="Required for OpenRouter models. Check your OpenRouter dashboard."
                         />
                     </div>
                 )}
