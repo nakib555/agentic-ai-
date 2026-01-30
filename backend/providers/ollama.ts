@@ -22,7 +22,7 @@ const getEffectiveEndpoint = async (): Promise<string> => {
     }
     
     if (!host) {
-        host = process.env.OLLAMA_HOST || 'http://localhost:11434';
+        host = process.env.OLLAMA_HOST || '';
     }
 
     // Normalization Logic

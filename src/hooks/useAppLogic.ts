@@ -115,7 +115,8 @@ export const useAppLogic = () => {
     const fetchModels = useCallback(async () => {
         setModelsLoading(true);
         try {
-            const res = await fetchFromApi('/api/models');
+            // Append timestamp to prevent browser caching of the models list
+            const res = await fetchFromApi(`/api/models?_t=${Date.now()}`);
             if (res.ok) {
                 const data = await res.json();
                 processModelData(data);
@@ -230,7 +231,9 @@ export const useAppLogic = () => {
 
             const response = await updateSettings(updatePayload);
             
-            // Refresh models with the new key
+            // Refresh models with the new key.
+            // If the backend returned models (optimized path), use them.
+            // Otherwise, force a fetch (fallback path).
             if (response.models && response.models.length > 0) {
                 processModelData(response);
             } else {
@@ -248,6 +251,7 @@ export const useAppLogic = () => {
         settings.setOllamaHost(host);
         try {
             const response = await updateSettings({ ollamaHost: host });
+            // Always refresh models for Ollama when host changes
             if (response.models && response.models.length > 0) {
                 processModelData(response);
             } else {
@@ -431,10 +435,9 @@ export const useAppLogic = () => {
     }, [chat.currentChatId, chat.chatHistory]);
 
     const saveApiKey = async (key: string, providerType: 'gemini' | 'openrouter' | 'ollama') => {
-        if (providerType === 'gemini') settings.setApiKey(key);
-        if (providerType === 'openrouter') settings.setOpenRouterApiKey(key);
-        if (providerType === 'ollama') settings.setOllamaApiKey(key);
-        
+        // This wrapper is used by the settings modal, but the logic is inside onSaveApiKey via useCallback
+        // We actually pass onSaveApiKey directly to SettingsModal props in the return below.
+        // This function exists for type compatibility if needed, but onSaveApiKey is the one to use.
         await onSaveApiKey(key, providerType);
     };
 
@@ -457,7 +460,7 @@ export const useAppLogic = () => {
 
         confirmation, handleConfirm, handleCancel,
         versionMismatch,
-        isAnyResizing: false, // Panels handles this internally now
+        isAnyResizing: false,
         isNewChatDisabled: modelsLoading || settingsLoading || chat.isLoading,
         handleToggleSidebar: () => sidebar.setIsSidebarOpen(!sidebar.isSidebarOpen),
         handleShowSources,
@@ -476,7 +479,7 @@ export const useAppLogic = () => {
         ollamaHost: settings.ollamaHost,
         ollamaApiKey: settings.ollamaApiKey,
         onProviderChange: onProviderChange, 
-        onSaveApiKey: saveApiKey, 
+        onSaveApiKey: onSaveApiKey, 
         onSaveOllamaHost: onSaveOllamaHost,
         serverUrl: settings.serverUrl, 
         onSaveServerUrl: onSaveServerUrl,

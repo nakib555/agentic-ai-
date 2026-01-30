@@ -72,7 +72,7 @@ export const useSettingsStore = create<SettingsState>()(
       apiKey: '',
       openRouterApiKey: '',
       ollamaApiKey: '',
-      ollamaHost: 'http://localhost:11434',
+      ollamaHost: '',
       serverUrl: '',
       
       activeModel: 'gemini-2.5-flash',
