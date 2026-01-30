@@ -48,13 +48,10 @@ export const parseContentSegments = (text: string): RenderSegment[] => {
             }
         }
         
-        // Handle any incomplete tags at the end of the stream
-        // We strip partial tags to prevent UI glitching during streaming/typing
+        // Handle incomplete tags at the very end of the stream (during typing)
         const incompleteTagRegex = /\[(VIDEO_COMPONENT|ONLINE_VIDEO_COMPONENT|IMAGE_COMPONENT|ONLINE_IMAGE_COMPONENT|MCQ_COMPONENT|MAP_COMPONENT|FILE_ATTACHMENT_COMPONENT|BROWSER_COMPONENT|CODE_OUTPUT_COMPONENT)\].*$/s;
         const cleanedPart = part.replace(incompleteTagRegex, '');
         
-        // CRITICAL FIX: Do not trim() the content check. 
-        // We must preserve whitespace-only segments (like newlines) to maintain markdown structure (lists, tables).
         if (cleanedPart.length === 0) return null; 
 
         return { type: 'text', content: cleanedPart };
@@ -71,7 +68,7 @@ export const parseAgenticWorkflow = (
   let executionText = '';
   let finalAnswerText = '';
 
-  // 1. Check for Agentic Workflow Markers
+  // 1. Check for Workflow Markers
   const planMarker = '[STEP] Strategic Plan:';
   const planMarkerIndex = rawText.indexOf(planMarker);
   const finalAnswerMarker = '[STEP] Final Answer:';
@@ -83,13 +80,12 @@ export const parseAgenticWorkflow = (
       // Chat Mode: Everything is the final answer
       finalAnswerText = rawText;
   } else {
-      // Agent Mode: Parse Steps
+      // Parse Steps
       let contentStartIndex = 0;
 
       // Extract Plan
       if (planMarkerIndex !== -1) {
           const planStart = planMarkerIndex + planMarker.length;
-          // Plan goes until the next step or Final Answer
           let planEnd = rawText.indexOf('[STEP]', planStart);
           if (planEnd === -1) planEnd = rawText.length;
           
@@ -100,21 +96,17 @@ export const parseAgenticWorkflow = (
       // Extract Final Answer
       if (finalAnswerIndex !== -1) {
           finalAnswerText = rawText.substring(finalAnswerIndex + finalAnswerMarker.length);
-          // Extract execution text (between plan and final answer)
           if (contentStartIndex < finalAnswerIndex) {
               executionText = rawText.substring(contentStartIndex, finalAnswerIndex);
           }
       } else {
-          // No final answer yet, everything after plan is execution log
           executionText = rawText.substring(contentStartIndex);
       }
   }
 
   // Cleanup strings
-  planText = planText.replace(/\[AGENT:.*?\]\s*/, '').replace(/\[USER_APPROVAL_REQUIRED\]/, '').trim();
-  
-  // Clean Agent tags from Final Answer
-  finalAnswerText = finalAnswerText.replace(/^\s*:?\s*\[AGENT:\s*[^\]]+\]\s*/, '').replace(/\[AUTO_CONTINUE\]/g, '').trim();
+  planText = planText.replace(/\[USER_APPROVAL_REQUIRED\]/, '').trim();
+  finalAnswerText = finalAnswerText.replace(/\[AUTO_CONTINUE\]/g, '').trim();
 
   // Parse Execution Log
   const textNodes: WorkflowNodeData[] = [];
@@ -130,16 +122,10 @@ export const parseAgenticWorkflow = (
     if (lowerCaseTitle === 'final answer') continue;
 
     let type: WorkflowNodeType = 'plan';
-    let agentName: string | undefined;
     let handoff: { from: string; to: string } | undefined;
 
-    const agentMatch = details.match(/^\[AGENT:\s*([^\]]+)\]\s*/);
-    if (agentMatch) {
-        agentName = agentMatch[1].trim();
-        details = details.replace(agentMatch[0], '').trim();
-    }
-
     const handoffMatch = title.match(/^Handoff:\s*(.*?)\s*->\s*(.*)/i);
+    
     if (handoffMatch) {
         type = 'handoff';
         handoff = { from: handoffMatch[1].trim(), to: handoffMatch[2].trim() };
@@ -150,7 +136,7 @@ export const parseAgenticWorkflow = (
     } else if (lowerCaseTitle === 'think' || lowerCaseTitle === 'adapt') {
         type = 'thought';
         details = `${title}: ${details}`;
-        title = agentName ? `Thinking` : 'Thinking';
+        title = 'Reasoning';
     } else if (lowerCaseTitle === 'observe') {
         type = 'observation';
         title = 'Observation';
@@ -167,7 +153,6 @@ export const parseAgenticWorkflow = (
         title: title,
         status: 'pending', 
         details: details || 'No details provided.',
-        agentName: agentName,
         handoff: handoff,
     });
   }
@@ -191,19 +176,12 @@ export const parseAgenticWorkflow = (
   });
 
   const executionLog: WorkflowNodeData[] = [];
-  let lastAgentName: string | undefined;
-
-  // Interleave text steps and tool steps
+  
   for (const textNode of textNodes) {
-    if (textNode.agentName) {
-        lastAgentName = textNode.agentName;
-    }
-
     if (textNode.type === 'act_marker') {
         if (toolNodesQueue.length > 0) {
             const toolNode = toolNodesQueue.shift();
             if (toolNode) {
-                toolNode.agentName = lastAgentName;
                 executionLog.push(toolNode);
             }
         }
@@ -212,9 +190,7 @@ export const parseAgenticWorkflow = (
     }
   }
   
-  // Append remaining tools
   for (const toolNode of toolNodesQueue) {
-      toolNode.agentName = lastAgentName;
       executionLog.push(toolNode);
   }
 
@@ -235,7 +211,6 @@ export const parseAgenticWorkflow = (
         executionLog[executionLog.length - 1].details = error;
     }
     
-    // Mark previous as done
     let failurePointReached = false;
     executionLog.forEach(node => {
         if (node.status === 'failed') failurePointReached = true;
@@ -247,20 +222,19 @@ export const parseAgenticWorkflow = (
       if (node.status !== 'failed') node.status = 'done';
     });
   } else {
-    // Mark active/pending
     let lastActiveNodeFound = false;
     for (let i = executionLog.length - 1; i >= 0; i--) {
         const node = executionLog[i];
+        
         if (!lastActiveNodeFound && node.status !== 'done') {
             node.status = 'active';
             lastActiveNodeFound = true;
-        } else if (node.status === 'pending') {
-            node.status = 'done';
+        } else if (node.status === 'active') {
+            node.status = 'done'; 
         }
     }
   }
   
-  // Parse Components from Final Answer
   const finalAnswerSegments = parseContentSegments(finalAnswerText);
 
   return { plan: planText, executionLog, finalAnswer: finalAnswerText, finalAnswerSegments };

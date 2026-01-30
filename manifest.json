@@ -1,7 +1,8 @@
+
 {
-  "short_name": "Agentic AI",
-  "name": "Agentic AI Chat",
-  "description": "A responsive chat application powered by the Gemini API, featuring an agentic AI persona.",
+  "short_name": "Gemini",
+  "name": "Gemini Chat",
+  "description": "A responsive chat application powered by the Gemini API.",
   "id": "/",
   "start_url": "/",
   "scope": "/",

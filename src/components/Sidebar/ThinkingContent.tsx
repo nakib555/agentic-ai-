@@ -8,7 +8,6 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import type { Message } from '../../types';
 import { ThinkingWorkflow } from '../AI/ThinkingWorkflow';
 import { ErrorDisplay } from '../UI/ErrorDisplay';
-import { AgentBriefing } from '../AI/AgentBriefing';
 
 type ThinkingContentProps = {
     message: Message | null;
@@ -90,9 +89,7 @@ export const ThinkingContent: React.FC<ThinkingContentProps> = React.memo(({ mes
             </div>
 
             <div className="space-y-6 px-4 pb-12 break-words">
-                {plan && (
-                    <AgentBriefing content={plan} />
-                )}
+                {/* Plan display removed to simplify UI as requested */}
                 
                 {executionLog.length > 0 && (
                      <section>

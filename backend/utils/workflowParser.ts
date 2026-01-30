@@ -9,23 +9,6 @@ import type { MessageError, ToolCallEvent, WorkflowNodeData, WorkflowNodeType, P
 const GENERIC_STEP_KEYWORDS = new Set(['observe', 'adapt', 'system']);
 const ACTION_KEYWORDS = new Set(['act', 'action', 'tool call']);
 
-// Centralized list of supported UI components to ensure consistent regex generation
-const SUPPORTED_COMPONENTS = [
-    'VIDEO_COMPONENT', 
-    'ONLINE_VIDEO_COMPONENT', 
-    'IMAGE_COMPONENT', 
-    'ONLINE_IMAGE_COMPONENT', 
-    'MCQ_COMPONENT', 
-    'MAP_COMPONENT', 
-    'FILE_ATTACHMENT_COMPONENT', 
-    'BROWSER_COMPONENT', 
-    'CODE_OUTPUT_COMPONENT',
-    'VEO_API_KEY_SELECTION_COMPONENT',
-    'LOCATION_PERMISSION_REQUEST',
-    'ARTIFACT_CODE',
-    'ARTIFACT_DATA'
-];
-
 /**
  * Parses raw text into component segments (e.g. text vs [IMAGE_COMPONENT]...[/...]).
  * This is used by the frontend to render components dynamically as text is typed.
@@ -34,21 +17,15 @@ export const parseContentSegments = (text: string): RenderSegment[] => {
     if (!text) return [];
 
     // Regex to capture component tags and their content
-    const componentRegex = new RegExp(`(\\[(?:${SUPPORTED_COMPONENTS.join('|')})\\][\\s\\S]*?\\[\\/(?:${SUPPORTED_COMPONENTS.join('|')})\\])`, 'g');
+    const componentRegex = /(\[(?:VIDEO_COMPONENT|ONLINE_VIDEO_COMPONENT|IMAGE_COMPONENT|ONLINE_IMAGE_COMPONENT|MCQ_COMPONENT|MAP_COMPONENT|FILE_ATTACHMENT_COMPONENT|BROWSER_COMPONENT|CODE_OUTPUT_COMPONENT)\].*?\[\/(?:VIDEO_COMPONENT|ONLINE_VIDEO_COMPONENT|IMAGE_COMPONENT|ONLINE_IMAGE_COMPONENT|MCQ_COMPONENT|MAP_COMPONENT|FILE_ATTACHMENT_COMPONENT|BROWSER_COMPONENT|CODE_OUTPUT_COMPONENT)\])/s;
     
     const parts = text.split(componentRegex).filter(part => part);
 
     return parts.map((part): RenderSegment | null => {
-        // Regex to identify which specific tag this part is
-        const matchPattern = new RegExp(`^\\[(${SUPPORTED_COMPONENTS.join('|')})\\]([\\s\\S]*?)\\[\\/\\1\\]$`);
-        const componentMatch = part.match(matchPattern);
+        const componentMatch = part.match(/^\[(VIDEO_COMPONENT|ONLINE_VIDEO_COMPONENT|IMAGE_COMPONENT|ONLINE_IMAGE_COMPONENT|MCQ_COMPONENT|MAP_COMPONENT|FILE_ATTACHMENT_COMPONENT|BROWSER_COMPONENT|CODE_OUTPUT_COMPONENT)\](\{.*?\})\[\/\1\]$/s);
         
         if (componentMatch) {
-            const tagType = componentMatch[1];
-            const contentString = componentMatch[2];
-
             try {
-                // Map internal component tags to the RenderSegment types expected by the UI
                 const typeMap: Record<string, string> = {
                     'VIDEO_COMPONENT': 'VIDEO',
                     'ONLINE_VIDEO_COMPONENT': 'ONLINE_VIDEO',
@@ -58,43 +35,27 @@ export const parseContentSegments = (text: string): RenderSegment[] => {
                     'MAP_COMPONENT': 'MAP',
                     'FILE_ATTACHMENT_COMPONENT': 'FILE',
                     'BROWSER_COMPONENT': 'BROWSER',
-                    'CODE_OUTPUT_COMPONENT': 'CODE_OUTPUT',
-                    'VEO_API_KEY_SELECTION_COMPONENT': 'VEO_API_KEY', // UI specific
-                    'LOCATION_PERMISSION_REQUEST': 'LOCATION_PERMISSION', // UI specific
-                    'ARTIFACT_CODE': 'ARTIFACT_CODE',
-                    'ARTIFACT_DATA': 'ARTIFACT_DATA'
+                    'CODE_OUTPUT_COMPONENT': 'CODE_OUTPUT'
                 };
-
-                // Special handling for simple text-wrapped components vs JSON components
-                if (['VEO_API_KEY_SELECTION_COMPONENT', 'LOCATION_PERMISSION_REQUEST'].includes(tagType)) {
-                     return {
-                        type: 'component',
-                        componentType: typeMap[tagType] as any,
-                        data: { text: contentString } // Pass string content directly
-                    };
-                }
-
                 return {
                     type: 'component',
-                    componentType: typeMap[tagType] as any,
-                    data: JSON.parse(contentString)
+                    componentType: typeMap[componentMatch[1]] as any,
+                    data: JSON.parse(componentMatch[2])
                 };
             } catch (e) {
-                console.warn(`Failed to parse component data for ${tagType}`, e);
-                // Fallback: treat as plain text if JSON parse fails to prevent crash
+                // Fallback if JSON parse fails
                 return { type: 'text', content: part };
             }
         }
         
         // Handle incomplete tags at the very end of the stream (during typing)
-        const incompleteTagRegex = new RegExp(`\\[(?:${SUPPORTED_COMPONENTS.join('|')})\\]$`);
+        // We strip partial tags to prevent UI glitching during streaming/typing
+        const incompleteTagRegex = /\[(VIDEO_COMPONENT|ONLINE_VIDEO_COMPONENT|IMAGE_COMPONENT|ONLINE_IMAGE_COMPONENT|MCQ_COMPONENT|MAP_COMPONENT|FILE_ATTACHMENT_COMPONENT|BROWSER_COMPONENT|CODE_OUTPUT_COMPONENT)\].*$/s;
         const cleanedPart = part.replace(incompleteTagRegex, '');
         
-        if (cleanedPart.length === 0 && part.length > 0 && !part.match(incompleteTagRegex)) {
-             return null;
-        }
-        
-        if (cleanedPart.length === 0) return null;
+        // CRITICAL FIX: Do not trim() the content check. 
+        // We must preserve whitespace-only segments (like newlines) to maintain markdown structure (lists, tables).
+        if (cleanedPart.length === 0) return null; 
 
         return { type: 'text', content: cleanedPart };
     }).filter((s): s is RenderSegment => s !== null);
@@ -110,40 +71,36 @@ export const parseAgenticWorkflow = (
   let executionText = '';
   let finalAnswerText = '';
 
-  // 1. Check for Briefing/Plan
-  const briefingMatch = rawText.match(/\[BRIEFING\]([\s\S]*?)\[\/BRIEFING\]/);
-  // Fallback to old format
+  // 1. Check for Agentic Workflow Markers
   const planMarker = '[STEP] Strategic Plan:';
   const planMarkerIndex = rawText.indexOf(planMarker);
-
-  let contentStartIndex = 0;
-
-  if (briefingMatch) {
-      planText = briefingMatch[1].trim();
-      contentStartIndex = briefingMatch.index! + briefingMatch[0].length;
-  } else if (planMarkerIndex !== -1) {
-      const planStart = planMarkerIndex + planMarker.length;
-      let planEnd = rawText.indexOf('[STEP]', planStart);
-      if (planEnd === -1) planEnd = rawText.length;
-      planText = rawText.substring(planStart, planEnd).trim();
-      contentStartIndex = planEnd;
-  }
-
-  // 2. Extract Final Answer
   const finalAnswerMarker = '[STEP] Final Answer:';
   const finalAnswerIndex = rawText.lastIndexOf(finalAnswerMarker);
-  
-  // Logic to determine if we are in Agent Mode
-  const hasSteps = rawText.includes('[STEP]') || !!briefingMatch;
+
+  const hasSteps = rawText.includes('[STEP]');
 
   if (!hasSteps) {
       // Chat Mode: Everything is the final answer
       finalAnswerText = rawText;
   } else {
-      // Agent Mode
+      // Agent Mode: Parse Steps
+      let contentStartIndex = 0;
+
+      // Extract Plan
+      if (planMarkerIndex !== -1) {
+          const planStart = planMarkerIndex + planMarker.length;
+          // Plan goes until the next step or Final Answer
+          let planEnd = rawText.indexOf('[STEP]', planStart);
+          if (planEnd === -1) planEnd = rawText.length;
+          
+          planText = rawText.substring(planStart, planEnd).trim();
+          contentStartIndex = planEnd;
+      }
+
+      // Extract Final Answer
       if (finalAnswerIndex !== -1) {
           finalAnswerText = rawText.substring(finalAnswerIndex + finalAnswerMarker.length);
-          // Execution text is between plan and final answer
+          // Extract execution text (between plan and final answer)
           if (contentStartIndex < finalAnswerIndex) {
               executionText = rawText.substring(contentStartIndex, finalAnswerIndex);
           }
@@ -154,8 +111,8 @@ export const parseAgenticWorkflow = (
   }
 
   // Cleanup strings
-  planText = planText.replace(/\[AGENT:.*?\]\s*/, '').replace(/\[USER_APPROVAL_REQUIRED\]/, '').trim();
-  finalAnswerText = finalAnswerText.replace(/^\s*:?\s*\[AGENT:\s*[^\]]+\]\s*/, '').replace(/\[AUTO_CONTINUE\]/g, '').trim();
+  planText = planText.replace(/\[USER_APPROVAL_REQUIRED\]/, '').trim();
+  finalAnswerText = finalAnswerText.replace(/\[AUTO_CONTINUE\]/g, '').trim();
 
   // Parse Execution Log
   const textNodes: WorkflowNodeData[] = [];
@@ -171,14 +128,7 @@ export const parseAgenticWorkflow = (
     if (lowerCaseTitle === 'final answer') continue;
 
     let type: WorkflowNodeType = 'plan';
-    let agentName: string | undefined;
     let handoff: { from: string; to: string } | undefined;
-
-    const agentMatch = details.match(/^\[AGENT:\s*([^\]]+)\]\s*/);
-    if (agentMatch) {
-        agentName = agentMatch[1].trim();
-        details = details.replace(agentMatch[0], '').trim();
-    }
 
     const handoffMatch = title.match(/^Handoff:\s*(.*?)\s*->\s*(.*)/i);
     if (handoffMatch) {
@@ -191,7 +141,7 @@ export const parseAgenticWorkflow = (
     } else if (lowerCaseTitle === 'think' || lowerCaseTitle === 'adapt') {
         type = 'thought';
         details = `${title}: ${details}`;
-        title = agentName ? `Thinking` : 'Thinking';
+        title = `Thinking`;
     } else if (lowerCaseTitle === 'observe') {
         type = 'observation';
         title = 'Observation';
@@ -208,7 +158,6 @@ export const parseAgenticWorkflow = (
         title: title,
         status: 'pending', 
         details: details || 'No details provided.',
-        agentName: agentName,
         handoff: handoff,
     });
   }
@@ -232,20 +181,13 @@ export const parseAgenticWorkflow = (
   });
 
   const executionLog: WorkflowNodeData[] = [];
-  let lastAgentName: string | undefined;
-
-  // Interleave text steps and tool steps logic
+  
+  // Interleave text steps and tool steps
   for (const textNode of textNodes) {
-    if (textNode.agentName) {
-        lastAgentName = textNode.agentName;
-    }
-
     if (textNode.type === 'act_marker') {
         if (toolNodesQueue.length > 0) {
-            // Assign one or more tools to this Act block
             const toolNode = toolNodesQueue.shift();
             if (toolNode) {
-                toolNode.agentName = lastAgentName;
                 executionLog.push(toolNode);
             }
         }
@@ -254,9 +196,8 @@ export const parseAgenticWorkflow = (
     }
   }
   
-  // Append any remaining tools that didn't match an explicit 'Act' block
+  // Append remaining tools
   for (const toolNode of toolNodesQueue) {
-      toolNode.agentName = lastAgentName || 'System';
       executionLog.push(toolNode);
   }
 
@@ -277,7 +218,7 @@ export const parseAgenticWorkflow = (
         executionLog[executionLog.length - 1].details = error;
     }
     
-    // Mark everything before the failure as done
+    // Mark previous as done
     let failurePointReached = false;
     executionLog.forEach(node => {
         if (node.status === 'failed') failurePointReached = true;

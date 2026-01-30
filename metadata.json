@@ -1,6 +1,6 @@
 {
-  "name": "Agentic AI Chat",
-  "description": "A responsive chat application powered by the Gemini API, featuring an agentic AI persona.",
+  "name": "Gemini Chat",
+  "description": "A responsive chat application powered by the Gemini API.",
   "requestFramePermissions": [
     "microphone",
     "geolocation",

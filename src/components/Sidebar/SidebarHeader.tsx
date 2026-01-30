@@ -42,7 +42,7 @@ export const SidebarHeader = ({ isCollapsed, isDesktop, setIsOpen, setIsCollapse
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3 }}
           >
-              Agentic AI
+              Gemini Chat
           </motion.span>
       </div>
       

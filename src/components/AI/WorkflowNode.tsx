@@ -12,7 +12,6 @@ import { ManualCodeRenderer } from '../Markdown/ManualCodeRenderer';
 import { WorkflowMarkdownComponents } from '../Markdown/markdownComponents';
 import { SearchIcon } from './icons';
 import { SearchToolResult } from './SearchToolResult';
-import { getAgentColor } from '../../utils/agentUtils';
 import { FlowToken } from './FlowToken';
 
 type WorkflowNodeProps = {
@@ -34,12 +33,6 @@ const ToolIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
         <polyline points="4 17 10 11 4 5"></polyline>
         <line x1="12" y1="19" x2="20" y2="19"></line>
-    </svg>
-);
-
-const CheckIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
-        <polyline points="20 6 9 17 4 12"></polyline>
     </svg>
 );
 
@@ -101,7 +94,6 @@ const WorkflowNodeRaw = ({ node, sendMessage, onRegenerate, messageId, isLast }:
         Icon = ErrorIcon;
         iconBg = 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/40';
     } else if (isDone) {
-        // Icon = CheckIcon; // Optional: Switch to checkmark on done
         iconBg = 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30';
     }
 
@@ -110,7 +102,6 @@ const WorkflowNodeRaw = ({ node, sendMessage, onRegenerate, messageId, isLast }:
 
     // --- Title & Metadata ---
     let title = node.title;
-    let agentBadge = node.agentName;
     const isSearch = node.type === 'duckduckgoSearch';
     
     // Custom handling for tool titles
@@ -125,8 +116,6 @@ const WorkflowNodeRaw = ({ node, sendMessage, onRegenerate, messageId, isLast }:
     if (isSearch) {
         title = `Search: "${title.replace(/^"/, '').replace(/"$/, '')}"`;
     }
-
-    const agentColorInfo = agentBadge ? getAgentColor(agentBadge) : getAgentColor('System');
 
     return (
         <div className="group relative pl-2 pb-2">
@@ -150,11 +139,6 @@ const WorkflowNodeRaw = ({ node, sendMessage, onRegenerate, messageId, isLast }:
                 >
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                            {agentBadge && (
-                                <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wide border border-transparent ${agentColorInfo.bg} ${agentColorInfo.text} bg-opacity-40`}>
-                                    {agentBadge}
-                                </span>
-                            )}
                             <span className={`text-sm font-semibold truncate ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-200'}`}>
                                 {title}
                             </span>
