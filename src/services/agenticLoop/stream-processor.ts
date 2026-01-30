@@ -35,9 +35,9 @@ export const processBackendStream = async (response: Response, callbacks: Stream
     // Fine-grained refinement: We use a tight interval but flush immediately 
     // upon detecting structural markers (newlines, code blocks, UI components).
     // This ensures layout shifts happen instantly while bulk text is smoothed out.
-    // Adjusted to 75ms (approx 13fps updates) to reduce main thread blocking on mobile.
-    const FLUSH_INTERVAL_MS = 75; 
-    const MAX_BUFFER_SIZE = 100; 
+    // Adjusted to 10ms to ensure near real-time streaming feel.
+    const FLUSH_INTERVAL_MS = 10; 
+    const MAX_BUFFER_SIZE = 5; 
     // Increased timeout to 2 minutes to handle "Thinking" models which may pause for long periods
     const WATCHDOG_TIMEOUT_MS = 120000;
 
@@ -98,7 +98,7 @@ export const processBackendStream = async (response: Response, callbacks: Stream
                         // Check for component tags
                         const hasArtifactTag = pendingText!.includes('[ARTIFACT') || pendingText!.includes('[/ARTIFACT') || pendingText!.includes('[STEP]');
 
-                        // Flush if buffer is full, has priority tokens, or special tags
+                        // Flush if buffer is full or we hit a special tag
                         if (isBufferFull || hasArtifactTag || hasPriorityToken) {
                             flushTextUpdates();
                         } else if (flushTimeoutId === null) {
@@ -119,7 +119,7 @@ export const processBackendStream = async (response: Response, callbacks: Stream
                             // Keep-alive, ignore
                             break;
                         case 'workflow-update':
-                            // Deprecated from backend, but kept for compatibility if needed
+                            // Deprecated from backend, but kept for compatibility
                             if (callbacks.onWorkflowUpdate) callbacks.onWorkflowUpdate(event.payload);
                             break;
                         case 'tool-call-start':
