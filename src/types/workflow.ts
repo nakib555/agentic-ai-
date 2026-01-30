@@ -25,7 +25,7 @@ export type WorkflowNodeData = {
 export type RenderSegment = {
     type: 'text' | 'component';
     content?: string;
-    componentType?: 'VIDEO' | 'ONLINE_VIDEO' | 'IMAGE' | 'ONLINE_IMAGE' | 'MCQ' | 'MAP' | 'FILE' | 'BROWSER' | 'CODE_OUTPUT';
+    componentType?: 'VIDEO' | 'ONLINE_VIDEO' | 'IMAGE' | 'ONLINE_IMAGE' | 'MCQ' | 'MAP' | 'FILE' | 'BROWSER' | 'CODE_OUTPUT' | 'DATA_TABLE';
     data?: any;
 };
 

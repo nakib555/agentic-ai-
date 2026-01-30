@@ -7,7 +7,6 @@ import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { useSyntaxTheme } from '../../hooks/useSyntaxTheme';
 import { ErrorBoundary } from '../ErrorBoundary';
-import { DataTable } from './DataTable';
 
 // Lazy load the LiveCodes component
 const LiveCodesEmbed = React.lazy(() => import('./SandpackComponent'));
@@ -52,7 +51,7 @@ export const ArtifactRenderer: React.FC<ArtifactRendererProps> = ({ type, conten
 
     // Determines if we can render this language visually
     const isRenderable = useMemo(() => {
-        if (type === 'data') return true; // Data is always renderable via Table
+        if (type === 'data') return false; // Data is now just source view in artifact renderer
         const l = (language || '').toLowerCase();
         return ['html', 'svg', 'javascript', 'js', 'jsx', 'ts', 'tsx', 'css', 'react', 'vue', 'svelte', 'python'].includes(l);
     }, [type, language]);
@@ -72,18 +71,8 @@ export const ArtifactRenderer: React.FC<ArtifactRendererProps> = ({ type, conten
 
     const renderPreview = () => {
         if (type === 'data') {
-            try {
-                const isJson = content.trim().startsWith('{') || content.trim().startsWith('[');
-                let data = isJson ? JSON.parse(content) : null;
-                
-                // If simple array of objects, render DataTable
-                if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object') {
-                   return <DataTable data={data} />;
-                }
-                return <pre className="p-4 text-xs font-mono">{JSON.stringify(data, null, 2)}</pre>;
-            } catch (e) {
-                return <div className="p-4 text-red-500">Failed to parse data artifact.</div>;
-            }
+             // Fallback for data types if we are in preview mode somehow
+             return <pre className="p-4 text-xs font-mono overflow-auto">{content}</pre>;
         }
 
         return (

@@ -25,6 +25,7 @@ import { BrowserSessionDisplay } from '../../AI/BrowserSessionDisplay';
 import { useTypewriter } from '../../../hooks/useTypewriter';
 import { parseContentSegments } from '../../../utils/workflowParsing';
 import { CodeExecutionResult } from '../../AI/CodeExecutionResult';
+import { DataTable } from '../../Artifacts/DataTable';
 
 // Lazy load the heavy ArtifactRenderer
 const ArtifactRenderer = React.lazy(() => import('../../Artifacts/ArtifactRenderer').then(m => ({ default: m.ArtifactRenderer })));
@@ -176,6 +177,11 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
                         case 'FILE': return <FileAttachment key={key} {...data} />;
                         case 'BROWSER': return <BrowserSessionDisplay key={key} {...data} />;
                         case 'CODE_OUTPUT': return <CodeExecutionResult key={key} {...data} />;
+                        case 'DATA_TABLE': return (
+                            <div key={key} className="my-6 h-[400px] shadow-sm rounded-lg overflow-hidden border border-gray-200 dark:border-white/10">
+                                <DataTable data={data.data || []} />
+                            </div>
+                        );
                         case 'ARTIFACT_CODE': return (
                             <Suspense fallback={<div className="h-64 w-full bg-gray-100 dark:bg-white/5 rounded-xl animate-pulse my-4" />}>
                                 <ArtifactRenderer key={key} type="code" content={data.code} language={data.language} title={data.title} />

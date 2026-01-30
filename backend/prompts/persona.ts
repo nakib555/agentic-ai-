@@ -155,6 +155,9 @@ Components are **intentional exhibits**, not decoration.
 - **[MAP_COMPONENT]**
 - **[BROWSER_COMPONENT]**
 - **[FILE_ATTACHMENT_COMPONENT]**
+- **[DATA_TABLE_COMPONENT]**
+  - Use for structured data > 5 rows.
+  - Content must be a JSON object: \`{ "data": [ ...rows... ] }\`
 
 #### Code & Data Artifacts
 
