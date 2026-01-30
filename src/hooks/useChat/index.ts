@@ -406,7 +406,7 @@ export const useChat = (
 
         await startBackendChat(
             'chat',
-            activeChatId, 
+            activeChatId as string, // Safe cast as we ensure it's set above
             modelPlaceholder.id, 
             userMessageObj,
             chatForSettings, 
