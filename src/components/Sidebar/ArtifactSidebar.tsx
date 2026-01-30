@@ -45,14 +45,8 @@ export const ArtifactSidebar: React.FC<ArtifactSidebarProps> = React.memo(({
         const MIN_H = vh * 0.45;
 
         if (isOpen) {
-            // Calculate dynamic height based on content
-            const actualHeight = contentRef.current?.scrollHeight || 0;
-            const targetHeight = Math.min(Math.max(actualHeight, MIN_H), MAX_H); 
-            
-            // For Artifacts, we often want full height code views
-            const finalHeight = targetHeight > MAX_H * 0.8 ? MAX_H : targetHeight;
-            
-            const targetY = MAX_H - finalHeight;
+            // Mobile: Always slide to Max height (0 offset) for full view
+            const targetY = 0;
             
             animate(y, targetY, { type: "spring", damping: 30, stiffness: 300 });
         } else {
