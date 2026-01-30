@@ -28,9 +28,25 @@ export const getApiBaseUrl = (): string => {
     } catch (e) {}
 
     // 3. Default to Relative Path (Works for Prod Monolith AND Dev Proxy)
-    // We removed the hardcoded localhost:3001 check to allow the Vite proxy 
-    // to handle routing correctly for LAN/Mobile devices.
     return '';
+};
+
+export const isUsingCustomBaseUrl = (): boolean => {
+    try {
+        if (typeof window !== 'undefined') {
+            return !!localStorage.getItem('custom_server_url');
+        }
+    } catch (e) {}
+    return false;
+};
+
+export const resetApiBaseUrl = () => {
+    try {
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('custom_server_url');
+            window.location.reload();
+        }
+    } catch (e) {}
 };
 
 // Global callback for version mismatch

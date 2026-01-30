@@ -3,13 +3,14 @@ import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Key, Globe, Layout, Link, Database, Trash2, Download, Activity, Terminal, Check, Eye, EyeOff } from 'lucide-react';
+import { Key, Globe, Layout, Link, Database, Trash2, Download, Activity, Terminal, Check, Eye, EyeOff, RotateCcw } from 'lucide-react';
 import { SettingItem } from './SettingItem';
 import { ThemeToggle } from '../Sidebar/ThemeToggle';
 import type { Theme } from '../../hooks/useTheme';
 import { SelectDropdown } from '../UI/SelectDropdown';
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
+import { resetApiBaseUrl, isUsingCustomBaseUrl } from '../../utils/api';
 
 type GeneralSettingsProps = {
   onClearAllChats: () => void;
@@ -200,6 +201,8 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
     apiKey, onSaveApiKey, theme, setTheme, serverUrl, onSaveServerUrl,
     provider, openRouterApiKey, ollamaApiKey, onProviderChange, ollamaHost, onSaveOllamaHost
 }) => {
+    const isCustomUrl = isUsingCustomBaseUrl();
+
     return (
         <div className="space-y-10 pb-12 w-full max-w-full">
             <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
@@ -319,9 +322,23 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
                             autoCorrect="off"
                             spellCheck="false"
                             onBlur={(e) => onSaveServerUrl(e.target.value)}
+                            className={isCustomUrl ? 'border-amber-400 bg-amber-50 dark:bg-amber-900/10' : ''}
                         />
+                        {isCustomUrl && (
+                             <Button
+                                onClick={resetApiBaseUrl}
+                                variant="outline"
+                                className="shrink-0 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                                title="Reset to Default"
+                             >
+                                <RotateCcw className="w-4 h-4" />
+                             </Button>
+                        )}
                      </div>
-                     <p className="text-[11px] text-slate-500 px-1">Override the default backend URL (e.g., for testing).</p>
+                     <p className="text-[11px] text-slate-500 px-1">Override the default backend URL (e.g., for testing). Leave empty for default.</p>
+                     {isCustomUrl && (
+                         <p className="text-[11px] text-amber-600 dark:text-amber-400 px-1 font-medium">⚠️ Using custom backend server. API Keys must be configured for this specific server.</p>
+                     )}
                 </div>
             </section>
 

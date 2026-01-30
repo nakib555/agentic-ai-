@@ -10,6 +10,7 @@ const motion = motionTyped as any;
 import { MessageList, type MessageListHandle } from './MessageList';
 import { MessageForm, type MessageFormHandle } from './MessageForm/index';
 import type { Message, Source } from '../../types';
+import { isUsingCustomBaseUrl, resetApiBaseUrl, getApiBaseUrl } from '../../utils/api';
 
 type ChatAreaProps = {
   messages: Message[];
@@ -35,9 +36,12 @@ type ChatAreaProps = {
 };
 
 const ConfigWarning = ({ hasApiKey, backendStatus, backendError, onRetry }: { hasApiKey: boolean, backendStatus: string, backendError: string | null, onRetry: () => void }) => {
+    const isCustomUrl = isUsingCustomBaseUrl();
+    const customUrl = isCustomUrl ? getApiBaseUrl() : '';
+
     if (backendStatus === 'offline') {
         return (
-            <div className="mx-4 mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-xl flex items-center justify-between gap-4 animate-in slide-in-from-bottom-2 fade-in shadow-sm">
+            <div className="mx-4 mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-xl flex flex-col gap-3 animate-in slide-in-from-bottom-2 fade-in shadow-sm">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-red-100 dark:bg-red-900/40 rounded-full flex-shrink-0 text-red-600 dark:text-red-400">
                         <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
@@ -46,39 +50,66 @@ const ConfigWarning = ({ hasApiKey, backendStatus, backendError, onRetry }: { ha
                     </div>
                     <div>
                         <p className="text-sm font-bold text-red-900 dark:text-red-200">Backend Connection Failed</p>
-                        <p className="text-xs text-red-700 dark:text-red-300/80 mt-0.5">{backendError || "Could not reach the server."}</p>
+                        <p className="text-xs text-red-700 dark:text-red-300/80 mt-0.5">
+                            {isCustomUrl ? `Could not reach custom server: ${customUrl}` : (backendError || "Could not reach the server.")}
+                        </p>
                     </div>
                 </div>
-                <button 
-                    onClick={onRetry} 
-                    className="px-3 py-1.5 bg-white dark:bg-white/10 text-xs font-semibold rounded-lg shadow-sm border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-white/20 transition-colors text-red-800 dark:text-red-100 whitespace-nowrap"
-                >
-                    Retry
-                </button>
+                <div className="flex justify-end gap-2">
+                    {isCustomUrl && (
+                        <button
+                            onClick={resetApiBaseUrl}
+                            className="px-3 py-1.5 bg-white dark:bg-white/10 text-xs font-semibold rounded-lg shadow-sm border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-white/20 transition-colors text-red-800 dark:text-red-100 whitespace-nowrap"
+                        >
+                            Reset to Default Server
+                        </button>
+                    )}
+                    <button 
+                        onClick={onRetry} 
+                        className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors whitespace-nowrap"
+                    >
+                        Retry Connection
+                    </button>
+                </div>
             </div>
         );
     }
 
     if (!hasApiKey) {
         return (
-            <div className="mx-4 mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl flex items-center gap-3 animate-in slide-in-from-bottom-2 fade-in shadow-sm">
-                <div className="p-2 bg-amber-100 dark:bg-amber-900/40 rounded-full flex-shrink-0 text-amber-600 dark:text-amber-400">
-                     <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0V5.75A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                    </svg>
+            <div className="mx-4 mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl flex flex-col gap-3 animate-in slide-in-from-bottom-2 fade-in shadow-sm">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-amber-100 dark:bg-amber-900/40 rounded-full flex-shrink-0 text-amber-600 dark:text-amber-400">
+                         <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0V5.75A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                        </svg>
+                    </div>
+                    <div>
+                        <p className="text-sm font-bold text-amber-900 dark:text-amber-200">Configuration Required</p>
+                        <p className="text-xs text-amber-700 dark:text-amber-300/80 mt-0.5">
+                            {isCustomUrl 
+                                ? `Connected to custom server (${customUrl}). API Key may be missing on both client and server.` 
+                                : "Please configure your API key in Settings to start chatting."
+                            }
+                        </p>
+                    </div>
                 </div>
-                <div>
-                    <p className="text-sm font-bold text-amber-900 dark:text-amber-200">Configuration Required</p>
-                    <p className="text-xs text-amber-700 dark:text-amber-300/80 mt-0.5">
-                        Please configure your API key in Settings to start chatting.
-                    </p>
+                <div className="flex justify-end gap-2">
+                    {isCustomUrl && (
+                        <button
+                            onClick={resetApiBaseUrl}
+                            className="px-3 py-1.5 bg-white dark:bg-white/10 text-xs font-semibold rounded-lg shadow-sm border border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-white/20 transition-colors text-amber-800 dark:text-amber-100 whitespace-nowrap"
+                        >
+                            Reset Server URL
+                        </button>
+                    )}
+                    <button 
+                        onClick={() => window.dispatchEvent(new CustomEvent('open-settings'))}
+                        className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors whitespace-nowrap"
+                    >
+                        Open Settings
+                    </button>
                 </div>
-                <button 
-                    onClick={() => window.dispatchEvent(new CustomEvent('open-settings'))}
-                    className="ml-auto px-3 py-1.5 bg-white dark:bg-white/10 text-xs font-semibold rounded-lg shadow-sm border border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-white/20 transition-colors text-amber-800 dark:text-amber-100 whitespace-nowrap"
-                >
-                    Settings
-                </button>
             </div>
         );
     }
