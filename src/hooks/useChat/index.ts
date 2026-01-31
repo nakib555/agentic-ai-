@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -11,7 +12,7 @@ import { chatMachine } from './chatMachine';
 import { type Message, type ChatSession, ModelResponse } from '../../types';
 import { fileToBase64 } from '../../utils/fileUtils';
 import { useChatHistory } from '../useChatHistory';
-import { generateChatTitle, parseApiError, generateFollowUpSuggestions } from '../../services/gemini/index';
+import { generateChatTitle, parseApiError } from '../../services/gemini/index';
 import { fetchFromApi } from '../../utils/api';
 import { processBackendStream } from '../../services/agenticLoop/stream-processor';
 import { createStreamCallbacks } from './chat-callbacks';
@@ -58,6 +59,7 @@ export const useChat = (
     const testResolverRef = useRef<((value: Message | PromiseLike<Message>) => void) | null>(null);
 
     // --- DEPENDENCY REF PATTERN ---
+    // Keeps service closures fresh without breaking XState actor references
     const depsRef = useRef({
         chatHistory,
         currentChatId,
@@ -102,7 +104,7 @@ export const useChat = (
 
     const performGenerationService = useCallback(async (input: any) => {
         const deps = depsRef.current; // Access latest deps
-        const { task, newMessage, updatedMessages, currentChat, rawEvent } = input;
+        const { task, newMessage, updatedMessages, rawEvent } = input;
         
         let activeChatId = input.chatId;
         
@@ -119,7 +121,6 @@ export const useChat = (
             };
 
             // Fire and forget creation, rely on optimistic ID
-            // This updates the local cache synchronously, so subsequent steps can find the chat
             await deps.startNewChatHistory(deps.initialModel, settingsToUse, optimisticId);
         }
 
@@ -142,8 +143,7 @@ export const useChat = (
                  isThinking: true 
              };
 
-             // Persist
-             // We use activeChatId which might be the optimistic ID created in step 1
+             // Persist (Appends to current branch)
              deps.addMessagesToChat(activeChatId, [userMsg, aiMsg]);
              deps.setChatLoadingState(activeChatId, true);
              
@@ -151,7 +151,7 @@ export const useChat = (
              input.messageId = aiMsg.id; 
         } 
         else if (updatedMessages) {
-             // For Regenerate/Edit
+             // For Regenerate/Edit (Branch created by Machine Input factory)
              await deps.updateChatProperty(activeChatId, { messages: updatedMessages });
              deps.setChatLoadingState(activeChatId, true);
         }
@@ -161,17 +161,14 @@ export const useChat = (
         abortControllerRef.current = controller;
 
         try {
-            // Note: deps.chatHistory might be stale in this closure if a new chat was just created.
-            // We use the optimistic activeChatId and fallback settings if finding fails.
             const chatForConfig = deps.chatHistory.find(c => c.id === activeChatId) || { model: deps.initialModel, ...deps.settings };
             
-            // Defensively construct the newMessage payload for the backend
+            // Defensively construct payload
             const safeNewMessage = task === 'chat' 
                 ? (updatedMessages 
                     ? null 
                     : { 
                         ...(input.newMessage || {}),
-                        // Ensure text is present, falling back to rawEvent if input.newMessage was incomplete
                         text: input.newMessage?.text || rawEvent?.text || '' 
                       }
                   ) 
@@ -194,7 +191,6 @@ export const useChat = (
                 }
             };
             
-            // Allow attachments to be properly formatted if this was a new chat msg
             if (task === 'chat' && requestPayload.newMessage && requestPayload.newMessage.text) {
                  const files = rawEvent?.files;
                  if (files?.length) {
@@ -243,10 +239,8 @@ export const useChat = (
              deps.completeChatLoading(activeChatId);
              
              if (!wasAborted) {
-                 // Handle Post Chat Actions (Title Gen)
-                 // Re-fetch chat from cache to get latest messages state
+                 // Auto-generate title for new chats
                  const finalChatState = deps.chatHistory.find(c => c.id === activeChatId) 
-                    // Fallback to searching in fresh deps via ref if possible, but depsRef is only updated on render
                     || { id: activeChatId, messages: [], title: 'New Chat', model: deps.initialModel } as any;
 
                  if (finalChatState && finalChatState.title === "New Chat") {
@@ -259,7 +253,7 @@ export const useChat = (
                  }
              }
         }
-    }, []); // ZERO DEPENDENCIES = STABLE REFERENCE
+    }, []); 
 
     const persistBranchService = useCallback(async (input: { chatId: string, messages: Message[] }) => {
         const deps = depsRef.current;
@@ -269,7 +263,7 @@ export const useChat = (
             if (deps.onShowToast) deps.onShowToast("Failed to switch branch", 'error');
             throw e;
         }
-    }, []); // ZERO DEPENDENCIES = STABLE REFERENCE
+    }, []); 
 
     // ------------------------------------------------------------------------
     // XSTATE MACHINE
@@ -308,7 +302,7 @@ export const useChat = (
             files, 
             settings: options,
             initialModel,
-            chatId: currentChatId // Pass explicit ID
+            chatId: currentChatId 
         });
     }, [sendWithServices, initialModel, currentChatId]);
 
@@ -380,7 +374,7 @@ export const useChat = (
         });
     };
     
-    // Resolver trigger
+    // Resolver trigger for tests
     useEffect(() => {
         const loading = stateWithServices.matches('initializing_send') || stateWithServices.matches('initializing_regenerate');
         if (!loading && testResolverRef.current && currentChatId) {
@@ -392,30 +386,18 @@ export const useChat = (
         }
     }, [stateWithServices.value, chatHistory, currentChatId]);
 
-    // Helpers
+    // Helpers for switching view-only response index (no persistence)
     const setResponseIndex = useCallback(async (messageId: string, index: number) => {
         const deps = depsRef.current;
         if (!deps.currentChatId) return;
-        const currentChat = deps.chatHistory.find(c => c.id === deps.currentChatId);
-        if (!currentChat) return;
         
-        const updatedMessages = JSON.parse(JSON.stringify(currentChat.messages)) as Message[];
-        const targetMessage = updatedMessages.find(m => m.id === messageId);
-        if (!targetMessage || !targetMessage.responses) return;
+        deps.updateActiveResponseOnMessage(deps.currentChatId, messageId, () => ({})); // Trigger update
+        // Note: Actual index update logic is typically handled by `navigateBranch` for robust tree navigation,
+        // but for simple view switching without persistence, we can update local state via hook.
+        // However, given the requirement for "comprehensive branching", we prefer `navigateBranch`.
         
-        const currentIndex = targetMessage.activeResponseIndex;
-        if (index === currentIndex) return;
-        
-        const currentFuture = updatedMessages.slice(updatedMessages.indexOf(targetMessage) + 1);
-        targetMessage.responses[currentIndex].historyPayload = currentFuture;
-        
-        const targetResponse = targetMessage.responses[index];
-        targetMessage.activeResponseIndex = index;
-        const restoredFuture = targetResponse.historyPayload || [];
-        
-        const newMessagesList = [...updatedMessages.slice(0, updatedMessages.indexOf(targetMessage)), targetMessage, ...restoredFuture];
-        deps.updateChatProperty(deps.currentChatId, { messages: newMessagesList });
-        
+        // This is a direct store update for UI responsiveness if not using the full navigate flow
+        deps.updateMessage(deps.currentChatId, messageId, { activeResponseIndex: index });
     }, []);
 
     return { 
@@ -433,7 +415,6 @@ export const useChat = (
         navigateBranch, 
         setResponseIndex, 
         updateChatModel: (id: string, m: string) => updateChatProperty(id, { model: m }), 
-        updateChatSettings: (id: string, s: any) => updateChatProperty(id, s),
-        addModelResponse: () => {}
+        updateChatSettings: (id: string, s: any) => updateChatProperty(id, s)
     };
 };

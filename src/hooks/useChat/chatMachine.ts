@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -13,11 +14,6 @@ import { v4 as uuidv4 } from 'uuid';
 export type ChatContext = {
     chatId: string | null;
     model: string;
-    // We keep a lightweight reference or necessary data. 
-    // The massive message list is largely managed by React Query (persistence), 
-    // but the machine needs to track specific IDs for operations.
-    activeMessageId: string | null; 
-    abortController: AbortController | null;
     error: string | null;
 };
 
@@ -27,34 +23,7 @@ export type ChatEvent =
     | { type: 'EDIT'; messageId: string; newText: string; currentChat: ChatSession; settings: any }
     | { type: 'NAVIGATE'; messageId: string; direction: 'next' | 'prev'; currentChat: ChatSession }
     | { type: 'STOP' }
-    | { type: 'RETRY' }
     | { type: 'RESET' };
-
-// --- Services (Side Effects) ---
-
-// These are placeholders for the actual implementations passed from the hook
-// because they depend on closure scope (api keys, persistence hooks)
-type ChatServices = {
-    performGeneration: {
-        src: 'performGeneration';
-        input: {
-            task: 'chat' | 'regenerate';
-            chatId: string;
-            messageId: string;
-            newMessage: Message | null;
-            chatConfig: any;
-            runtimeSettings: any;
-            currentChat?: ChatSession;
-        };
-    };
-    persistBranch: {
-        src: 'persistBranch';
-        input: {
-            chatId: string;
-            messages: Message[];
-        }
-    }
-};
 
 // --- Machine Definition ---
 
@@ -67,19 +36,11 @@ export const chatMachine = setup({
     actions: {
         resetContext: assign({
             chatId: null,
-            activeMessageId: null,
             error: null,
-            abortController: null
         }),
         setError: assign({
             error: ({ event }) => (event as any).data?.message || 'Unknown error'
         }),
-        setAbortController: assign({
-            abortController: ({ event }) => (event as any).controller
-        }),
-        clearAbortController: assign({
-            abortController: null
-        })
     },
     actors: {
         // Defined in the hook via provide()
@@ -92,8 +53,6 @@ export const chatMachine = setup({
     context: ({ input }) => ({
         chatId: input.chatId,
         model: input.model,
-        activeMessageId: null,
-        abortController: null,
         error: null
     }),
     states: {
@@ -107,11 +66,11 @@ export const chatMachine = setup({
             }
         },
 
-        // --- Navigation Logic (Synchronous tree update) ---
+        // --- Navigation Logic (Switching active branches) ---
         navigating: {
             invoke: {
                 src: 'persistBranch',
-                input: ({ context, event }) => {
+                input: ({ event }) => {
                     if (event.type !== 'NAVIGATE') return { chatId: '', messages: [] };
                     const result = navigateBranch(event.currentChat.messages, event.messageId, event.direction);
                     if (!result) return { chatId: '', messages: [] }; // No-op if invalid
@@ -123,10 +82,10 @@ export const chatMachine = setup({
                 onDone: 'idle',
                 onError: {
                     target: 'idle',
-                    actions: ({ event }) => console.error("Navigation failed", event)
+                    actions: ({ event }) => console.error("Navigation persistence failed", event)
                 }
             },
-            // Allow interruption even during navigation persistence (unlikely needed but consistent)
+            // Allow immediate interruption/override by new actions
             on: {
                 SEND: 'initializing_send',
                 REGENERATE: 'initializing_regenerate',
@@ -134,16 +93,16 @@ export const chatMachine = setup({
             }
         },
 
-        // --- Branching Logic (Preparing the tree) ---
+        // --- Branching & Generation Logic ---
         
-        // 1. New Message
+        // 1. New Message (Linear or Branch Extension)
         initializing_send: {
             invoke: {
                 src: 'performGeneration',
                 input: ({ context, event }) => {
                     if (event.type !== 'SEND') return {} as any;
                     
-                    // Prefer event.chatId (authoritative from React state) over context.chatId (stale xstate context)
+                    // Prefer event.chatId (authoritative) over context
                     const activeChatId = event.chatId || context.chatId;
 
                     return {
@@ -153,31 +112,24 @@ export const chatMachine = setup({
                             id: uuidv4(), 
                             role: 'user', 
                             text: event.text, 
-                            // Files handling needs to be passed through
+                            // Files are processed by the service using rawEvent
                         },
-                        // We pass the raw event data to the service
-                        // The service (hook) will construct the full payload
                         rawEvent: event 
                     };
                 },
-                onDone: 'idle', // Stream finished
+                onDone: 'idle',
                 onError: 'failed'
             },
             on: { 
-                STOP: 'stopping',
-                // Allow interrupting current generation with a new action
-                SEND: 'initializing_send',
-                REGENERATE: 'initializing_regenerate',
-                EDIT: 'initializing_edit',
-                NAVIGATE: 'navigating'
+                STOP: 'stopping'
             }
         },
 
-        // 2. Regenerate (New Response Branch)
+        // 2. Regenerate (Forks a new AI Response Node)
         initializing_regenerate: {
              invoke: {
                 src: 'performGeneration',
-                input: ({ context, event }) => {
+                input: ({ event }) => {
                     if (event.type !== 'REGENERATE') return {} as any;
                     
                     const result = createBranchForModelResponse(event.currentChat.messages, event.messageId);
@@ -196,34 +148,30 @@ export const chatMachine = setup({
                 onError: 'failed'
             },
             on: { 
-                STOP: 'stopping',
-                SEND: 'initializing_send',
-                REGENERATE: 'initializing_regenerate',
-                EDIT: 'initializing_edit',
-                NAVIGATE: 'navigating'
+                STOP: 'stopping'
             }
         },
 
-        // 3. Edit (New User Branch)
+        // 3. Edit (Forks a new User Node + new AI Node)
         initializing_edit: {
             invoke: {
                 src: 'performGeneration',
-                input: ({ context, event }) => {
+                input: ({ event }) => {
                     if (event.type !== 'EDIT') return {} as any;
 
                     const result = createBranchForUserMessage(event.currentChat.messages, event.messageId, event.newText);
                     if (!result) throw new Error("Invalid edit target");
 
-                    // We need a placeholder AI message ID for the response to this edit
+                    // Create ID for the fresh AI response that will follow the edited user message
                     const modelPlaceholderId = uuidv4();
 
                     return {
-                        task: 'regenerate', // Edit is technically a regeneration from a new user node
+                        task: 'regenerate', 
                         chatId: event.currentChat.id,
-                        messageId: modelPlaceholderId, // The ID for the NEW AI message
+                        messageId: modelPlaceholderId,
                         updatedMessages: [
                             ...result.updatedMessages, 
-                            // Add placeholder
+                            // Add placeholder AI node
                              { 
                                 id: modelPlaceholderId, 
                                 role: 'model', 
@@ -241,30 +189,24 @@ export const chatMachine = setup({
                 onError: 'failed'
             },
             on: { 
-                STOP: 'stopping',
-                SEND: 'initializing_send',
-                REGENERATE: 'initializing_regenerate',
-                EDIT: 'initializing_edit',
-                NAVIGATE: 'navigating'
+                STOP: 'stopping'
             }
         },
 
-        // --- Common Flow States ---
+        // --- Flow Control States ---
         stopping: {
-            entry: 'clearAbortController', // The hook handles the actual abort via ref, machine just tracks state
             always: 'idle'
         },
         
         failed: {
             entry: 'setError',
             on: {
-                RETRY: {
-                    target: 'idle', // Simplification: Retry logic usually requires re-triggering the last event
-                },
-                SEND: 'initializing_send', // Recovery via new action
+                RETRY: 'idle',
+                RESET: 'idle',
+                // Allow immediate recovery via new actions
+                SEND: 'initializing_send', 
                 REGENERATE: 'initializing_regenerate',
-                EDIT: 'initializing_edit',
-                RESET: 'idle'
+                EDIT: 'initializing_edit'
             }
         }
     }
