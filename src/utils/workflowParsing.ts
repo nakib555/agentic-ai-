@@ -10,7 +10,7 @@ const GENERIC_STEP_KEYWORDS = new Set(['observe', 'adapt', 'system']);
 const ACTION_KEYWORDS = new Set(['act', 'action', 'tool call']);
 
 // Centralized list of supported UI components to ensure consistent regex generation
-const SUPPORTED_COMPONENTS = [
+const SQUARE_COMPONENT_TAGS = [
     'VIDEO_COMPONENT', 
     'ONLINE_VIDEO_COMPONENT', 
     'IMAGE_COMPONENT', 
@@ -26,112 +26,109 @@ const SUPPORTED_COMPONENTS = [
     'ARTIFACT_DATA'
 ];
 
+const XML_COMPONENT_TAGS = [
+    'plotly',
+    'd3',
+    'hybrid'
+];
+
 /**
- * Parses raw text into component segments (e.g. text vs [IMAGE_COMPONENT]...[/...]).
+ * Parses raw text into component segments (e.g. text vs [IMAGE_COMPONENT]...[/...] vs <d3>...</d3>).
  * This is used by the frontend to render components dynamically as text is typed.
  */
 export const parseContentSegments = (text: string): RenderSegment[] => {
     if (!text) return [];
 
     // Regex to capture component tags and their content
-    const tagsPattern = SUPPORTED_COMPONENTS.join('|');
+    // Group 1: Square Brackets -> \[(TAGS)\][\s\S]*?\[\/\1\]
+    // Group 2: XML Tags -> <(TAGS)>[\s\S]*?<\/\2>
     
-    // Combined regex for [COMPONENT]...[/COMPONENT] AND <chart>...</chart> style tags
-    // Matches:
-    // 1. [TAG]{...}[/TAG]
-    // 2. <d3>...</d3>
-    // 3. <ploty>...</ploty>
-    // 4. <hybird>...</hybird>
-    const combinedRegex = new RegExp(
-        `(\\[(?:${tagsPattern})\\][\\s\\S]*?\\[\\/(?:${tagsPattern})\\]|<(?:d3|ploty|hybird)>[\\s\\S]*?<\\/(?:d3|ploty|hybird)>)`, 
-        'g'
-    );
-
-    const parts = text.split(combinedRegex).filter(part => part);
+    const squarePattern = SQUARE_COMPONENT_TAGS.join('|');
+    const xmlPattern = XML_COMPONENT_TAGS.join('|');
+    
+    // We use a combined regex to split. Note the capturing groups are critical for .split() to include delimiters.
+    const combinedRegex = new RegExp(`(\\[(?:${squarePattern})\\][\\s\\S]*?\\[\\/(?:${squarePattern})\\])|(<(?:${xmlPattern})>[\\s\\S]*?<\\/(?:${xmlPattern})>)`, 'gi');
+    
+    const parts = text.split(combinedRegex).filter(part => part !== undefined && part !== '');
 
     return parts.map((part): RenderSegment | null => {
-        // 1. Check for Standard JSON Components
-        const componentMatch = part.match(new RegExp(`^\\[(${tagsPattern})\\]([\\s\\S]*?)\\[\\/\\1\\]$`));
+        // Check for Square Bracket Component
+        const squareMatch = part.match(new RegExp(`^\\[(${squarePattern})\\]([\\s\\S]*?)\\[\\/\\1\\]$`, 'i'));
         
-        if (componentMatch) {
-            const tagType = componentMatch[1];
-            const contentString = componentMatch[2];
-
-            try {
-                // Map internal component tags to the RenderSegment types expected by the UI
-                const typeMap: Record<string, string> = {
-                    'VIDEO_COMPONENT': 'VIDEO',
-                    'ONLINE_VIDEO_COMPONENT': 'ONLINE_VIDEO',
-                    'IMAGE_COMPONENT': 'IMAGE',
-                    'ONLINE_IMAGE_COMPONENT': 'ONLINE_IMAGE',
-                    'MCQ_COMPONENT': 'MCQ',
-                    'MAP_COMPONENT': 'MAP',
-                    'FILE_ATTACHMENT_COMPONENT': 'FILE',
-                    'BROWSER_COMPONENT': 'BROWSER',
-                    'CODE_OUTPUT_COMPONENT': 'CODE_OUTPUT',
-                    'VEO_API_KEY_SELECTION_COMPONENT': 'VEO_API_KEY', // UI specific
-                    'LOCATION_PERMISSION_REQUEST': 'LOCATION_PERMISSION', // UI specific
-                    'ARTIFACT_CODE': 'ARTIFACT_CODE',
-                    'ARTIFACT_DATA': 'ARTIFACT_DATA'
-                };
-
-                // Special handling for simple text-wrapped components vs JSON components
-                if (['VEO_API_KEY_SELECTION_COMPONENT', 'LOCATION_PERMISSION_REQUEST'].includes(tagType)) {
-                     return {
-                        type: 'component',
-                        componentType: typeMap[tagType] as any,
-                        data: { text: contentString } // Pass string content directly
-                    };
-                }
-
-                return {
-                    type: 'component',
-                    componentType: typeMap[tagType] as any,
-                    data: JSON.parse(contentString)
-                };
-            } catch (e) {
-                console.warn(`Failed to parse component data for ${tagType}`, e);
-                // Fallback: treat as plain text if JSON parse fails to prevent crash
-                return { type: 'text', content: part };
-            }
-        }
-        
-        // 2. Check for Chart Tags (<d3>, <ploty>, <hybird>)
-        const chartMatch = part.match(/^<(d3|ploty|hybird)>([\s\S]*?)<\/\1>$/);
-        if (chartMatch) {
-            const rawTag = chartMatch[1]; // d3, ploty, or hybird
-            const content = chartMatch[2].trim();
+        if (squareMatch) {
+            const tagType = squareMatch[1].toUpperCase();
+            const contentString = squareMatch[2];
             
-            // Map to internal engine names
-            const engineMap: Record<string, string> = {
-                'd3': 'd3',
-                'ploty': 'plotly',
-                'hybird': 'hybrid'
-            };
+            return parseSquareComponent(tagType, contentString, part);
+        }
 
+        // Check for XML Component
+        const xmlMatch = part.match(new RegExp(`^<(${xmlPattern})>([\\s\\S]*?)<\\/\\1>$`, 'i'));
+        
+        if (xmlMatch) {
+            const tagType = xmlMatch[1].toLowerCase();
+            const contentString = xmlMatch[2];
+            
             return {
                 type: 'component',
                 componentType: 'CHART',
                 data: {
-                    engine: engineMap[rawTag],
-                    content: content
+                    engine: tagType === 'hybrid' ? 'hybrid' : tagType,
+                    content: contentString
                 }
             };
         }
         
         // Handle incomplete tags at the very end of the stream (during typing)
-        const incompleteTagRegex = new RegExp(`(?:\\[(?:${tagsPattern})\\]|<(?:d3|ploty|hybird)>)$`);
-        const cleanedPart = part.replace(incompleteTagRegex, '');
+        // We strip the opening tag to prevent the user seeing raw "[IMAGE_COMPONENT]" text before data arrives
+        const incompleteSquareRegex = new RegExp(`\\[(?:${squarePattern})\\]$`, 'i');
+        const incompleteXmlRegex = new RegExp(`<(?:${xmlPattern})>$`, 'i');
         
-        // Preserve whitespace-only segments (like newlines) to maintain markdown structure
-        if (cleanedPart.length === 0 && part.length > 0 && !part.match(incompleteTagRegex)) {
-             return null;
-        }
+        let cleanedPart = part.replace(incompleteSquareRegex, '').replace(incompleteXmlRegex, '');
         
         if (cleanedPart.length === 0) return null;
 
         return { type: 'text', content: cleanedPart };
     }).filter((s): s is RenderSegment => s !== null);
+};
+
+const parseSquareComponent = (tagType: string, contentString: string, originalPart: string): RenderSegment => {
+    try {
+        const typeMap: Record<string, string> = {
+            'VIDEO_COMPONENT': 'VIDEO',
+            'ONLINE_VIDEO_COMPONENT': 'ONLINE_VIDEO',
+            'IMAGE_COMPONENT': 'IMAGE',
+            'ONLINE_IMAGE_COMPONENT': 'ONLINE_IMAGE',
+            'MCQ_COMPONENT': 'MCQ',
+            'MAP_COMPONENT': 'MAP',
+            'FILE_ATTACHMENT_COMPONENT': 'FILE',
+            'BROWSER_COMPONENT': 'BROWSER',
+            'CODE_OUTPUT_COMPONENT': 'CODE_OUTPUT',
+            'VEO_API_KEY_SELECTION_COMPONENT': 'VEO_API_KEY',
+            'LOCATION_PERMISSION_REQUEST': 'LOCATION_PERMISSION',
+            'ARTIFACT_CODE': 'ARTIFACT_CODE',
+            'ARTIFACT_DATA': 'ARTIFACT_DATA'
+        };
+
+        // Special handling for simple text-wrapped components vs JSON components
+        if (['VEO_API_KEY_SELECTION_COMPONENT', 'LOCATION_PERMISSION_REQUEST'].includes(tagType)) {
+             return {
+                type: 'component',
+                componentType: typeMap[tagType] as any,
+                data: { text: contentString } // Pass string content directly
+            };
+        }
+
+        return {
+            type: 'component',
+            componentType: typeMap[tagType] as any,
+            data: JSON.parse(contentString)
+        };
+    } catch (e) {
+        console.warn(`Failed to parse component data for ${tagType}`, e);
+        // Fallback: treat as plain text if JSON parse fails to prevent crash
+        return { type: 'text', content: originalPart };
+    }
 };
 
 export const parseAgenticWorkflow = (
@@ -188,7 +185,7 @@ export const parseAgenticWorkflow = (
       }
   }
 
-  // Cleanup strings (Remove Agent tags from Plan/FinalAnswer so they look clean)
+  // Cleanup strings
   planText = planText.replace(/\[AGENT:.*?\]\s*/g, '').replace(/\[USER_APPROVAL_REQUIRED\]/g, '').trim();
   finalAnswerText = finalAnswerText.replace(/^\s*:?\s*\[AGENT:\s*[^\]]+\]\s*/g, '').replace(/\[AUTO_CONTINUE\]/g, '').trim();
 
@@ -199,6 +196,7 @@ export const parseAgenticWorkflow = (
   
   let match;
   let stepIndex = 0;
+  
   let currentContextAgent = 'System'; 
 
   while ((match = stepRegex.exec(executionText)) !== null) {
@@ -215,7 +213,7 @@ export const parseAgenticWorkflow = (
     const agentMatch = details.match(/^\[AGENT:\s*([^\]]+)\]\s*/);
     if (agentMatch) {
         agentName = agentMatch[1].trim();
-        currentContextAgent = agentName; 
+        currentContextAgent = agentName;
         details = details.replace(agentMatch[0], '').trim();
     } else {
         agentName = currentContextAgent;
@@ -233,7 +231,7 @@ export const parseAgenticWorkflow = (
         type = 'correction';
     } else if (lowerCaseTitle === 'think' || lowerCaseTitle === 'adapt') {
         type = 'thought';
-        details = details || title; 
+        details = details || title;
         title = 'Reasoning';
     } else if (lowerCaseTitle === 'observe') {
         type = 'observation';
@@ -248,14 +246,13 @@ export const parseAgenticWorkflow = (
         id: `step-${stepIndex++}`,
         type: type,
         title: title,
-        status: 'pending', 
+        status: 'pending',
         details: details || 'No details provided.',
         agentName: agentName,
         handoff: handoff,
     });
   }
 
-  // Merge Tool Events with Text Steps
   const toolNodesQueue = toolCallEvents.map(event => {
     const isDuckDuckGoSearch = event.call.name === 'duckduckgoSearch';
     const duration = event.startTime && event.endTime ? (event.endTime - event.startTime) / 1000 : null;
@@ -297,14 +294,13 @@ export const parseAgenticWorkflow = (
       executionLog.push(toolNode);
   }
 
-  // Post-processing for status updates
   if (error) {
     let failureAssigned = false;
     for (let i = executionLog.length - 1; i >= 0; i--) {
         const node = executionLog[i];
         if (node.status === 'active' || node.status === 'pending') {
             node.status = 'failed';
-            node.details = error; 
+            node.details = error;
             failureAssigned = true;
             break;
         }

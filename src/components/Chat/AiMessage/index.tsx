@@ -135,7 +135,7 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
         {...animationProps} 
         className="w-full flex flex-col items-start gap-3 origin-bottom-left group/message min-w-0"
     >
-      {/* Render attachments on the message object if present */}
+      {/* NEW: Render attachments on the message object if present */}
       {msg.attachments && msg.attachments.length > 0 && (
           <div className="w-full flex flex-col gap-2 mb-2">
               {msg.attachments.map((attachment, index) => (
@@ -178,7 +178,7 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
                         case 'FILE': return <FileAttachment key={key} {...data} />;
                         case 'BROWSER': return <BrowserSessionDisplay key={key} {...data} />;
                         case 'CODE_OUTPUT': return <CodeExecutionResult key={key} {...data} />;
-                        case 'CHART': return <UniversalChart key={key} engine={data.engine} content={data.content} />;
+                        case 'CHART': return <UniversalChart key={key} engine={data.engine} code={data.content} />;
                         case 'ARTIFACT_CODE': return (
                             <Suspense fallback={<div className="h-64 w-full bg-gray-100 dark:bg-white/5 rounded-xl animate-pulse my-4" />}>
                                 <ArtifactRenderer key={key} type="code" content={data.code} language={data.language} title={data.title} />

@@ -4,41 +4,77 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 // Use factory to create Plot component to avoid bundling issues with Vite/React
 import Plotly from 'plotly.js-dist-min';
 import createPlotlyComponent from 'react-plotly.js/factory';
 import * as d3 from 'd3';
-import { parseChartConfig, ChartConfig, ChartEngine } from '../../utils/chartParser';
+import { ErrorDisplay } from '../UI/ErrorDisplay';
 
 const Plot = createPlotlyComponent(Plotly);
 
+export type ChartEngine = 'plotly' | 'd3' | 'hybrid';
+
 type UniversalChartProps = {
-    content: string;
-    engine?: ChartEngine; // Optional, defaults to plotly if parsing legacy
+    content?: string; // Legacy support
+    engine?: ChartEngine;
+    code?: string;
 };
 
-export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ content, engine }) => {
+interface ChartConfig {
+    engine: ChartEngine;
+    data?: any;
+    layout?: any;
+    script?: string;
+    width?: number;
+    height?: number;
+}
+
+export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ content, engine, code }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [config, setConfig] = useState<ChartConfig | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [plotKey, setPlotKey] = useState(0); // Force re-render for hybrid
+    const [plotKey, setPlotKey] = useState(0);
 
-    // Parse configuration
+    // Effect to parse configuration from either legacy content or new props
     useEffect(() => {
         try {
-            // If engine is provided (new system), use it. Otherwise try legacy parser.
-            const parsed = engine 
-                ? parseChartConfig(engine, content)
-                : parseChartConfig('plotly', content); // Default fallback
-
-            setConfig(parsed);
-            setError(null);
-            setPlotKey(p => p + 1);
-        } catch (e) {
-            setError('Failed to parse chart configuration.');
+            // New XML-tag based flow
+            if (engine && code) {
+                const newConfig: ChartConfig = { engine };
+                
+                if (engine === 'd3') {
+                    newConfig.script = code.trim();
+                } else {
+                    // Plotly or Hybrid: Parse JSON
+                    const jsonStr = code.trim();
+                    if (jsonStr) {
+                         // Fix common AI JSON mistakes (trailing commas)
+                        const fixedJson = jsonStr.replace(/,\s*([\]}])/g, '$1');
+                        const parsedData = JSON.parse(fixedJson);
+                        
+                        newConfig.data = parsedData.data;
+                        newConfig.layout = parsedData.layout;
+                        newConfig.script = parsedData.script; // Hybrid script
+                    }
+                }
+                setConfig(newConfig);
+                setError(null);
+                setPlotKey(p => p + 1);
+            } 
+            // Legacy markdown-based parsing logic (kept for backward compatibility with old chats)
+            else if (content) {
+                import('../../utils/chartParser').then(({ parseChartMarkdown }) => {
+                    const parsed = parseChartMarkdown(content);
+                    setConfig(parsed);
+                    setError(null);
+                    setPlotKey(p => p + 1);
+                });
+            }
+        } catch (e: any) {
+            setError(`Failed to parse chart configuration: ${e.message}`);
         }
-    }, [content, engine]);
+    }, [content, engine, code]);
 
     // Handle D3 and Hybrid Scripting
     useEffect(() => {
@@ -64,7 +100,7 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                         containerRef.current, 
                         config.width || containerRef.current.clientWidth, 
                         config.height || 400,
-                        (window as any).Plotly // Access global Plotly if available/needed
+                        (window as any).Plotly
                     );
                 } catch (e: any) {
                     console.error("Chart Script Error:", e);
@@ -117,12 +153,11 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                         useResizeHandler={true}
                         style={{ width: '100%', height: '100%' }}
                         config={{ displayModeBar: true, responsive: true }}
-                        divId={config.engine === 'hybrid' ? undefined : undefined} // Let Plotly manage ID unless specific
+                        divId={config.engine === 'hybrid' ? undefined : undefined}
                     />
                 )}
 
                 {/* D3 Layer (or Container for D3) */}
-                {/* For Hybrid, this acts as an overlay or wrapper depending on D3 logic */}
                 <div 
                     ref={containerRef} 
                     className={`absolute inset-0 pointer-events-none ${config.engine === 'd3' ? 'pointer-events-auto' : ''}`}

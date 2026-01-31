@@ -7,47 +7,59 @@
 import { MATH_RENDERING_INSTRUCTIONS } from './math';
 
 const UNIVERSAL_CHART_LANGUAGE_DOCS = `
-# 📊 VISUALIZATION ENGINE: UNIVERSAL CHART LANGUAGE (UCL)
+# 📊 VISUALIZATION ENGINE
 
-To visualize data, relationships, or concepts, you MUST use specific tags.
-Do NOT use standard markdown tables for complex data if a chart is better.
+To visualize data, relationships, or concepts, you MUST use the specialized chart tags.
+Do NOT use standard markdown tables if a chart is better.
 
-## Engine Selection & Syntax
-
-### 1. Plotly Mode (<ploty>) - PREFERRED
+## 1. Plotly Mode (<plotly>) - PREFERRED
 Use for: Statistical graphs, line/bar/scatter plots, 3D charts, heatmaps.
-*   **Format**: JSON Object containing \`data\` (array) and \`layout\` (object).
-*   **Syntax**:
-    <ploty>
-    {
-      "data": [{"x": ["A", "B"], "y": [10, 15], "type": "bar"}],
-      "layout": {"title": "Sales Growth"}
-    }
-    </ploty>
+*   **Format**: Provide a raw JSON object containing \`data\` (array) and \`layout\` (object).
+*   **Interactive**: Built-in zoom, pan, hover.
 
-### 2. D3 Mode (<d3>)
-Use for: Custom diagrams, network graphs, trees, complex animations.
-*   **Format**: Raw JavaScript code.
-*   **Context**: You have access to \`d3\` (v7 object), \`container\` (HTMLDivElement), \`width\`, \`height\`.
-*   **Syntax**:
-    <d3>
-    const svg = d3.select(container).append("svg").attr("width", width).attr("height", height);
-    svg.append("circle").attr("cx", 50).attr("cy", 50).attr("r", 40).style("fill", "red");
-    </d3>
+**Example:**
+<plotly>
+{
+  "data": [
+    {"x": ["A", "B", "C"], "y": [10, 15, 7], "type": "bar", "marker": {"color": "#6366f1"}}
+  ],
+  "layout": {
+    "title": "Sales Growth",
+    "xaxis": {"title": "Category"},
+    "yaxis": {"title": "Value"}
+  }
+}
+</plotly>
 
-### 3. Hybrid Mode (<hybird>)
-Use for: Plotly charts that need D3 overlays or custom scripting.
-*   **Format**: Raw JavaScript code.
-*   **Context**: Access to \`Plotly\`, \`d3\`, \`container\`, \`width\`, \`height\`.
-*   **Syntax**:
-    <hybird>
-    Plotly.newPlot(container, [{y:[1,2,3]}]);
-    d3.select(container).style("border", "1px solid red");
-    </hybird>
+## 2. D3 Mode (<d3>)
+Use for: Custom diagrams, network graphs, trees, complex animations, or novel visualizations.
+*   **Format**: Write raw JavaScript code.
+*   **Context**: You have access to:
+    *   \`d3\` (v7 object)
+    *   \`container\` (HTMLDivElement to append to)
+    *   \`width\`, \`height\` (Canvas dimensions)
+*   **Rules**:
+    *   Always append to \`container\`. Never select "body".
+    *   Clean up is handled automatically.
 
-## Best Practices
-*   **Styling**: Use the default font color or "slate-500" for text to match the UI theme (Light/Dark).
-*   **Safety**: Do not fetch external URLs in scripts. Use provided data.
+**Example:**
+<d3>
+const svg = d3.select(container).append("svg").attr("width", width).attr("height", height);
+svg.append("circle").attr("cx", 50).attr("cy", 50).attr("r", 40).style("fill", "#6366f1");
+</d3>
+
+## 3. Hybrid Mode (<hybrid>)
+Use for: Plotly charts with custom D3 annotations or overlays.
+*   **Format**: A JSON object with \`data\`, \`layout\`, and a \`script\` string for D3 logic.
+
+**Example:**
+<hybrid>
+{
+  "data": [{"x": [1, 2], "y": [10, 20]}],
+  "layout": {"title": "Hybrid"},
+  "script": "d3.select(container).style('border', '1px solid red');"
+}
+</hybrid>
 `;
 
 export const CHAT_PERSONA_AND_UI_FORMATTING = `
