@@ -67,6 +67,11 @@ const CHAT_PROMPTS: { icon: string; text: string; prompt: string; color: PromptC
 export const FloatingPrompts = ({ onPromptClick }: FloatingPromptsProps) => {
   const prompts = CHAT_PROMPTS;
 
+  const handleClick = (prompt: string) => {
+      console.log('[FloatingPrompts] Clicked:', prompt);
+      onPromptClick(prompt, { isThinkingModeEnabled: false });
+  };
+
   return (
     <motion.div
       variants={containerVariants}
@@ -81,7 +86,7 @@ export const FloatingPrompts = ({ onPromptClick }: FloatingPromptsProps) => {
                 icon={p.icon} 
                 text={p.text} 
                 color={p.color}
-                onClick={() => onPromptClick(p.prompt, { isThinkingModeEnabled: false })} 
+                onClick={() => handleClick(p.prompt)} 
             />
         ))}
     </motion.div>

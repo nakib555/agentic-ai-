@@ -103,6 +103,7 @@ export const useChat = (
     // ------------------------------------------------------------------------
 
     const performGenerationService = useCallback(async (input: any) => {
+        console.log('[useChat] performGenerationService started', input);
         const deps = depsRef.current; // Access latest deps
         const { task, newMessage, updatedMessages, rawEvent } = input;
         
@@ -110,6 +111,7 @@ export const useChat = (
         
         // 1. Handle New Chat Creation (Optimistic)
         if (!activeChatId && task === 'chat') {
+            console.log('[useChat] Creating new chat session...');
             const optimisticId = generateId();
             activeChatId = optimisticId;
             
@@ -199,6 +201,7 @@ export const useChat = (
                  }
             }
 
+            console.log('[useChat] Sending API request...', requestPayload);
             const response = await fetchFromApi(`/api/handler?task=${task}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -209,6 +212,7 @@ export const useChat = (
             if (!response.ok) throw new Error(`Request failed: ${response.status}`);
             if (!response.body) throw new Error("No response body");
 
+            console.log('[useChat] Response received, starting stream processing...');
             const callbacks = createStreamCallbacks({
                 chatId: activeChatId,
                 messageId: input.messageId,
@@ -226,7 +230,7 @@ export const useChat = (
             if (error.name !== 'AbortError') {
                 console.error('[CHAT_MACHINE] Stream error:', error);
                 deps.updateActiveResponseOnMessage(activeChatId, input.messageId, () => ({ error: parseApiError(error), endTime: Date.now() }));
-                if (deps.onShowToast) deps.onShowToast("Generation failed", 'error');
+                if (deps.onShowToast) deps.onShowToast("Generation failed: " + error.message, 'error');
             }
             throw error;
         } finally {
@@ -295,6 +299,7 @@ export const useChat = (
     };
 
     const sendMessage = useCallback((text: string, files?: File[], options: any = {}) => {
+        console.log('[useChat] sendMessage called. Input:', { text, files, options, currentChatId });
         abortCurrent();
         sendWithServices({ 
             type: 'SEND', 
@@ -392,9 +397,6 @@ export const useChat = (
         if (!deps.currentChatId) return;
         
         deps.updateActiveResponseOnMessage(deps.currentChatId, messageId, () => ({})); // Trigger update
-        // Note: Actual index update logic is typically handled by `navigateBranch` for robust tree navigation,
-        // but for simple view switching without persistence, we can update local state via hook.
-        // However, given the requirement for "comprehensive branching", we prefer `navigateBranch`.
         
         // This is a direct store update for UI responsiveness if not using the full navigate flow
         deps.updateMessage(deps.currentChatId, messageId, { activeResponseIndex: index });
