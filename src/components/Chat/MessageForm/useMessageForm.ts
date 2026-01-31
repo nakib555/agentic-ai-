@@ -159,8 +159,8 @@ export const useMessageForm = (
     }
 
     console.log('[useMessageForm] Submitting...', { inputValue });
-    // Pass explicit undefined for options to match callback signature expectation if optional
-    onSubmit(inputValue, fileHandling.getFilesToSend(), undefined);
+    // Pass empty object for options instead of undefined to ensure compatibility
+    onSubmit(inputValue, fileHandling.getFilesToSend(), {});
     clearDraft();
   };
 

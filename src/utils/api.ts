@@ -1,6 +1,4 @@
 
-
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -68,6 +66,11 @@ export const fetchFromApi = async (url: string, options: ApiOptions = {}): Promi
     const method = options.method || 'GET';
     const { silent, timeout = 60000, ...fetchOptions } = options; // Default 60s timeout
     
+    // Log the effective URL for debugging
+    if (!silent) {
+        console.log(`[API] Requesting: ${method} ${fullUrl}`);
+    }
+
     // Get version from safe source
     let appVersion = 'unknown';
     try {
@@ -100,7 +103,7 @@ export const fetchFromApi = async (url: string, options: ApiOptions = {}): Promi
         }
 
         if (!response.ok && !silent) {
-            console.error(`[API Error] ❌ ${method} ${url} failed with status ${response.status}`);
+            console.error(`[API Error] ❌ ${method} ${fullUrl} failed with status ${response.status}`);
             try {
                 // Clone to not consume body if caller needs it (though usually we throw here)
                 const errorClone = response.clone();
@@ -120,16 +123,16 @@ export const fetchFromApi = async (url: string, options: ApiOptions = {}): Promi
         
         if (!silent) {
             if (error.name === 'AbortError') {
-                 console.warn(`[API] ⏱️ Request timed out: ${method} ${url}`);
+                 console.warn(`[API] ⏱️ Request timed out: ${method} ${fullUrl}`);
                  throw new Error('Request timed out. The server took too long to respond.');
             } else {
-                 console.error(`[API Fatal] 💥 ${method} ${url} request failed`, error);
+                 console.error(`[API Fatal] 💥 ${method} ${fullUrl} request failed`, error);
             }
         }
         
         // Normalize network errors
         if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
-             throw new Error('Network error: Could not connect to server. Please check your connection and the server URL in Settings.');
+             throw new Error(`Network error: Could not connect to server at ${fullUrl}. Please check your connection and the server URL in Settings.`);
         }
         
         throw error;
