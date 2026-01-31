@@ -103,7 +103,7 @@ export const useChat = (
     // ------------------------------------------------------------------------
 
     const performGenerationService = useCallback(async (input: any) => {
-        console.log('[useChat] performGenerationService started', input);
+        console.log('[useChat] performGenerationService INVOKED', input);
         const deps = depsRef.current; // Access latest deps
         const { task, newMessage, updatedMessages, rawEvent } = input;
         
@@ -123,14 +123,27 @@ export const useChat = (
             };
 
             // Fire and forget creation, rely on optimistic ID
-            await deps.startNewChatHistory(deps.initialModel, settingsToUse, optimisticId);
+            try {
+                await deps.startNewChatHistory(deps.initialModel, settingsToUse, optimisticId);
+            } catch (err) {
+                console.error("[useChat] Failed to start new chat:", err);
+                throw err;
+            }
         }
 
         // 2. Handle Message Persistence (Optimistic UI)
         if (task === 'chat' && newMessage) {
              // Process Attachments
              const files = rawEvent?.files;
-             const attachmentsData = files?.length ? await Promise.all(files.map(async (f: File) => ({ name: f.name, mimeType: f.type, data: await fileToBase64(f) }))) : undefined;
+             let attachmentsData;
+             if (files && files.length > 0) {
+                 try {
+                     attachmentsData = await Promise.all(files.map(async (f: File) => ({ name: f.name, mimeType: f.type, data: await fileToBase64(f) })));
+                 } catch (e) {
+                     console.error("[useChat] Failed to process files:", e);
+                     throw new Error("Failed to process attached files.");
+                 }
+             }
              
              // Construct User Message
              const userMsg: Message = { ...newMessage, attachments: attachmentsData, activeResponseIndex: 0 };
@@ -273,13 +286,18 @@ export const useChat = (
     // XSTATE MACHINE
     // ------------------------------------------------------------------------
 
-    // We MUST use .provide() to inject the real implementations into the machine.
-    // XState v5 setup() defines the contract, provide() fills it.
     const machineWithActors = useMemo(() => {
+        console.log('[useChat] Providing actors to chatMachine');
         return chatMachine.provide({
             actors: {
                 performGeneration: fromPromise(async ({ input }: any) => {
-                    return performGenerationService(input);
+                    console.log('[useChat] Actor: performGeneration executing with input:', input);
+                    try {
+                        return await performGenerationService(input);
+                    } catch (e) {
+                        console.error('[useChat] Actor: performGeneration caught error:', e);
+                        throw e;
+                    }
                 }),
                 persistBranch: fromPromise(async ({ input }: any) => {
                     return persistBranchService(input);
@@ -294,7 +312,7 @@ export const useChat = (
 
     // Logging for debug
     useEffect(() => {
-        console.log('[useChat] Machine State:', stateWithServices.value);
+        console.log('[useChat] Machine State Update:', stateWithServices.value);
     }, [stateWithServices.value]);
 
     // ------------------------------------------------------------------------

@@ -48,12 +48,12 @@ export const chatMachine = setup({
         // Defined here as placeholders. These SHOULD be overridden by useChat's .provide().
         // If these run, it means injection failed.
         performGeneration: fromPromise(async () => {
-             console.error("[ChatMachine] Fatal: Default performGeneration actor was called. This means the service was not correctly provided to the machine.");
-             throw new Error("Internal Error: Logic not connected");
+             console.error("[ChatMachine] FATAL ERROR: Default performGeneration actor was executed. Service injection failed.");
+             throw new Error("Internal Error: Logic not connected. Check useChat hook.");
         }), 
         persistBranch: fromPromise(async () => {
-             console.error("[ChatMachine] Fatal: Default persistBranch actor was called.");
-             throw new Error("Internal Error: Logic not connected");
+             console.error("[ChatMachine] FATAL ERROR: Default persistBranch actor was executed.");
+             throw new Error("Internal Error: Logic not connected. Check useChat hook.");
         }),
     }
 }).createMachine({
