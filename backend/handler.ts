@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -271,7 +272,7 @@ export const apiHandler = async (req: any, res: any) => {
     const geminiKey = await getGeminiKey();
     
     const globalSettings: any = await readData(SETTINGS_FILE_PATH);
-    const activeModel = globalSettings.activeModel || 'gemini-2.5-flash';
+    const defaultModel = globalSettings.activeModel || 'gemini-2.5-flash';
 
     const isSuggestionTask = ['title', 'suggestions', 'enhance', 'memory_suggest', 'memory_consolidate', 'run_piston'].includes(task);
     const BYPASS_TASKS = ['cancel', 'debug_data_tree', 'feedback', 'count_tokens'];
@@ -292,7 +293,13 @@ export const apiHandler = async (req: any, res: any) => {
         switch (task) {
             case 'chat': 
             case 'regenerate': {
-                const { chatId, model, settings, newMessage, messageId } = req.body;
+                const { chatId, settings, newMessage, messageId } = req.body;
+                let { model } = req.body;
+                
+                // Fallback for model if undefined in request body
+                if (!model) {
+                    model = defaultModel;
+                }
                 
                 let savedChat = await historyControl.getChat(chatId);
                 if (!savedChat) return res.status(404).json({ error: "Chat not found" });
@@ -503,7 +510,7 @@ ${personalizationSection}
                 const systemPrompt = "You are a specialized title generator. Output a concise title (3-6 words) for the conversation. Do not use quotes, prefixes, or periods.";
                 const userPrompt = `Generate a short, descriptive title for this conversation:\n\n${historyText}`;
                 
-                let title = await generateProviderCompletion(activeProviderName, chatApiKey, model, userPrompt, systemPrompt);
+                let title = await generateProviderCompletion(activeProviderName, chatApiKey, model || defaultModel, userPrompt, systemPrompt);
                 
                 // Robust Cleanup
                 title = title.trim();
@@ -524,7 +531,7 @@ ${personalizationSection}
                 const recentHistory = conversation.slice(-5).map((m: any) => `${m.role}: ${(m.text || '').substring(0, 200)}`).join('\n');
                 const prompt = `Suggest 3 short follow-up questions. Return JSON array of strings. Do not use markdown code blocks.\n\nCONVERSATION:\n${recentHistory}\n\nJSON SUGGESTIONS:`;
                 try {
-                    const text = await generateProviderCompletion(activeProviderName, chatApiKey, model, prompt, undefined, true);
+                    const text = await generateProviderCompletion(activeProviderName, chatApiKey, model || defaultModel, prompt, undefined, true);
                     let suggestions = [];
                     try { 
                         const cleanText = text.replace(/```json\n?|\n?```/g, '').trim();
@@ -569,7 +576,7 @@ Output ONLY the raw text of the improved prompt.
             case 'memory_suggest': {
                 const { conversation } = req.body;
                 try {
-                    const suggestions = await executeExtractMemorySuggestions(activeProviderName, chatApiKey, activeModel, conversation);
+                    const suggestions = await executeExtractMemorySuggestions(activeProviderName, chatApiKey, defaultModel, conversation);
                     res.status(200).json({ suggestions });
                 } catch (e) { res.status(200).json({ suggestions: [] }); }
                 break;
@@ -577,7 +584,7 @@ Output ONLY the raw text of the improved prompt.
             case 'memory_consolidate': {
                 const { currentMemory, suggestions } = req.body;
                 try {
-                    const memory = await executeConsolidateMemory(activeProviderName, chatApiKey, activeModel, currentMemory, suggestions);
+                    const memory = await executeConsolidateMemory(activeProviderName, chatApiKey, defaultModel, currentMemory, suggestions);
                     res.status(200).json({ memory });
                 } catch (e) { res.status(200).json({ memory: [currentMemory, ...suggestions].filter(Boolean).join('\n') }); }
                 break;
@@ -619,7 +626,7 @@ Output ONLY the raw text of the improved prompt.
                          const ai = new GoogleGenAI({ apiKey: chatApiKey });
                          // Updated to use ai.models.countTokens instead of deprecated getGenerativeModel
                          const countResult = await ai.models.countTokens({
-                             model: model || 'gemini-2.5-flash',
+                             model: model || defaultModel,
                              contents: [{ parts: [{ text: textToCount }] }]
                          });
                          res.status(200).json({ totalTokens: countResult.totalTokens });

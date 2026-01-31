@@ -137,12 +137,20 @@ const GeminiProvider: AIProvider = {
         } = options;
         
         if (!apiKey) throw new Error("Gemini API Key missing");
-        
+        if (!model) throw new Error("Model name is missing");
+
         const cleanKey = apiKey.trim();
         const ai = new GoogleGenAI({ apiKey: cleanKey });
         
         // Transform history once
         const fullHistory = transformHistoryToGeminiFormat(messages);
+
+        // Sanitize Config
+        const config: any = {};
+        
+        if (systemInstruction) config.systemInstruction = systemInstruction;
+        if (typeof temperature === 'number') config.temperature = temperature;
+        if (typeof maxTokens === 'number' && maxTokens > 0) config.maxOutputTokens = maxTokens;
 
         // --- STANDARD STREAMING CHAT ---
         try {
@@ -157,9 +165,7 @@ const GeminiProvider: AIProvider = {
                     model,
                     contents: fullHistory,
                     config: {
-                        systemInstruction,
-                        temperature,
-                        maxOutputTokens: maxTokens,
+                        ...config,
                         tools
                     }
                  });
@@ -170,12 +176,7 @@ const GeminiProvider: AIProvider = {
                      result = await generateContentStreamWithRetry(ai, {
                         model,
                         contents: fullHistory,
-                        config: {
-                            systemInstruction,
-                            temperature,
-                            maxOutputTokens: maxTokens,
-                            // No tools
-                        }
+                        config
                      });
                  } else {
                      throw toolError;
@@ -218,14 +219,14 @@ const GeminiProvider: AIProvider = {
     async complete(options: CompletionOptions): Promise<string> {
         const { model, prompt, systemInstruction, temperature, maxTokens, apiKey, jsonMode } = options;
         if (!apiKey) throw new Error("Gemini API Key missing");
+        if (!model) throw new Error("Model name is missing");
         
         const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
         
-        const config: any = { 
-            systemInstruction,
-            temperature,
-            maxOutputTokens: maxTokens 
-        };
+        const config: any = {};
+        if (systemInstruction) config.systemInstruction = systemInstruction;
+        if (typeof temperature === 'number') config.temperature = temperature;
+        if (typeof maxTokens === 'number' && maxTokens > 0) config.maxOutputTokens = maxTokens;
         
         if (jsonMode) {
             config.responseMimeType = 'application/json';

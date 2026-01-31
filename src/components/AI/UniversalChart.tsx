@@ -39,14 +39,40 @@ const stripMarkdown = (code: string): string => {
 };
 
 const extractJson = (str: string): string => {
-    // Attempt to find the outermost JSON object wrapper
-    const firstBrace = str.indexOf('{');
-    const lastBrace = str.lastIndexOf('}');
+    // Attempt to find the outermost JSON object wrapper (Object {} or Array [])
+    const firstOpen = str.search(/[[{]/);
+    if (firstOpen === -1) return str;
     
-    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-        return str.substring(firstBrace, lastBrace + 1);
+    const openChar = str[firstOpen];
+    const closeChar = openChar === '{' ? '}' : ']';
+    const lastClose = str.lastIndexOf(closeChar);
+
+    if (lastClose !== -1 && lastClose > firstOpen) {
+        return str.substring(firstOpen, lastClose + 1);
     }
     return str;
+};
+
+// Robust parser that handles trailing commas, comments, and unquoted keys
+const looseJsonParse = (str: string) => {
+    try {
+        return JSON.parse(str);
+    } catch (e) {
+        // Fallback for LLM quirks
+        try {
+             // Security/Sanity check: ensure it starts/ends with brackets
+            const trimmed = str.trim();
+            if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || 
+                (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+                 // Evaluate as a JavaScript object literal to support trailing commas/comments
+                 // eslint-disable-next-line no-new-func
+                 return new Function(`return ${str}`)();
+            }
+        } catch (evalErr) {
+            // Ignore eval error and throw original JSON error if both fail
+        }
+        throw e;
+    }
 };
 
 export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ content, engine, code }) => {
@@ -68,21 +94,12 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                     // For D3, the content is raw JavaScript
                     newConfig.script = trimmedCode;
                 } else {
-                    // For Plotly or Hybrid, the content is JSON
+                    // For Plotly or Hybrid, the content is JSON-like
                     if (trimmedCode) {
-                         // Robust JSON parsing: Attempt to fix common LLM JSON syntax errors
                         let jsonStr = extractJson(trimmedCode);
                         
-                        // Remove comments (single line // and multi line /* */)
-                        // Note: This regex is simple and might match inside strings, but for config JSON it's usually safe enough
-                        // or we assume the extraction of { } helps.
-                        // Removing comments before parsing:
-                        jsonStr = jsonStr.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, '$1');
-                        
-                        // Remove potential trailing commas before closing braces/brackets
-                        jsonStr = jsonStr.replace(/,\s*([\]}])/g, '$1');
-
-                        const parsedData = JSON.parse(jsonStr);
+                        // Try to parse using robust parser
+                        const parsedData = looseJsonParse(jsonStr);
                         
                         newConfig.data = parsedData.data;
                         newConfig.layout = parsedData.layout;
