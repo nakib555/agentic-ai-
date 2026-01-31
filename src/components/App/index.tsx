@@ -152,6 +152,7 @@ export const App = () => {
                 messageListRef={logic.messageListRef}
                 messages={logic.messages}
                 isLoading={logic.isLoading}
+                isHistoryLoading={logic.isHistoryLoading} // Pass explicit history loading state
                 isAppLoading={logic.modelsLoading || logic.settingsLoading}
                 sendMessage={logic.sendMessage}
                 onCancel={logic.cancelGeneration}

@@ -15,6 +15,7 @@ import { isUsingCustomBaseUrl, resetApiBaseUrl, getApiBaseUrl } from '../../util
 type ChatAreaProps = {
   messages: Message[];
   isLoading: boolean;
+  isHistoryLoading: boolean; // New prop
   isAppLoading: boolean;
   sendMessage: (message: string, files?: File[], options?: { isHidden?: boolean; isThinkingModeEnabled?: boolean; }) => void;
   onCancel: () => void;
@@ -117,7 +118,7 @@ const ConfigWarning = ({ hasApiKey, backendStatus, backendError, onRetry }: { ha
 };
 
 export const ChatArea = ({ 
-    messages, isLoading, isAppLoading, sendMessage, onCancel, 
+    messages, isLoading, isHistoryLoading, isAppLoading, sendMessage, onCancel, 
     ttsVoice, ttsModel, setTtsVoice, currentChatId, activeModel,
     onShowSources,
     messageListRef, onRegenerate, onSetActiveResponseIndex,
@@ -197,6 +198,7 @@ export const ChatArea = ({
           messages={messages} 
           sendMessage={sendMessage} 
           isLoading={isLoading} 
+          isHistoryLoading={isHistoryLoading} // Pass prop
           ttsVoice={ttsVoice}
           ttsModel={ttsModel} 
           currentChatId={currentChatId} 

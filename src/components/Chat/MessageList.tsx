@@ -27,6 +27,7 @@ type MessageListProps = {
   messages: Message[];
   sendMessage: (message: string, files?: File[], options?: { isHidden?: boolean; isThinkingModeEnabled?: boolean; }) => void;
   isLoading: boolean;
+  isHistoryLoading: boolean; // New prop for distinct loading state
   ttsVoice: string;
   ttsModel: string;
   currentChatId: string | null;
@@ -77,7 +78,7 @@ const MessageWrapper = React.memo(({
 });
 
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({ 
-    messages, sendMessage, isLoading, ttsVoice, ttsModel, currentChatId, 
+    messages, sendMessage, isLoading, isHistoryLoading, ttsVoice, ttsModel, currentChatId, 
     onShowSources, messageFormRef, onRegenerate, onSetActiveResponseIndex,
     onEditMessage, onNavigateBranch
 }, ref) => {
@@ -138,12 +139,12 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({
 
   // Memoize the context props object.
   const contextProps = useMemo(() => ({
-      sendMessage, isLoading, ttsVoice, ttsModel, currentChatId,
+      sendMessage, isLoading, isHistoryLoading, ttsVoice, ttsModel, currentChatId,
       onShowSources, messageFormRef,
       onRegenerate, onSetActiveResponseIndex, onEditMessage,
       onNavigateBranch
   }), [
-      sendMessage, isLoading, ttsVoice, ttsModel, currentChatId,
+      sendMessage, isLoading, isHistoryLoading, ttsVoice, ttsModel, currentChatId,
       onShowSources, messageFormRef,
       onRegenerate, onSetActiveResponseIndex, onEditMessage,
       onNavigateBranch
@@ -165,7 +166,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({
   return (
     <div className="flex-1 min-h-0 relative w-full">
       {visibleMessages.length === 0 ? (
-        isLoading ? (
+        isHistoryLoading ? (
             <div className="h-full w-full bg-transparent">
                 <Suspense fallback={null}>
                     <ChatSkeleton />
