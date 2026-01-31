@@ -35,7 +35,8 @@ Use for: Custom diagrams, network graphs, trees, complex animations, or novel vi
 *   **Context**: 
     *   \`d3\`: The D3.js v7 library object.
     *   \`container\`: The HTMLDivElement to append your SVG/Canvas to.
-    *   \`width\`, \`height\`: Dimensions of the container.
+    *   \`containerWidth\`, \`containerHeight\`: Dimensions of the container. Use these instead of declaring your own 'width' variable if possible.
+    *   \`width\`, \`height\`: Legacy aliases for container dimensions (available only if you do NOT declare 'width' or 'height' variables yourself).
 *   **Rules**:
     *   Always append to \`container\`. Never select "body".
     *   The system handles cleanup automatically.

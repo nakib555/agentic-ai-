@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 // Use factory to create Plot component to avoid bundling issues with Vite/React
 import Plotly from 'plotly.js-dist-min';
 import createPlotlyComponent from 'react-plotly.js/factory';
@@ -28,6 +28,27 @@ interface ChartConfig {
     width?: number;
     height?: number;
 }
+
+// --- Modern Aesthetics Configuration ---
+
+const MODERN_PALETTE = [
+    '#6366f1', // Indigo 500
+    '#10b981', // Emerald 500
+    '#f59e0b', // Amber 500
+    '#ec4899', // Pink 500
+    '#06b6d4', // Cyan 500
+    '#8b5cf6', // Violet 500
+    '#ef4444', // Red 500
+    '#3b82f6', // Blue 500
+];
+
+const D3_GLOBAL_STYLES = `
+    .d3-chart text { font-family: 'Inter', sans-serif !important; }
+    .d3-chart .axis path, .d3-chart .axis line { stroke: var(--border-default) !important; }
+    .d3-chart .axis text { fill: var(--text-secondary) !important; font-size: 11px; }
+    .d3-chart .grid line { stroke: var(--border-subtle) !important; stroke-opacity: 0.5; }
+    .d3-chart .domain { stroke: var(--border-default) !important; }
+`;
 
 const stripMarkdown = (code: string): string => {
     let clean = code.trim();
@@ -82,6 +103,23 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
     const [error, setError] = useState<string | null>(null);
     const [plotKey, setPlotKey] = useState(0);
     const [revision, setRevision] = useState(0);
+    
+    // Theme state
+    const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+
+    // Listen for theme changes to update chart colors dynamically
+    useEffect(() => {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'class') {
+                    setIsDark(document.documentElement.classList.contains('dark'));
+                    setRevision(r => r + 1); // Trigger Plotly redraw
+                }
+            });
+        });
+        observer.observe(document.documentElement, { attributes: true });
+        return () => observer.disconnect();
+    }, []);
 
     // Effect to parse configuration
     useEffect(() => {
@@ -161,12 +199,24 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                     // Short delay to ensure DOM and Layout are ready
                     await new Promise(resolve => setTimeout(resolve, 50));
 
-                    // Execute the script in a function wrapper
-                    // We pass D3, container, and dimensions as context
-                    const func = new Function('d3', 'container', 'width', 'height', 'Plotly', config.script);
-                    
                     const width = container.clientWidth || 600;
                     const height = config.height || 400;
+
+                    // Heuristic to avoid "Identifier 'width' has already been declared" error
+                    const script = config.script || '';
+                    const declaresWidth = /(?:const|let|var)\s+width\b/.test(script);
+                    const declaresHeight = /(?:const|let|var)\s+height\b/.test(script);
+
+                    let preamble = '';
+                    if (!declaresWidth) preamble += 'var width = containerWidth;\n';
+                    if (!declaresHeight) preamble += 'var height = containerHeight;\n';
+
+                    // Execute the script in a function wrapper
+                    // We pass D3, container, and dimensions as context
+                    const func = new Function(
+                        'd3', 'container', 'containerWidth', 'containerHeight', 'Plotly', 
+                        `${preamble}${script}`
+                    );
 
                     func(
                         d3, 
@@ -186,6 +236,58 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
 
     }, [config, plotKey]);
 
+    // --- Dynamic Layout Generation ---
+    const modernLayout = useMemo(() => {
+        const textColor = isDark ? '#94a3b8' : '#475569'; // slate-400 / slate-600
+        const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+        const titleColor = isDark ? '#f1f5f9' : '#1e293b'; // slate-100 / slate-800
+        const fontFamily = 'Inter, sans-serif';
+
+        return {
+            font: { family: fontFamily, color: textColor, size: 12 },
+            paper_bgcolor: 'transparent',
+            plot_bgcolor: 'transparent',
+            colorway: MODERN_PALETTE,
+            title: {
+                font: { family: fontFamily, size: 16, color: titleColor, weight: 600 },
+                x: 0.05,
+                xanchor: 'left',
+            },
+            xaxis: {
+                gridcolor: gridColor,
+                linecolor: gridColor,
+                zerolinecolor: gridColor,
+                tickfont: { family: fontFamily, color: textColor },
+                title: { font: { family: fontFamily, color: textColor, size: 12 } },
+                automargin: true,
+            },
+            yaxis: {
+                gridcolor: gridColor,
+                linecolor: gridColor,
+                zerolinecolor: gridColor,
+                tickfont: { family: fontFamily, color: textColor },
+                title: { font: { family: fontFamily, color: textColor, size: 12 } },
+                automargin: true,
+            },
+            legend: {
+                orientation: 'h',
+                yanchor: 'bottom',
+                y: 1.02,
+                xanchor: 'right',
+                x: 1,
+                font: { family: fontFamily, size: 11 },
+            },
+            hoverlabel: {
+                bgcolor: isDark ? '#1e1e1e' : '#ffffff',
+                bordercolor: isDark ? '#333333' : '#e2e8f0',
+                font: { family: fontFamily, size: 12, color: titleColor },
+                namelength: -1,
+            },
+            autosize: true,
+            margin: { t: 50, r: 20, l: 50, b: 50 },
+        };
+    }, [isDark]);
+
     if (error) {
         return (
             <div className="my-4 p-4 border border-red-200 bg-red-50 dark:bg-red-900/10 rounded-lg text-sm text-red-600 dark:text-red-400 font-mono overflow-auto">
@@ -201,26 +303,32 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
 
     const chartStyle = { 
         width: '100%', 
-        height: config.height ? `${config.height}px` : (config.engine === 'd3' ? 'auto' : '400px'),
+        height: config.height ? `${config.height}px` : (config.engine === 'd3' ? 'auto' : '450px'),
         minHeight: config.engine === 'd3' ? '200px' : '400px'
     };
 
     return (
-        <div className="my-6 border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden bg-white dark:bg-[#121212] shadow-sm relative z-0 group">
+        <div className="my-6 border border-gray-200 dark:border-white/10 rounded-2xl overflow-hidden bg-white dark:bg-[#121212] shadow-sm relative z-0 group transition-colors duration-300">
+            {/* Inject Global D3 Styles (Scoped logic simulation) */}
+            <style>{D3_GLOBAL_STYLES}</style>
+
             {/* Header */}
-            <div className="px-4 py-2 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/5">
+            <div className="px-4 py-2 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/5 backdrop-blur-sm">
                 <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                        {config.engine === 'hybrid' ? 'Hybrid Visualization' : config.engine === 'd3' ? 'D3 Visualization' : 'Plotly Chart'}
+                    <span className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]"></span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                        {config.engine === 'hybrid' ? 'Interactive Hybrid' : config.engine === 'd3' ? 'Data Visualization' : 'Analysis'}
                     </span>
+                </div>
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    {/* Placeholder for future action buttons (Download/Expand) */}
                 </div>
             </div>
             
             {/* Canvas */}
             <div 
                 ref={wrapperRef}
-                className="relative p-4 overflow-hidden" 
+                className={`relative p-4 overflow-hidden ${config.engine === 'd3' ? 'd3-chart' : ''}`}
                 style={chartStyle}
             >
                 
@@ -230,24 +338,20 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                         key={plotKey}
                         data={config.data || []}
                         layout={{
-                            autosize: true,
-                            margin: { t: 30, r: 10, l: 40, b: 40 },
-                            paper_bgcolor: 'transparent',
-                            plot_bgcolor: 'transparent',
-                            font: { 
-                                color: document.documentElement.classList.contains('dark') ? '#94a3b8' : '#64748b',
-                                family: 'Inter, sans-serif'
-                            },
-                            ...config.layout,
+                            ...modernLayout,
+                            ...config.layout, // User overrides
+                            // Force preserve themes if user didn't explicitly override specific nested properties
+                            font: { ...modernLayout.font, ...(config.layout?.font || {}) },
+                            hoverlabel: { ...modernLayout.hoverlabel, ...(config.layout?.hoverlabel || {}) },
                         }}
                         revision={revision}
                         useResizeHandler={true}
                         style={{ width: '100%', height: '100%' }}
                         config={{ 
-                            displayModeBar: true, 
+                            displayModeBar: 'hover', // Cleaner look
                             displaylogo: false,
                             responsive: true,
-                            modeBarButtonsToRemove: ['lasso2d', 'select2d']
+                            modeBarButtonsToRemove: ['lasso2d', 'select2d', 'toggleSpikelines']
                         }}
                     />
                 )}
