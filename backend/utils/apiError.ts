@@ -123,6 +123,16 @@ export const parseApiError = (error: any): MessageError => {
         };
     }
 
+    // Specific check for Ollama Authentication Errors
+    if (lowerCaseMessage.includes('ollama') && (lowerCaseMessage.includes('401') || lowerCaseMessage.includes('unauthorized'))) {
+        return {
+            code: 'INVALID_API_KEY',
+            message: 'Ollama Authorization Failed',
+            details: 'The Ollama server rejected the request (401 Unauthorized). If your Ollama instance requires authentication, please ensure the API Key is set correctly in Settings.',
+            suggestion: 'Your Ollama instance requires authentication. Please enter the correct API Key in General Settings.'
+        };
+    }
+
     // 1. Invalid API Key
     if (lowerCaseMessage.includes('api key not valid') || lowerCaseMessage.includes('api key not found') || lowerCaseMessage.includes('api key not configured') || lowerCaseStatus === 'permission_denied') {
         return {

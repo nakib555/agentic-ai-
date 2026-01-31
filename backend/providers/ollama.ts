@@ -70,11 +70,14 @@ const OllamaProvider: AIProvider = {
             
             console.log(`[OllamaProvider] Fetching installed models from: ${url}`);
             
-            // For listing tags/models, we typically do not need the API key/Authorization header,
-            // even if one is configured for the chat endpoint (e.g. via a proxy).
             const headers: Record<string, string> = {
                 'Content-Type': 'application/json'
             };
+
+            // If an API key is configured (e.g. for a protected proxy), include it
+            if (apiKey) {
+                headers['Authorization'] = `Bearer ${apiKey}`;
+            }
 
             const response = await fetchWithFallback(url, { 
                 method: 'GET', 
@@ -82,6 +85,10 @@ const OllamaProvider: AIProvider = {
             });
             
             if (!response.ok) {
+                 // Special handling for 401 to help debugging
+                 if (response.status === 401) {
+                     console.error(`[OllamaProvider] Unauthorized (401) at ${url}. Check your API Key.`);
+                 }
                  throw new Error(`Local instance unreachable at ${url}. Status: ${response.status}`);
             }
     
