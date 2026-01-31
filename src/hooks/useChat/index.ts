@@ -287,6 +287,11 @@ export const useChat = (
         actors
     } as any);
 
+    // Logging for debug
+    useEffect(() => {
+        console.log('[useChat] Machine State:', stateWithServices.value);
+    }, [stateWithServices.value]);
+
     // ------------------------------------------------------------------------
     // PUBLIC ACTIONS (Mapped to Events)
     // ------------------------------------------------------------------------

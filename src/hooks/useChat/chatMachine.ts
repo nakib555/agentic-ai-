@@ -7,7 +7,6 @@
 import { setup, assign, fromPromise } from 'xstate';
 import type { Message, ChatSession } from '../../types';
 import { createBranchForUserMessage, createBranchForModelResponse, navigateBranch } from './branching';
-import { v4 as uuidv4 } from 'uuid';
 
 // --- Types ---
 
@@ -41,6 +40,9 @@ export const chatMachine = setup({
         setError: assign({
             error: ({ event }) => (event as any).data?.message || 'Unknown error'
         }),
+        logTransition: ({ event }) => {
+            console.log('[ChatMachine] Transitioning on event:', event.type);
+        }
     },
     actors: {
         // Defined in the hook via provide()
@@ -58,10 +60,10 @@ export const chatMachine = setup({
     states: {
         idle: {
             on: {
-                SEND: 'initializing_send',
-                REGENERATE: 'initializing_regenerate',
-                EDIT: 'initializing_edit',
-                NAVIGATE: 'navigating',
+                SEND: { target: 'initializing_send', actions: 'logTransition' },
+                REGENERATE: { target: 'initializing_regenerate', actions: 'logTransition' },
+                EDIT: { target: 'initializing_edit', actions: 'logTransition' },
+                NAVIGATE: { target: 'navigating', actions: 'logTransition' },
                 RESET: { actions: 'resetContext', target: 'idle' }
             }
         },
@@ -100,6 +102,7 @@ export const chatMachine = setup({
             invoke: {
                 src: 'performGeneration',
                 input: ({ context, event }) => {
+                    console.log('[ChatMachine] initializing_send input factory running', event);
                     if (event.type !== 'SEND') return {} as any;
                     
                     // Prefer event.chatId (authoritative) over context
@@ -109,7 +112,7 @@ export const chatMachine = setup({
                         task: 'chat',
                         chatId: activeChatId, 
                         newMessage: { 
-                            id: uuidv4(), 
+                            id: crypto.randomUUID(), 
                             role: 'user', 
                             text: event.text, 
                             // Files are processed by the service using rawEvent
@@ -118,7 +121,10 @@ export const chatMachine = setup({
                     };
                 },
                 onDone: 'idle',
-                onError: 'failed'
+                onError: {
+                    target: 'failed',
+                    actions: ({ event }) => console.error('[ChatMachine] performGeneration failed', event)
+                }
             },
             on: { 
                 STOP: 'stopping'
@@ -163,7 +169,7 @@ export const chatMachine = setup({
                     if (!result) throw new Error("Invalid edit target");
 
                     // Create ID for the fresh AI response that will follow the edited user message
-                    const modelPlaceholderId = uuidv4();
+                    const modelPlaceholderId = crypto.randomUUID();
 
                     return {
                         task: 'regenerate', 
