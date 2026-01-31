@@ -217,7 +217,11 @@ export const apiHandler = async (req: any, res: any) => {
             return res.status(200).json({ status: "stream_not_found" });
         }
         
-        res.setHeader('Content-Type', 'application/json');
+        // Force NDJSON content type and disable buffering
+        res.setHeader('Content-Type', 'application/x-ndjson');
+        res.setHeader('Cache-Control', 'no-cache, no-transform');
+        res.setHeader('X-Accel-Buffering', 'no');
+        res.setHeader('Connection', 'keep-alive');
         res.setHeader('Transfer-Encoding', 'chunked');
         res.flushHeaders();
         
@@ -275,7 +279,7 @@ export const apiHandler = async (req: any, res: any) => {
     const defaultModel = globalSettings.activeModel || 'gemini-2.5-flash';
 
     const isSuggestionTask = ['title', 'suggestions', 'enhance', 'memory_suggest', 'memory_consolidate', 'run_piston'].includes(task);
-    const BYPASS_TASKS = ['cancel', 'debug_data_tree', 'feedback', 'count_tokens'];
+    const BYPASS_TASKS = ['cancel', 'debug_data_tree', 'feedback', 'count_tokens', 'tool_exec', 'tool_response'];
     
     // Validation: Require key for paid providers, skip for Ollama/bypass
     if (!chatApiKey && !BYPASS_TASKS.includes(task) && !isSuggestionTask && activeProviderName !== 'ollama') {
@@ -366,7 +370,11 @@ export const apiHandler = async (req: any, res: any) => {
                 };
                 activeJobs.set(chatId, job);
 
-                res.setHeader('Content-Type', 'application/json');
+                // Set headers to force no-buffering streaming
+                res.setHeader('Content-Type', 'application/x-ndjson');
+                res.setHeader('Cache-Control', 'no-cache, no-transform');
+                res.setHeader('X-Accel-Buffering', 'no');
+                res.setHeader('Connection', 'keep-alive');
                 res.setHeader('Transfer-Encoding', 'chunked');
                 res.flushHeaders();
 
@@ -640,6 +648,37 @@ Output ONLY the raw text of the improved prompt.
                     res.status(200).json({ totalTokens: Math.ceil(textToCount.length / 4) });
                 }
                 break;
+            }
+            // Tool Execution (Frontend Tools or Secure Backend Tools)
+            case 'tool_exec': {
+                 // Secure endpoint for executing sensitive tools on backend (like Veo video gen)
+                 // This ensures the frontend doesn't need to import heavy SDKs or handle keys directly for these specific tasks
+                 const { toolName, toolArgs } = req.body;
+                 
+                 // Import the backend tool registry on demand
+                 const { createToolExecutor } = await import('./tools/index');
+                 
+                 if (!toolName) return res.status(400).json({ error: { message: "Tool name is required" } });
+                 
+                 // Setup context
+                 const ai = new GoogleGenAI({ apiKey: chatApiKey! });
+                 const executor = createToolExecutor(
+                     ai, 
+                     globalSettings.imageModel, 
+                     globalSettings.videoModel, 
+                     chatApiKey!, 
+                     "temp_id", // ChatId not strictly needed for non-filesystem tools, but good to have context
+                     async () => ({ error: "Frontend tools not supported in direct exec mode" }) // No frontend fallback here
+                 );
+                 
+                 try {
+                     const result = await executor(toolName, toolArgs, "direct-call");
+                     res.status(200).json({ result });
+                 } catch (e: any) {
+                     const parsed = parseApiError(e);
+                     res.status(500).json({ error: parsed });
+                 }
+                 break;
             }
             default:
                 res.status(404).json({ error: `Unknown task: ${task}` });

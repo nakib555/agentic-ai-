@@ -76,10 +76,12 @@ const looseJsonParse = (str: string) => {
 };
 
 export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ content, engine, code }) => {
-    const containerRef = useRef<HTMLDivElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null); // For D3 content
+    const wrapperRef = useRef<HTMLDivElement>(null); // For ResizeObserver
     const [config, setConfig] = useState<ChartConfig | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [plotKey, setPlotKey] = useState(0);
+    const [revision, setRevision] = useState(0);
 
     // Effect to parse configuration
     useEffect(() => {
@@ -126,6 +128,20 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
             setError(`Failed to render chart: ${e.message}`);
         }
     }, [content, engine, code]);
+
+    // Resize Observer to handle sidebar toggles and container resizing
+    useEffect(() => {
+        if (!wrapperRef.current) return;
+
+        const resizeObserver = new ResizeObserver(() => {
+            // Increment revision to tell Plotly to update/resize
+            setRevision(prev => prev + 1);
+        });
+
+        resizeObserver.observe(wrapperRef.current);
+
+        return () => resizeObserver.disconnect();
+    }, []);
 
     // Handle D3 and Hybrid Scripting Execution
     useEffect(() => {
@@ -202,7 +218,11 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
             </div>
             
             {/* Canvas */}
-            <div className="relative p-4 overflow-hidden" style={chartStyle}>
+            <div 
+                ref={wrapperRef}
+                className="relative p-4 overflow-hidden" 
+                style={chartStyle}
+            >
                 
                 {/* Plotly Render Layer */}
                 {(config.engine === 'plotly' || config.engine === 'hybrid') && (
@@ -220,6 +240,7 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                             },
                             ...config.layout,
                         }}
+                        revision={revision}
                         useResizeHandler={true}
                         style={{ width: '100%', height: '100%' }}
                         config={{ 
