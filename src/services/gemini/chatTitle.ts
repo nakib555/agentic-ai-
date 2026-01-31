@@ -1,4 +1,3 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -9,10 +8,18 @@ import { fetchFromApi } from '../../utils/api';
 
 export const generateChatTitle = async (messages: Message[], model?: string): Promise<string> => {
     try {
+        // Optimization: Only send the first 5 messages to the backend for title generation.
+        // This reduces payload size significantly for long chats while keeping relevant context.
+        const contextMessages = messages.slice(0, 5).map(m => ({
+            role: m.role,
+            // Truncate text content to further save bandwidth
+            text: m.text ? m.text.substring(0, 500) : '' 
+        }));
+
         const response = await fetchFromApi('/api/handler?task=title', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ messages, model }),
+            body: JSON.stringify({ messages: contextMessages, model }),
             silent: true // Suppress errors for background tasks
         });
 

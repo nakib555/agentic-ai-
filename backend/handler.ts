@@ -488,10 +488,35 @@ ${personalizationSection}
             }
             case 'title': {
                 const { messages, model } = req.body;
-                const historyText = messages.slice(0, 3).map((m: any) => `${m.role}: ${m.text}`).join('\n');
-                const prompt = `Generate a short concise title (max 6 words) for this conversation.\n\nCONVERSATION:\n${historyText}\n\nTITLE:`;
-                const title = await generateProviderCompletion(activeProviderName, chatApiKey, model, prompt);
-                res.status(200).json({ title: title.trim() });
+                // Robustly format history: truncate text and handle potential missing content
+                const historyText = (messages || [])
+                    .filter((m: any) => !m.isHidden)
+                    .slice(0, 5)
+                    .map((m: any) => {
+                        const role = m.role === 'model' ? 'Assistant' : 'User';
+                        // Limit context per message to prevent overflow on long logs
+                        const text = (m.text || '').substring(0, 500); 
+                        return `${role}: ${text}`;
+                    })
+                    .join('\n');
+                
+                const systemPrompt = "You are a specialized title generator. Output a concise title (3-6 words) for the conversation. Do not use quotes, prefixes, or periods.";
+                const userPrompt = `Generate a short, descriptive title for this conversation:\n\n${historyText}`;
+                
+                let title = await generateProviderCompletion(activeProviderName, chatApiKey, model, userPrompt, systemPrompt);
+                
+                // Robust Cleanup
+                title = title.trim();
+                title = title.replace(/^["']|["']$/g, ''); // Remove surrounding quotes
+                title = title.replace(/^(Title:|Subject:|Topic:)\s*/i, ''); // Remove common prefixes
+                title = title.replace(/\.$/, ''); // Remove trailing dot
+                
+                // Fallback truncation if model ignored instructions
+                if (title.length > 60) {
+                     title = title.substring(0, 57) + '...';
+                }
+
+                res.status(200).json({ title: title || 'New Chat' });
                 break;
             }
             case 'suggestions': {
