@@ -4,18 +4,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useMemo, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { useMachine } from '@xstate/react';
-import { fromPromise } from 'xstate';
-import { chatMachine } from './chatMachine';
-import { type Message, type ChatSession, ModelResponse } from '../../types';
+import { type Message, type ChatSession } from '../../types';
 import { fileToBase64 } from '../../utils/fileUtils';
 import { useChatHistory } from '../useChatHistory';
 import { generateChatTitle, parseApiError } from '../../services/gemini/index';
 import { fetchFromApi } from '../../utils/api';
 import { processBackendStream } from '../../services/agenticLoop/stream-processor';
 import { createStreamCallbacks } from './chat-callbacks';
+import { createBranchForUserMessage, createBranchForModelResponse, navigateBranch as navigateBranchFn } from './branching';
 
 const generateId = () => uuidv4();
 
@@ -54,11 +52,13 @@ export const useChat = (
         importChat
     } = useChatHistory();
 
+    const [isLoading, setIsLoading] = useState(false);
     const abortControllerRef = useRef<AbortController | null>(null);
     const requestIdRef = useRef<string | null>(null); 
     const testResolverRef = useRef<((value: Message | PromiseLike<Message>) => void) | null>(null);
 
     // --- DEPENDENCY REF PATTERN ---
+    // Access latest props/state inside async functions without closure staleness
     const depsRef = useRef({
         chatHistory,
         currentChatId,
@@ -97,89 +97,91 @@ export const useChat = (
         };
     });
 
-    // ------------------------------------------------------------------------
-    // SERVICE ADAPTERS (Stable References)
-    // ------------------------------------------------------------------------
+    // --- Actions ---
 
-    const performGenerationService = useCallback(async (input: any) => {
-        console.log('[useChat] performGenerationService INVOKED', input);
-        const deps = depsRef.current; // Access latest deps
+    const abortCurrent = useCallback(() => {
+        if (abortControllerRef.current) {
+            console.log('[useChat] Aborting current request');
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
+        }
+    }, []);
+
+    const performGeneration = useCallback(async (input: any) => {
+        console.log('[useChat] performGeneration INVOKED', input);
+        const deps = depsRef.current;
         const { task, newMessage, updatedMessages, rawEvent } = input;
         
+        setIsLoading(true);
         let activeChatId = input.chatId;
         
-        // 1. Handle New Chat Creation (Optimistic)
-        if (!activeChatId && task === 'chat') {
-            console.log('[useChat] Creating new chat session...');
-            const optimisticId = generateId();
-            activeChatId = optimisticId;
-            
-            const settingsToUse = {
-                temperature: deps.settings.temperature,
-                maxOutputTokens: deps.settings.maxOutputTokens,
-                imageModel: deps.settings.imageModel,
-                videoModel: deps.settings.videoModel,
-            };
-
-            // Fire and forget creation, rely on optimistic ID
-            try {
-                // IMPORTANT: startNewChatHistory is now awaited properly.
-                // If it fails (e.g. backend down), it will throw, and we will catch it below.
-                await deps.startNewChatHistory(deps.initialModel, settingsToUse, optimisticId);
-            } catch (err) {
-                console.error("[useChat] Failed to start new chat:", err);
-                if (deps.onShowToast) deps.onShowToast("Failed to create new chat session. Check backend connection.", 'error');
-                throw err;
-            }
-        }
-
-        // 2. Handle Message Persistence (Optimistic UI)
-        if (task === 'chat' && newMessage) {
-             console.log('[useChat] Persisting user message...', activeChatId);
-             
-             // Process Attachments
-             const files = rawEvent?.files;
-             let attachmentsData;
-             if (files && files.length > 0) {
-                 try {
-                     attachmentsData = await Promise.all(files.map(async (f: File) => ({ name: f.name, mimeType: f.type, data: await fileToBase64(f) })));
-                 } catch (e) {
-                     console.error("[useChat] Failed to process files:", e);
-                     throw new Error("Failed to process attached files.");
-                 }
-             }
-             
-             // Construct User Message
-             const userMsg: Message = { ...newMessage, attachments: attachmentsData, activeResponseIndex: 0 };
-             
-             // Construct AI Placeholder
-             const aiMsg: Message = { 
-                 id: generateId(), 
-                 role: 'model', 
-                 text: '', 
-                 responses: [{ text: '', toolCallEvents: [], startTime: Date.now() }], 
-                 activeResponseIndex: 0, 
-                 isThinking: true 
-             };
-
-             // Persist (Appends to current branch)
-             deps.addMessagesToChat(activeChatId, [userMsg, aiMsg]);
-             deps.setChatLoadingState(activeChatId, true);
-             
-             // Define target ID for streaming
-             input.messageId = aiMsg.id; 
-        } 
-        else if (updatedMessages) {
-             // For Regenerate/Edit (Branch created by Machine Input factory)
-             await deps.updateChatProperty(activeChatId, { messages: updatedMessages });
-             deps.setChatLoadingState(activeChatId, true);
-        }
-
-        // 3. Initiate Stream
-        const controller = new AbortController();
-        abortControllerRef.current = controller;
-
         try {
+            // 1. Handle New Chat Creation (Optimistic)
+            if (!activeChatId && task === 'chat') {
+                console.log('[useChat] Creating new chat session...');
+                const optimisticId = generateId();
+                activeChatId = optimisticId;
+                
+                const settingsToUse = {
+                    temperature: deps.settings.temperature,
+                    maxOutputTokens: deps.settings.maxOutputTokens,
+                    imageModel: deps.settings.imageModel,
+                    videoModel: deps.settings.videoModel,
+                };
+
+                try {
+                    await deps.startNewChatHistory(deps.initialModel, settingsToUse, optimisticId);
+                } catch (err) {
+                    console.error("[useChat] Failed to start new chat:", err);
+                    if (deps.onShowToast) deps.onShowToast("Failed to create new chat session. Check backend connection.", 'error');
+                    throw err;
+                }
+            }
+
+            // 2. Handle Message Persistence (Optimistic UI)
+            if (task === 'chat' && newMessage) {
+                 // Process Attachments
+                 const files = rawEvent?.files;
+                 let attachmentsData;
+                 if (files && files.length > 0) {
+                     try {
+                         attachmentsData = await Promise.all(files.map(async (f: File) => ({ name: f.name, mimeType: f.type, data: await fileToBase64(f) })));
+                     } catch (e) {
+                         console.error("[useChat] Failed to process files:", e);
+                         throw new Error("Failed to process attached files.");
+                     }
+                 }
+                 
+                 // Construct User Message
+                 const userMsg: Message = { ...newMessage, attachments: attachmentsData, activeResponseIndex: 0 };
+                 
+                 // Construct AI Placeholder
+                 const aiMsg: Message = { 
+                     id: generateId(), 
+                     role: 'model', 
+                     text: '', 
+                     responses: [{ text: '', toolCallEvents: [], startTime: Date.now() }], 
+                     activeResponseIndex: 0, 
+                     isThinking: true 
+                 };
+
+                 // Persist (Appends to current branch)
+                 deps.addMessagesToChat(activeChatId, [userMsg, aiMsg]);
+                 deps.setChatLoadingState(activeChatId, true);
+                 
+                 // Define target ID for streaming
+                 input.messageId = aiMsg.id; 
+            } 
+            else if (updatedMessages) {
+                 // For Regenerate/Edit
+                 await deps.updateChatProperty(activeChatId, { messages: updatedMessages });
+                 deps.setChatLoadingState(activeChatId, true);
+            }
+
+            // 3. Initiate Stream
+            const controller = new AbortController();
+            abortControllerRef.current = controller;
+
             const chatForConfig = deps.chatHistory.find(c => c.id === activeChatId) || { model: deps.initialModel, ...deps.settings };
             
             // Defensively construct payload
@@ -245,143 +247,130 @@ export const useChat = (
 
         } catch (error: any) {
             if (error.name !== 'AbortError') {
-                console.error('[CHAT_MACHINE] Stream error:', error);
-                deps.updateActiveResponseOnMessage(activeChatId, input.messageId, () => ({ error: parseApiError(error), endTime: Date.now() }));
+                console.error('[useChat] Stream error:', error);
+                if (activeChatId && input.messageId) {
+                    deps.updateActiveResponseOnMessage(activeChatId, input.messageId, () => ({ error: parseApiError(error), endTime: Date.now() }));
+                }
                 if (deps.onShowToast) deps.onShowToast("Generation failed: " + error.message, 'error');
             }
-            throw error;
         } finally {
-             const wasAborted = controller.signal.aborted;
-             if (abortControllerRef.current === controller) {
+             // Cleanup logic
+             const wasAborted = abortControllerRef.current?.signal.aborted;
+             if (abortControllerRef.current) {
                 abortControllerRef.current = null;
                 requestIdRef.current = null;
              }
-             deps.updateMessage(activeChatId, input.messageId, { isThinking: false });
-             deps.completeChatLoading(activeChatId);
              
-             if (!wasAborted) {
+             if (activeChatId) {
+                 deps.completeChatLoading(activeChatId);
+                 if (input.messageId) {
+                    deps.updateMessage(activeChatId, input.messageId, { isThinking: false });
+                 }
+                 
                  // Auto-generate title for new chats
-                 const finalChatState = deps.chatHistory.find(c => c.id === activeChatId) 
-                    || { id: activeChatId, messages: [], title: 'New Chat', model: deps.initialModel } as any;
+                 if (!wasAborted && task === 'chat') {
+                     const finalChatState = deps.chatHistory.find(c => c.id === activeChatId) 
+                        || { id: activeChatId, messages: [], title: 'New Chat', model: deps.initialModel } as any;
 
-                 if (finalChatState && finalChatState.title === "New Chat") {
-                     generateChatTitle(finalChatState.messages || [], finalChatState.model)
-                        .then(newTitle => {
-                            const finalTitle = newTitle.length > 45 ? newTitle.substring(0, 42) + '...' : newTitle;
-                            deps.updateChatTitle(activeChatId, finalTitle);
-                        })
-                        .catch(() => {});
+                     if (finalChatState && finalChatState.title === "New Chat") {
+                         generateChatTitle(finalChatState.messages || [], finalChatState.model)
+                            .then(newTitle => {
+                                const finalTitle = newTitle.length > 45 ? newTitle.substring(0, 42) + '...' : newTitle;
+                                deps.updateChatTitle(activeChatId, finalTitle);
+                            })
+                            .catch(() => {});
+                     }
                  }
              }
+             setIsLoading(false);
         }
     }, []); 
-
-    const persistBranchService = useCallback(async (input: { chatId: string, messages: Message[] }) => {
-        const deps = depsRef.current;
-        try {
-            await deps.updateChatProperty(input.chatId, { messages: input.messages });
-        } catch (e) {
-            if (deps.onShowToast) deps.onShowToast("Failed to switch branch", 'error');
-            throw e;
-        }
-    }, []); 
-
-    // ------------------------------------------------------------------------
-    // XSTATE MACHINE
-    // ------------------------------------------------------------------------
-
-    const machineWithActors = useMemo(() => {
-        return chatMachine.provide({
-            actors: {
-                performGeneration: fromPromise(async ({ input }: any) => {
-                    try {
-                        return await performGenerationService(input);
-                    } catch (e) {
-                        console.error('[useChat] Actor: performGeneration caught error:', e);
-                        throw e;
-                    }
-                }),
-                persistBranch: fromPromise(async ({ input }: any) => {
-                    return persistBranchService(input);
-                })
-            }
-        });
-    }, [performGenerationService, persistBranchService]);
-
-    const [stateWithServices, sendWithServices] = useMachine(machineWithActors, {
-        input: { chatId: currentChatId, model: initialModel }
-    });
-
-    // ------------------------------------------------------------------------
-    // PUBLIC ACTIONS
-    // ------------------------------------------------------------------------
-
-    const abortCurrent = () => {
-        if (abortControllerRef.current) {
-            console.log('[useChat] Aborting current request');
-            abortControllerRef.current.abort();
-            abortControllerRef.current = null;
-        }
-    };
 
     const sendMessage = useCallback((text: string, files?: File[], options: any = {}) => {
-        console.log('[useChat] sendMessage CALLED', { text, hasFiles: !!files, options, currentChatId, currentState: stateWithServices.value });
         abortCurrent();
-        sendWithServices({ 
-            type: 'SEND', 
-            text, 
-            files, 
-            settings: options,
-            initialModel,
-            chatId: currentChatId 
+        const activeChatId = depsRef.current.currentChatId;
+
+        performGeneration({ 
+            task: 'chat',
+            chatId: activeChatId, // if null, performGeneration creates new chat
+            newMessage: { 
+                id: crypto.randomUUID(), 
+                role: 'user', 
+                text, 
+            },
+            rawEvent: { text, files },
+            settings: options // Pass options if needed, though they aren't fully utilized in this simplified flow yet
         });
-    }, [sendWithServices, initialModel, currentChatId, stateWithServices.value]);
+    }, [performGeneration, abortCurrent]);
 
     const regenerateResponse = useCallback((messageId: string) => {
-        const deps = depsRef.current;
         abortCurrent();
+        const deps = depsRef.current;
         if (!deps.currentChatId) return;
         const currentChat = deps.chatHistory.find(c => c.id === deps.currentChatId);
         if (!currentChat) return;
 
-        sendWithServices({ 
-            type: 'REGENERATE', 
-            messageId, 
+        const result = createBranchForModelResponse(currentChat.messages, messageId);
+        if (!result) return;
+
+        performGeneration({ 
+            task: 'regenerate', 
+            chatId: currentChat.id,
+            messageId, // Target AI message ID
+            updatedMessages: result.updatedMessages,
             currentChat, 
             settings: { ...deps.settings } 
         });
-    }, [sendWithServices]);
+    }, [performGeneration, abortCurrent]);
 
     const editMessage = useCallback((messageId: string, newText: string) => {
-        const deps = depsRef.current;
         abortCurrent();
+        const deps = depsRef.current;
         if (!deps.currentChatId) return;
         const currentChat = deps.chatHistory.find(c => c.id === deps.currentChatId);
         if (!currentChat) return;
         
-        sendWithServices({
-            type: 'EDIT',
-            messageId,
-            newText,
+        const result = createBranchForUserMessage(currentChat.messages, messageId, newText);
+        if (!result) return;
+
+        const modelPlaceholderId = crypto.randomUUID();
+
+        performGeneration({
+            task: 'regenerate',
+            chatId: currentChat.id,
+            messageId: modelPlaceholderId, // New AI response ID
+            updatedMessages: [
+                ...result.updatedMessages, 
+                 { 
+                    id: modelPlaceholderId, 
+                    role: 'model', 
+                    text: '', 
+                    responses: [{ text: '', toolCallEvents: [], startTime: Date.now() }], 
+                    activeResponseIndex: 0, 
+                    isThinking: true 
+                }
+            ],
             currentChat,
             settings: { ...deps.settings }
         });
-    }, [sendWithServices]);
+    }, [performGeneration, abortCurrent]);
 
-    const navigateBranch = useCallback((messageId: string, direction: 'next' | 'prev') => {
-        const deps = depsRef.current;
+    const navigateBranch = useCallback(async (messageId: string, direction: 'next' | 'prev') => {
         abortCurrent();
+        const deps = depsRef.current;
         if (!deps.currentChatId) return;
         const currentChat = deps.chatHistory.find(c => c.id === deps.currentChatId);
         if (!currentChat) return;
 
-        sendWithServices({
-            type: 'NAVIGATE',
-            messageId,
-            direction,
-            currentChat
-        });
-    }, [sendWithServices]);
+        const result = navigateBranchFn(currentChat.messages, messageId, direction);
+        if (!result) return;
+
+        try {
+            await deps.updateChatProperty(deps.currentChatId, { messages: result.updatedMessages });
+        } catch (e) {
+            if (deps.onShowToast) deps.onShowToast("Failed to switch branch", 'error');
+        }
+    }, [abortCurrent]);
 
     const cancelGeneration = useCallback(() => {
         const deps = depsRef.current;
@@ -394,8 +383,16 @@ export const useChat = (
                 silent: true
             }).catch(console.error);
         }
-        sendWithServices({ type: 'STOP' });
-    }, [sendWithServices]);
+        setIsLoading(false);
+    }, [abortCurrent]);
+
+    // Helpers for switching view-only response index (no persistence)
+    const setResponseIndex = useCallback(async (messageId: string, index: number) => {
+        const deps = depsRef.current;
+        if (!deps.currentChatId) return;
+        deps.updateActiveResponseOnMessage(deps.currentChatId, messageId, () => ({})); // Trigger update
+        deps.updateMessage(deps.currentChatId, messageId, { activeResponseIndex: index });
+    }, []);
     
     // Legacy bridging for Test Harness
     const sendMessageForTest = (userMessage: string, options?: any): Promise<Message> => {
@@ -407,35 +404,25 @@ export const useChat = (
     
     // Resolver trigger for tests
     useEffect(() => {
-        const loading = stateWithServices.matches('initializing_send') || stateWithServices.matches('initializing_regenerate');
-        if (!loading && testResolverRef.current && currentChatId) {
+        if (!isLoading && testResolverRef.current && currentChatId) {
             const chat = chatHistory.find(c => c.id === currentChatId);
             if (chat && chat.messages?.length) {
                 testResolverRef.current(chat.messages[chat.messages.length - 1]);
                 testResolverRef.current = null;
             }
         }
-    }, [stateWithServices.value, chatHistory, currentChatId]);
+    }, [isLoading, chatHistory, currentChatId]);
 
-    // Helpers for switching view-only response index (no persistence)
-    const setResponseIndex = useCallback(async (messageId: string, index: number) => {
-        const deps = depsRef.current;
-        if (!deps.currentChatId) return;
-        
-        deps.updateActiveResponseOnMessage(deps.currentChatId, messageId, () => ({})); // Trigger update
-        
-        // This is a direct store update for UI responsiveness if not using the full navigate flow
-        deps.updateMessage(deps.currentChatId, messageId, { activeResponseIndex: index });
-    }, []);
+    const unifiedHistory = chatHistory.map(c => c.id === currentChatId ? (chatHistory.find(ch => ch.id === currentChatId) || c) : c);
 
     return { 
-        chatHistory, 
+        chatHistory: unifiedHistory, 
         currentChatId, 
         isHistoryLoading,
         updateChatTitle, updateChatProperty, loadChat: loadChatHistory, deleteChat: deleteChatHistory, clearAllChats: clearAllChatsHistory, importChat, startNewChat: startNewChatHistory,
-        messages: chatHistory.find(c => c.id === currentChatId)?.messages || [], 
+        messages: unifiedHistory.find(c => c.id === currentChatId)?.messages || [], 
         sendMessage, 
-        isLoading: stateWithServices.matches('initializing_send') || stateWithServices.matches('initializing_regenerate') || stateWithServices.matches('initializing_edit'), 
+        isLoading, 
         cancelGeneration, 
         regenerateResponse, 
         sendMessageForTest, 
