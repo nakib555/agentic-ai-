@@ -273,19 +273,24 @@ export const useChat = (
     // XSTATE MACHINE
     // ------------------------------------------------------------------------
 
-    const actors = useMemo(() => ({
-        performGeneration: fromPromise(async ({ input }: any) => {
-            return performGenerationService(input);
-        }),
-        persistBranch: fromPromise(async ({ input }: any) => {
-            return persistBranchService(input);
-        })
-    }), [performGenerationService, persistBranchService]);
+    // We MUST use .provide() to inject the real implementations into the machine.
+    // XState v5 setup() defines the contract, provide() fills it.
+    const machineWithActors = useMemo(() => {
+        return chatMachine.provide({
+            actors: {
+                performGeneration: fromPromise(async ({ input }: any) => {
+                    return performGenerationService(input);
+                }),
+                persistBranch: fromPromise(async ({ input }: any) => {
+                    return persistBranchService(input);
+                })
+            }
+        });
+    }, [performGenerationService, persistBranchService]);
 
-    const [stateWithServices, sendWithServices] = useMachine(chatMachine, {
-        input: { chatId: currentChatId, model: initialModel },
-        actors
-    } as any);
+    const [stateWithServices, sendWithServices] = useMachine(machineWithActors, {
+        input: { chatId: currentChatId, model: initialModel }
+    });
 
     // Logging for debug
     useEffect(() => {
