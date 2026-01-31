@@ -23,9 +23,9 @@ export const useTypewriter = (targetText: string, isThinking: boolean) => {
   const timerRef = useRef<number | null>(null);
   const prevIsThinking = useRef(isThinking);
 
-  // Fixed tick rate for consistent UI performance (30ms = ~33fps target)
-  // This is smoother than 50ms but less heavy than RAF (16ms)
-  const TICK_RATE = 30;
+  // Fixed tick rate for consistent UI performance (12ms = ~80fps target)
+  // This provides a much smoother and faster feel than the previous 30ms
+  const TICK_RATE = 12;
 
   const loop = useCallback(() => {
       const targetLen = targetTextRef.current.length;
@@ -41,14 +41,14 @@ export const useTypewriter = (targetText: string, isThinking: boolean) => {
       let charsToAdd = 1;
 
       // Acceleration: The further behind we are, the faster we type.
-      // Thresholds tuned for mobile stability
-      if (remainingChars > 2000) charsToAdd = 200;    // Massive catch-up
-      else if (remainingChars > 1000) charsToAdd = 100; // Very Fast
-      else if (remainingChars > 500) charsToAdd = 50;   // Fast
-      else if (remainingChars > 200) charsToAdd = 20;   // Moderate Fast
-      else if (remainingChars > 100) charsToAdd = 10;   // Reading speed
-      else if (remainingChars > 50) charsToAdd = 5;     // Decent pace
-      else charsToAdd = 2; // Natural base speed
+      // Tuned for a snappy "Star Trek" computer feel
+      if (remainingChars > 1500) charsToAdd = 150;    // Massive catch-up
+      else if (remainingChars > 800) charsToAdd = 80; // Very Fast
+      else if (remainingChars > 400) charsToAdd = 40; // Fast
+      else if (remainingChars > 150) charsToAdd = 20; // Moderate Fast
+      else if (remainingChars > 50) charsToAdd = 8;   // Cruising speed
+      else if (remainingChars > 20) charsToAdd = 4;   // Decent pace
+      else charsToAdd = 2; // Base speed (min 2 chars per 12ms = ~160 chars/sec base)
 
       currentLength.current += charsToAdd;
       
