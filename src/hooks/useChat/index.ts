@@ -59,10 +59,6 @@ export const useChat = (
     const testResolverRef = useRef<((value: Message | PromiseLike<Message>) => void) | null>(null);
 
     // --- DEPENDENCY REF PATTERN ---
-    // We bundle all external dependencies into a ref.
-    // This allows the service functions (performGenerationService) to be defined with [] dependencies,
-    // ensuring strictly stable identity. This prevents the XState machine from re-initializing 
-    // and killing active streams when React re-renders.
     const depsRef = useRef({
         chatHistory,
         currentChatId,
@@ -124,13 +120,14 @@ export const useChat = (
             };
 
             // Fire and forget creation, rely on optimistic ID
+            // This updates the local cache synchronously, so subsequent steps can find the chat
             await deps.startNewChatHistory(deps.initialModel, settingsToUse, optimisticId);
         }
 
         // 2. Handle Message Persistence (Optimistic UI)
-        if (task === 'chat' && newMessage && rawEvent) {
+        if (task === 'chat' && newMessage) {
              // Process Attachments
-             const files = rawEvent.files;
+             const files = rawEvent?.files;
              const attachmentsData = files?.length ? await Promise.all(files.map(async (f: File) => ({ name: f.name, mimeType: f.type, data: await fileToBase64(f) }))) : undefined;
              
              // Construct User Message
@@ -147,6 +144,7 @@ export const useChat = (
              };
 
              // Persist
+             // We use activeChatId which might be the optimistic ID created in step 1
              deps.addMessagesToChat(activeChatId, [userMsg, aiMsg]);
              deps.setChatLoadingState(activeChatId, true);
              
@@ -164,13 +162,27 @@ export const useChat = (
         abortControllerRef.current = controller;
 
         try {
+            // Note: deps.chatHistory might be stale in this closure if a new chat was just created.
+            // We use the optimistic activeChatId and fallback settings if finding fails.
             const chatForConfig = deps.chatHistory.find(c => c.id === activeChatId) || { model: deps.initialModel, ...deps.settings };
             
+            // Defensively construct the newMessage payload for the backend
+            const safeNewMessage = task === 'chat' 
+                ? (updatedMessages 
+                    ? null 
+                    : { 
+                        ...(input.newMessage || {}),
+                        // Ensure text is present, falling back to rawEvent if input.newMessage was incomplete
+                        text: input.newMessage?.text || rawEvent?.text || '' 
+                      }
+                  ) 
+                : null;
+
             const requestPayload = {
                 chatId: activeChatId,
                 messageId: input.messageId,
                 model: chatForConfig.model,
-                newMessage: task === 'chat' ? (updatedMessages ? null : { text: rawEvent.text, ...input.newMessage }) : null,
+                newMessage: safeNewMessage,
                 settings: {
                     systemPrompt: deps.settings.systemPrompt,
                     aboutUser: deps.settings.aboutUser,
@@ -233,9 +245,13 @@ export const useChat = (
              
              if (!wasAborted) {
                  // Handle Post Chat Actions (Title Gen)
-                 const finalChatState = deps.chatHistory.find(c => c.id === activeChatId);
-                 if (finalChatState && finalChatState.messages && finalChatState.title === "New Chat" && finalChatState.messages.length >= 2) {
-                     generateChatTitle(finalChatState.messages, finalChatState.model)
+                 // Re-fetch chat from cache to get latest messages state
+                 const finalChatState = deps.chatHistory.find(c => c.id === activeChatId) 
+                    // Fallback to searching in fresh deps via ref if possible, but depsRef is only updated on render
+                    || { id: activeChatId, messages: [], title: 'New Chat', model: deps.initialModel } as any;
+
+                 if (finalChatState && finalChatState.title === "New Chat") {
+                     generateChatTitle(finalChatState.messages || [], finalChatState.model)
                         .then(newTitle => {
                             const finalTitle = newTitle.length > 45 ? newTitle.substring(0, 42) + '...' : newTitle;
                             deps.updateChatTitle(activeChatId, finalTitle);
@@ -260,7 +276,6 @@ export const useChat = (
     // XSTATE MACHINE
     // ------------------------------------------------------------------------
 
-    // Memoize actors. Since service adapters are stable (empty deps), actors object is stable.
     const actors = useMemo(() => ({
         performGeneration: fromPromise(async ({ input }: any) => {
             return performGenerationService(input);
@@ -401,7 +416,7 @@ export const useChat = (
         const newMessagesList = [...updatedMessages.slice(0, updatedMessages.indexOf(targetMessage)), targetMessage, ...restoredFuture];
         deps.updateChatProperty(deps.currentChatId, { messages: newMessagesList });
         
-    }, []); // Zero deps
+    }, []);
 
     return { 
         chatHistory, 
