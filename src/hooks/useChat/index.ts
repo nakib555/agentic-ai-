@@ -1,4 +1,3 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -308,9 +307,10 @@ export const useChat = (
             text, 
             files, 
             settings: options,
-            initialModel
+            initialModel,
+            chatId: currentChatId // Pass explicit ID
         });
-    }, [sendWithServices, initialModel]);
+    }, [sendWithServices, initialModel, currentChatId]);
 
     const regenerateResponse = useCallback((messageId: string) => {
         const deps = depsRef.current;

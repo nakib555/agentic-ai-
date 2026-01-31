@@ -22,7 +22,7 @@ export type ChatContext = {
 };
 
 export type ChatEvent = 
-    | { type: 'SEND'; text: string; files?: File[]; settings: any; initialModel: string }
+    | { type: 'SEND'; text: string; files?: File[]; settings: any; initialModel: string; chatId: string | null }
     | { type: 'REGENERATE'; messageId: string; currentChat: ChatSession; settings: any }
     | { type: 'EDIT'; messageId: string; newText: string; currentChat: ChatSession; settings: any }
     | { type: 'NAVIGATE'; messageId: string; direction: 'next' | 'prev'; currentChat: ChatSession }
@@ -143,12 +143,12 @@ export const chatMachine = setup({
                 input: ({ context, event }) => {
                     if (event.type !== 'SEND') return {} as any;
                     
-                    // Logic to create new chat ID if needed is handled inside the service adapter for now
-                    // to keep the machine clean of ID generation logic if possible, 
-                    // or we pass it in.
+                    // Prefer event.chatId (authoritative from React state) over context.chatId (stale xstate context)
+                    const activeChatId = event.chatId || context.chatId;
+
                     return {
                         task: 'chat',
-                        chatId: context.chatId, // might be null
+                        chatId: activeChatId, 
                         newMessage: { 
                             id: uuidv4(), 
                             role: 'user', 
