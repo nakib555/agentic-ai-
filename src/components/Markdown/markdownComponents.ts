@@ -12,6 +12,7 @@ import { InlineCode } from './InlineCode';
 import { StyledMark } from './StyledMark';
 import { Collapsible } from './Collapsible';
 import { ChecklistItem } from './ChecklistItem';
+import { UniversalChart } from '../AI/UniversalChart';
 
 // Custom Blockquote component that acts as a router for Callouts and Bubbles
 const BlockquoteRouter = (props: any) => {
@@ -166,6 +167,11 @@ export const getMarkdownComponents = (options: MarkdownOptions = {}) => ({
                 codeContent = String(children ?? '');
             }
             codeContent = codeContent.replace(/\n$/, '');
+
+            // --- Custom Chart Renderer Hook ---
+            if (language === 'chart') {
+                return React.createElement(UniversalChart, { content: codeContent });
+            }
 
             return React.createElement(CodeBlock, { 
                 language: language || 'plaintext', 
