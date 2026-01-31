@@ -1,14 +1,17 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
 
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import Plot from 'react-plotly.js';
+// Use factory to create Plot component to avoid bundling issues with Vite/React
+import Plotly from 'plotly.js-dist-min';
+import createPlotlyComponent from 'react-plotly.js/factory';
 import * as d3 from 'd3';
 import { parseChartMarkdown, ChartConfig } from '../../utils/chartParser';
 import { ErrorDisplay } from '../UI/ErrorDisplay';
+
+const Plot = createPlotlyComponent(Plotly);
 
 type UniversalChartProps = {
     content: string;
@@ -85,7 +88,7 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
     };
 
     return (
-        <div className="my-6 border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden bg-white dark:bg-[#121212] shadow-sm">
+        <div className="my-6 border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden bg-white dark:bg-[#121212] shadow-sm relative z-0">
             <div className="px-4 py-2 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/5">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
                     {config.engine === 'hybrid' ? 'Hybrid (Plotly + D3)' : config.engine === 'd3' ? 'D3 Visualization' : 'Plotly Chart'}
@@ -108,7 +111,7 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                         }}
                         useResizeHandler={true}
                         style={{ width: '100%', height: '100%' }}
-                        config={{ displayModeBar: false, responsive: true }}
+                        config={{ displayModeBar: true, responsive: true }}
                         divId={config.engine === 'hybrid' ? undefined : undefined} // Let Plotly manage ID unless specific
                     />
                 )}
