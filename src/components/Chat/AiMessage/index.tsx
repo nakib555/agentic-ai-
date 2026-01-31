@@ -66,15 +66,11 @@ const ChartLoadingPlaceholder: React.FC<{ type: string }> = ({ type }) => {
 
     return (
         <motion.div 
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="my-6 p-6 rounded-2xl border border-indigo-100 dark:border-indigo-500/20 bg-indigo-50/50 dark:bg-indigo-500/10 flex flex-col items-center justify-center gap-3 shadow-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="my-4 ml-1"
         >
-             <div className="relative flex h-8 w-8 items-center justify-center">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-30"></span>
-              <div className="relative inline-flex rounded-full h-3 w-3 bg-indigo-500 shadow-lg shadow-indigo-500/50"></div>
-            </div>
-            <span className="text-sm font-semibold text-indigo-700 dark:text-indigo-300 animate-pulse tracking-wide">
+            <span className="text-sm font-semibold shimmer-text tracking-wide">
                 Generating {label}...
             </span>
         </motion.div>
