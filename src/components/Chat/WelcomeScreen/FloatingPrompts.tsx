@@ -27,40 +27,40 @@ const containerVariants = {
 
 const CHAT_PROMPTS: { icon: string; text: string; prompt: string; color: PromptColor }[] = [
     {
+        icon: "📊",
+        text: "Sales Trend",
+        prompt: "Create a visually appealing bar chart comparing quarterly sales: Q1 12k, Q2 19k, Q3 15k, Q4 25k.",
+        color: "indigo"
+    },
+    {
+        icon: "🧬",
+        text: "Network Viz",
+        prompt: "Create a D3.js force-directed graph visualization with 8 nodes and random links.",
+        color: "emerald"
+    },
+    {
+        icon: "🧊",
+        text: "3D Plot",
+        prompt: "Generate a 3D surface plot of the function z = sin(x) * cos(y).",
+        color: "blue"
+    },
+    {
+        icon: "📉",
+        text: "Stock Analysis",
+        prompt: "Simulate a stock price movement over 30 days and visualize it with a candlestick chart.",
+        color: "rose"
+    },
+    {
         icon: "⚛️",
         text: "Explain Quantum",
         prompt: "Explain quantum computing in simple terms.",
         color: "cyan"
     },
     {
-        icon: "✍️",
-        text: "Creative Writer",
-        prompt: "Write a haiku about a robot learning to love.",
-        color: "fuchsia"
-    },
-    {
-        icon: "🍵",
-        text: "Health Tips",
-        prompt: "What are the health benefits of green tea?",
-        color: "emerald"
-    },
-    {
         icon: "🚀",
         text: "Startup Ideas",
         prompt: "Help me brainstorm names for a tech startup focused on sustainability.",
-        color: "blue"
-    },
-    {
-        icon: "📚",
-        text: "Literature",
-        prompt: "Summarize the plot of 'The Great Gatsby' in 3 sentences.",
         color: "amber"
-    },
-    {
-        icon: "🎌",
-        text: "Translator",
-        prompt: "Translate 'Hello, how are you?' into Japanese, French, and Spanish.",
-        color: "rose"
     }
 ];
 

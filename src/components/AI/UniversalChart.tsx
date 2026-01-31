@@ -29,6 +29,26 @@ interface ChartConfig {
     height?: number;
 }
 
+const stripMarkdown = (code: string): string => {
+    let clean = code.trim();
+    // Remove wrapping ```language ... ``` blocks
+    if (clean.startsWith('```')) {
+        clean = clean.replace(/^```[a-z]*\n?/, '').replace(/```$/, '').trim();
+    }
+    return clean;
+};
+
+const extractJson = (str: string): string => {
+    // Attempt to find the outermost JSON object wrapper
+    const firstBrace = str.indexOf('{');
+    const lastBrace = str.lastIndexOf('}');
+    
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        return str.substring(firstBrace, lastBrace + 1);
+    }
+    return str;
+};
+
 export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ content, engine, code }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [config, setConfig] = useState<ChartConfig | null>(null);
@@ -41,7 +61,8 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
             // Priority 1: New XML-tag based flow (<plotly>, <d3>, <hybrid>)
             if (engine && code) {
                 const newConfig: ChartConfig = { engine };
-                const trimmedCode = code.trim();
+                // Strip markdown blocks first for all engines
+                const trimmedCode = stripMarkdown(code);
 
                 if (engine === 'd3') {
                     // For D3, the content is raw JavaScript
@@ -50,12 +71,13 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                     // For Plotly or Hybrid, the content is JSON
                     if (trimmedCode) {
                          // Robust JSON parsing: Attempt to fix common LLM JSON syntax errors
-                        let jsonStr = trimmedCode;
+                        let jsonStr = extractJson(trimmedCode);
                         
-                        // Remove markdown code block wrappers if the AI accidentally added them
-                        if (jsonStr.startsWith('```')) {
-                            jsonStr = jsonStr.replace(/^```(json)?/, '').replace(/```$/, '');
-                        }
+                        // Remove comments (single line // and multi line /* */)
+                        // Note: This regex is simple and might match inside strings, but for config JSON it's usually safe enough
+                        // or we assume the extraction of { } helps.
+                        // Removing comments before parsing:
+                        jsonStr = jsonStr.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, '$1');
                         
                         // Remove potential trailing commas before closing braces/brackets
                         jsonStr = jsonStr.replace(/,\s*([\]}])/g, '$1');
@@ -133,9 +155,9 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
 
     if (error) {
         return (
-            <div className="my-4 p-4 border border-red-200 bg-red-50 dark:bg-red-900/10 rounded-lg text-sm text-red-600 dark:text-red-400 font-mono">
+            <div className="my-4 p-4 border border-red-200 bg-red-50 dark:bg-red-900/10 rounded-lg text-sm text-red-600 dark:text-red-400 font-mono overflow-auto">
                 <div className="font-bold mb-1">Visualization Error</div>
-                {error}
+                <div className="whitespace-pre-wrap">{error}</div>
             </div>
         );
     }

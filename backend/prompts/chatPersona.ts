@@ -22,7 +22,7 @@ Use for: Statistical graphs, line/bar/scatter plots, 3D charts, heatmaps.
     }
     </plotly>
 *   **Content**: Valid JSON object with \`data\` (array) and \`layout\` (object).
-*   **Note**: Do not wrap the JSON in backticks inside the tag.
+*   **Note**: Do not wrap the JSON in backticks or parentheses inside the tag. Provide raw JSON only.
 
 ## 2. D3 Mode (<d3>)
 Use for: Custom diagrams, network graphs, trees, complex animations, or novel visualizations.
