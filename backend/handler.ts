@@ -1,9 +1,3 @@
-
-
-
-
-
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -241,10 +235,36 @@ export const apiHandler = async (req: any, res: any) => {
     }
 
     // --- CONTEXT SETUP ---
-    const activeProviderName = await getProvider();
+    // Prefer explicit overrides from the request body (sent by updated frontend)
+    // This fixes race conditions where settings are updated but not yet persisted on disk
+    let activeProviderName = req.body.provider;
+    if (!activeProviderName) {
+        activeProviderName = await getProvider();
+    }
     
-    // chatApiKey is the key for the selected provider (e.g. OpenRouter key)
-    const chatApiKey = await getApiKey(); 
+    // Resolve the API key based on the active provider
+    let chatApiKey = req.body.apiKey;
+    
+    // If no key provided in body, fall back to stored settings
+    if (!chatApiKey) {
+        // Only use the standard helper if the provider matches what's on disk,
+        // otherwise manually fetch the correct key for the requested provider.
+        if (activeProviderName === await getProvider()) {
+            chatApiKey = await getApiKey();
+        } else {
+            // We switched provider via payload but didn't provide a key.
+            // Try to fetch specific key from settings based on the *requested* provider name.
+            try {
+                const settings: any = await readData(SETTINGS_FILE_PATH);
+                if (activeProviderName === 'openrouter') chatApiKey = settings.openRouterApiKey;
+                else if (activeProviderName === 'ollama') chatApiKey = settings.ollamaApiKey;
+                else chatApiKey = settings.apiKey || process.env.API_KEY || process.env.GEMINI_API_KEY;
+            } catch (e) {
+                // Fallback
+                chatApiKey = await getApiKey();
+            }
+        }
+    }
     
     // geminiKey is specifically for auxiliary services (TTS, Embeddings, Memory)
     // We try to get it even if the main provider is OpenRouter/Ollama

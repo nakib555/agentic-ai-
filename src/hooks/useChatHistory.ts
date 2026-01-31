@@ -150,13 +150,20 @@ export const useChatHistory = () => {
   // Real-time message updates (Streaming)
   // We modify the RQ cache directly for performance during generation
   const updateChatMessages = useCallback((chatId: string, messages: Message[]) => {
+      // Update Cache
       updateLocalAndCache(old => (old || []).map(c => 
           c.id === chatId ? { ...c, messages } : c
       ));
-      if (currentChatId === chatId) {
-          setActiveChat(prev => prev ? { ...prev, messages } : null);
-      }
-  }, [updateLocalAndCache, currentChatId]);
+
+      // Update Local State if it matches
+      // Use functional update to avoid dependency on 'currentChatId' which might be stale in async closures
+      setActiveChat(prev => {
+          if (prev && prev.id === chatId) {
+              return { ...prev, messages };
+          }
+          return prev;
+      });
+  }, [updateLocalAndCache]);
 
   // Specific helpers to avoid full list traversals in UI components
   const addMessagesToChat = useCallback((chatId: string, newMessages: Message[]) => {

@@ -31,7 +31,8 @@ export const useChat = (
     settings: ChatSettings, 
     memoryContent: string, 
     apiKey: string,
-    onShowToast?: (message: string, type: 'info' | 'success' | 'error') => void
+    onShowToast?: (message: string, type: 'info' | 'success' | 'error') => void,
+    provider?: string
 ) => {
     const { 
         chatHistory, 
@@ -65,6 +66,7 @@ export const useChat = (
         initialModel,
         memoryContent,
         apiKey,
+        provider,
         startNewChatHistory,
         addMessagesToChat,
         updateChatProperty,
@@ -84,6 +86,7 @@ export const useChat = (
             initialModel,
             memoryContent,
             apiKey,
+            provider,
             startNewChatHistory,
             addMessagesToChat,
             updateChatProperty,
@@ -198,6 +201,8 @@ export const useChat = (
                 chatId: activeChatId,
                 messageId: input.messageId,
                 model: chatForConfig.model,
+                provider: deps.provider, // Send active provider override
+                apiKey: deps.apiKey,     // Send active api key override
                 newMessage: safeNewMessage,
                 settings: {
                     systemPrompt: deps.settings.systemPrompt,

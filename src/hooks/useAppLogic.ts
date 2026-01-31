@@ -89,7 +89,8 @@ export const useAppLogic = () => {
         chatSettings,
         memory.memoryContent, 
         activeApiKey,
-        handleToast
+        handleToast,
+        settings.provider // Pass the active provider explicitly
     );
 
     // --- Helper to process models from backend response ---
