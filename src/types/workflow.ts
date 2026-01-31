@@ -25,7 +25,7 @@ export type WorkflowNodeData = {
 export type RenderSegment = {
     type: 'text' | 'component';
     content?: string;
-    componentType?: 'VIDEO' | 'ONLINE_VIDEO' | 'IMAGE' | 'ONLINE_IMAGE' | 'MCQ' | 'MAP' | 'FILE' | 'BROWSER' | 'CODE_OUTPUT' | 'CHART' | 'VEO_API_KEY' | 'LOCATION_PERMISSION' | 'ARTIFACT_CODE' | 'ARTIFACT_DATA';
+    componentType?: 'VIDEO' | 'ONLINE_VIDEO' | 'IMAGE' | 'ONLINE_IMAGE' | 'MCQ' | 'MAP' | 'FILE' | 'BROWSER' | 'CODE_OUTPUT' | 'CHART' | 'VEO_API_KEY' | 'LOCATION_PERMISSION' | 'ARTIFACT_CODE' | 'ARTIFACT_DATA' | 'LOADING_CHART';
     data?: any;
 };
 

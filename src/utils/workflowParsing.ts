@@ -39,57 +39,108 @@ const XML_COMPONENT_TAGS = [
 export const parseContentSegments = (text: string): RenderSegment[] => {
     if (!text) return [];
 
-    // Regex to capture component tags and their content
-    // Group 1: Square Brackets -> \[(TAGS)\][\s\S]*?\[\/\1\]
-    // Group 2: XML Tags -> <(TAGS)>[\s\S]*?<\/\2>
-    
     const squarePattern = SQUARE_COMPONENT_TAGS.join('|');
     const xmlPattern = XML_COMPONENT_TAGS.join('|');
     
-    // We use a combined regex to split. Note the capturing groups are critical for .split() to include delimiters.
-    const combinedRegex = new RegExp(`(\\[(?:${squarePattern})\\][\\s\\S]*?\\[\\/(?:${squarePattern})\\])|(<(?:${xmlPattern})>[\\s\\S]*?<\\/(?:${xmlPattern})>)`, 'gi');
+    // Regex to capture COMPLETE component tags and their content
+    // Group 1: Square Brackets -> \[(TAGS)\][\s\S]*?\[\/\1\]
+    // Group 2: XML Tags -> <(TAGS)>[\s\S]*?<\/\2>
+    const completeComponentRegex = new RegExp(`(\\[(?:${squarePattern})\\][\\s\\S]*?\\[\\/(?:${squarePattern})\\])|(<(?:${xmlPattern})>[\\s\\S]*?<\\/(?:${xmlPattern})>)`, 'gi');
     
-    const parts = text.split(combinedRegex).filter(part => part !== undefined && part !== '');
+    const segments: RenderSegment[] = [];
+    let lastIndex = 0;
+    let match;
 
-    return parts.map((part): RenderSegment | null => {
-        // Check for Square Bracket Component
-        const squareMatch = part.match(new RegExp(`^\\[(${squarePattern})\\]([\\s\\S]*?)\\[\\/\\1\\]$`, 'i'));
-        
-        if (squareMatch) {
-            const tagType = squareMatch[1].toUpperCase();
-            const contentString = squareMatch[2];
-            
-            return parseSquareComponent(tagType, contentString, part);
+    while ((match = completeComponentRegex.exec(text)) !== null) {
+        // 1. Handle Text Before Match
+        if (match.index > lastIndex) {
+            const textPart = text.substring(lastIndex, match.index);
+            // In a complete flow, text before a tag is usually just text.
+            // We assume the model doesn't open a tag and leave it dangling BEFORE a valid closed tag.
+            if (textPart) segments.push({ type: 'text', content: textPart });
         }
 
-        // Check for XML Component
-        const xmlMatch = part.match(new RegExp(`^<(${xmlPattern})>([\\s\\S]*?)<\\/\\1>$`, 'i'));
+        // 2. Handle the Complete Component Match
+        const componentString = match[0];
         
-        if (xmlMatch) {
-            const tagType = xmlMatch[1].toLowerCase();
-            const contentString = xmlMatch[2];
+        if (componentString.startsWith('[')) {
+            // Square Bracket Component
+            // Extract type and content using a specific regex to be safe
+            const squareMatch = componentString.match(new RegExp(`^\\[(${squarePattern})\\]([\\s\\S]*?)\\[\\/\\1\\]$`, 'i'));
             
-            return {
+            if (squareMatch) {
+                const tagType = squareMatch[1].toUpperCase();
+                const contentString = squareMatch[2];
+                segments.push(parseSquareComponent(tagType, contentString, componentString));
+            } else {
+                segments.push({ type: 'text', content: componentString });
+            }
+        } else if (componentString.startsWith('<')) {
+            // XML Component
+            const xmlMatch = componentString.match(new RegExp(`^<(${xmlPattern})>([\\s\\S]*?)<\\/\\1>$`, 'i'));
+            
+            if (xmlMatch) {
+                const tagType = xmlMatch[1].toLowerCase();
+                const contentString = xmlMatch[2];
+                segments.push({
+                    type: 'component',
+                    componentType: 'CHART',
+                    data: {
+                        engine: tagType === 'hybrid' ? 'hybrid' : tagType,
+                        content: contentString
+                    }
+                });
+            } else {
+                segments.push({ type: 'text', content: componentString });
+            }
+        }
+
+        lastIndex = completeComponentRegex.lastIndex;
+    }
+
+    // 3. Handle Remaining Text (Streaming Partial Detection)
+    if (lastIndex < text.length) {
+        const remainingText = text.substring(lastIndex);
+        
+        // Check for an OPENING tag that hasn't been closed (since completeRegex didn't catch it)
+        // This regex looks for <(plotly|d3|hybrid)>
+        const openTagRegex = new RegExp(`(<(${xmlPattern})>)`, 'i');
+        const openTagMatch = remainingText.match(openTagRegex);
+        
+        if (openTagMatch) {
+            // We found an unclosed start tag!
+            const textBefore = remainingText.substring(0, openTagMatch.index);
+            const tagType = openTagMatch[2].toLowerCase(); // plotly, d3, hybrid
+            
+            if (textBefore) {
+                 segments.push({ type: 'text', content: textBefore });
+            }
+            
+            // Push the special loading placeholder
+            segments.push({
                 type: 'component',
-                componentType: 'CHART',
-                data: {
-                    engine: tagType === 'hybrid' ? 'hybrid' : tagType,
-                    content: contentString
-                }
-            };
+                componentType: 'LOADING_CHART',
+                data: { type: tagType }
+            });
+            
+            // NOTE: We intentionally swallow the content after the opening tag 
+            // while it is streaming to prevent raw code/json from flickering on screen.
+        } else {
+             // Handle partial square bracket tags to avoid glitching
+             // e.g. "[IMAGE_CO" at the end of stream
+             const incompleteSquareRegex = new RegExp(`\\[(?:${squarePattern})`, 'i');
+             
+             // If the text ends with an incomplete tag start, strip it to prevent raw bracket display
+             const incompleteTagRegex = new RegExp(`\\[(?:${squarePattern})\\]?$`, 'i');
+             const cleanedPart = remainingText.replace(incompleteTagRegex, '');
+             
+             if (cleanedPart) {
+                segments.push({ type: 'text', content: cleanedPart });
+             }
         }
-        
-        // Handle incomplete tags at the very end of the stream (during typing)
-        // We strip the opening tag to prevent the user seeing raw "[IMAGE_COMPONENT]" text before data arrives
-        const incompleteSquareRegex = new RegExp(`\\[(?:${squarePattern})\\]$`, 'i');
-        const incompleteXmlRegex = new RegExp(`<(?:${xmlPattern})>$`, 'i');
-        
-        let cleanedPart = part.replace(incompleteSquareRegex, '').replace(incompleteXmlRegex, '');
-        
-        if (cleanedPart.length === 0) return null;
+    }
 
-        return { type: 'text', content: cleanedPart };
-    }).filter((s): s is RenderSegment => s !== null);
+    return segments;
 };
 
 const parseSquareComponent = (tagType: string, contentString: string, originalPart: string): RenderSegment => {

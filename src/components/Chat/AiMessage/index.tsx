@@ -59,6 +59,28 @@ const StopIcon = () => (
     </svg>
 );
 
+const ChartLoadingPlaceholder: React.FC<{ type: string }> = ({ type }) => {
+    let label = 'Chart';
+    if (type === 'd3') label = 'Visualization';
+    else if (type === 'hybrid') label = 'Interactive Chart';
+
+    return (
+        <motion.div 
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="my-6 p-6 rounded-2xl border border-indigo-100 dark:border-indigo-500/20 bg-indigo-50/50 dark:bg-indigo-500/10 flex flex-col items-center justify-center gap-3 shadow-sm"
+        >
+             <div className="relative flex h-8 w-8 items-center justify-center">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-30"></span>
+              <div className="relative inline-flex rounded-full h-3 w-3 bg-indigo-500 shadow-lg shadow-indigo-500/50"></div>
+            </div>
+            <span className="text-sm font-semibold text-indigo-700 dark:text-indigo-300 animate-pulse tracking-wide">
+                Generating {label}...
+            </span>
+        </motion.div>
+    );
+};
+
 const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
   const { msg, isLoading, sendMessage, ttsVoice, ttsModel, currentChatId, 
           onShowSources, messageFormRef, onRegenerate,
@@ -179,6 +201,7 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
                         case 'BROWSER': return <BrowserSessionDisplay key={key} {...data} />;
                         case 'CODE_OUTPUT': return <CodeExecutionResult key={key} {...data} />;
                         case 'CHART': return <UniversalChart key={key} engine={data.engine} code={data.content} />;
+                        case 'LOADING_CHART': return <ChartLoadingPlaceholder key={key} type={data.type} />;
                         case 'ARTIFACT_CODE': return (
                             <Suspense fallback={<div className="h-64 w-full bg-gray-100 dark:bg-white/5 rounded-xl animate-pulse my-4" />}>
                                 <ArtifactRenderer key={key} type="code" content={data.code} language={data.language} title={data.title} />
