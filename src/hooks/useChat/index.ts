@@ -59,7 +59,6 @@ export const useChat = (
     const testResolverRef = useRef<((value: Message | PromiseLike<Message>) => void) | null>(null);
 
     // --- DEPENDENCY REF PATTERN ---
-    // Keeps service closures fresh without breaking XState actor references
     const depsRef = useRef({
         chatHistory,
         currentChatId,
@@ -124,15 +123,20 @@ export const useChat = (
 
             // Fire and forget creation, rely on optimistic ID
             try {
+                // IMPORTANT: startNewChatHistory is now awaited properly.
+                // If it fails (e.g. backend down), it will throw, and we will catch it below.
                 await deps.startNewChatHistory(deps.initialModel, settingsToUse, optimisticId);
             } catch (err) {
                 console.error("[useChat] Failed to start new chat:", err);
+                if (deps.onShowToast) deps.onShowToast("Failed to create new chat session. Check backend connection.", 'error');
                 throw err;
             }
         }
 
         // 2. Handle Message Persistence (Optimistic UI)
         if (task === 'chat' && newMessage) {
+             console.log('[useChat] Persisting user message...', activeChatId);
+             
              // Process Attachments
              const files = rawEvent?.files;
              let attachmentsData;
@@ -287,11 +291,9 @@ export const useChat = (
     // ------------------------------------------------------------------------
 
     const machineWithActors = useMemo(() => {
-        console.log('[useChat] Providing actors to chatMachine');
         return chatMachine.provide({
             actors: {
                 performGeneration: fromPromise(async ({ input }: any) => {
-                    console.log('[useChat] Actor: performGeneration executing with input:', input);
                     try {
                         return await performGenerationService(input);
                     } catch (e) {
@@ -310,17 +312,13 @@ export const useChat = (
         input: { chatId: currentChatId, model: initialModel }
     });
 
-    // Logging for debug
-    useEffect(() => {
-        console.log('[useChat] Machine State Update:', stateWithServices.value);
-    }, [stateWithServices.value]);
-
     // ------------------------------------------------------------------------
-    // PUBLIC ACTIONS (Mapped to Events)
+    // PUBLIC ACTIONS
     // ------------------------------------------------------------------------
 
     const abortCurrent = () => {
         if (abortControllerRef.current) {
+            console.log('[useChat] Aborting current request');
             abortControllerRef.current.abort();
             abortControllerRef.current = null;
         }

@@ -72,7 +72,7 @@ export const useChatHistory = () => {
       queryClient.setQueryData<ChatSession[]>(['chatHistory'], (old: ChatSession[] | undefined) => updater(old || []));
   }, [queryClient]);
 
-  const startNewChat = useCallback(async (model: string, settings: any, optimisticId?: string): Promise<ChatSession | null> => {
+  const startNewChat = useCallback(async (model: string, settings: any, optimisticId?: string): Promise<ChatSession> => {
     const newId = optimisticId || Math.random().toString(36).substring(2, 9);
     const newChat: ChatSession = {
         id: newId,
@@ -88,6 +88,8 @@ export const useChatHistory = () => {
     setActiveChat(newChat);
     updateLocalAndCache(old => [newChat, ...(old || [])]);
 
+    // We propagate the error now so the caller knows if persistence failed.
+    // This allows the Chat logic to abort generation if the chat doesn't exist on backend.
     try {
         await fetchApi('/api/chats/new', {
             method: 'POST',
@@ -96,7 +98,7 @@ export const useChatHistory = () => {
         return newChat;
     } catch (error) {
         console.error("Failed to persist new chat:", error);
-        return null;
+        throw error;
     }
   }, [updateLocalAndCache]);
 
@@ -158,15 +160,22 @@ export const useChatHistory = () => {
 
   // Specific helpers to avoid full list traversals in UI components
   const addMessagesToChat = useCallback((chatId: string, newMessages: Message[]) => {
-      const chat = queryClient.getQueryData<ChatSession[]>(['chatHistory'])?.find(c => c.id === chatId);
+      // Force a cache read to ensure we get the latest state
+      const cache = queryClient.getQueryData<ChatSession[]>(['chatHistory']) || [];
+      const chat = cache.find(c => c.id === chatId);
+      
       if (chat) {
           const updatedMessages = [...(chat.messages || []), ...newMessages];
           updateChatMessages(chatId, updatedMessages);
+      } else {
+          console.warn(`[useChatHistory] addMessagesToChat: Chat ${chatId} not found in cache. This might cause lost messages.`);
       }
   }, [queryClient, updateChatMessages]);
 
   const updateMessage = useCallback((chatId: string, messageId: string, update: Partial<Message>) => {
-      const chat = queryClient.getQueryData<ChatSession[]>(['chatHistory'])?.find(c => c.id === chatId);
+      const cache = queryClient.getQueryData<ChatSession[]>(['chatHistory']) || [];
+      const chat = cache.find(c => c.id === chatId);
+      
       if (chat && chat.messages) {
           const updatedMessages = chat.messages.map(m => m.id === messageId ? { ...m, ...update } : m);
           updateChatMessages(chatId, updatedMessages);
@@ -174,7 +183,9 @@ export const useChatHistory = () => {
   }, [queryClient, updateChatMessages]);
 
   const updateActiveResponseOnMessage = useCallback((chatId: string, messageId: string, updateFn: (response: ModelResponse) => Partial<ModelResponse>) => {
-      const chat = queryClient.getQueryData<ChatSession[]>(['chatHistory'])?.find(c => c.id === chatId);
+      const cache = queryClient.getQueryData<ChatSession[]>(['chatHistory']) || [];
+      const chat = cache.find(c => c.id === chatId);
+      
       if (chat && chat.messages) {
           const updatedMessages = chat.messages.map(m => {
               if (m.id !== messageId || m.role !== 'model' || !m.responses) return m;
@@ -199,19 +210,14 @@ export const useChatHistory = () => {
 
   // Persist updates to backend
   const updateChatProperty = useCallback(async (chatId: string, update: Partial<ChatSession>, debounceMs: number = 0) => {
-      // Guard clause: Prevent updates with invalid/missing IDs
       if (!chatId) return;
 
-      // Optimistic update for the list
       updateLocalAndCache(old => (old || []).map(c => c.id === chatId ? { ...c, ...update } : c));
       
-      // Force update to activeChat if this is the currently viewed session
-      // This ensures things like Model switches are reflected immediately in the UI
       if (currentChatId === chatId) {
           setActiveChat(prev => prev ? { ...prev, ...update } : null);
       }
       
-      // Fire and forget save (debouncing could be added here if needed, relying on backend handler)
       try {
           await fetchApi(`/api/chats/${chatId}`, {
               method: 'PUT',
@@ -225,7 +231,6 @@ export const useChatHistory = () => {
 
   const updateChatTitle = useCallback((chatId: string, title: string) => updateChatProperty(chatId, { title }), [updateChatProperty]);
 
-  // Merge full list with active chat state
   const unifiedHistory = chatHistory.map(c => c.id === currentChatId && activeChat ? activeChat : c);
 
   return { 
@@ -236,7 +241,6 @@ export const useChatHistory = () => {
     addMessagesToChat, updateActiveResponseOnMessage, 
     updateMessage, setChatLoadingState, completeChatLoading,
     updateChatTitle, updateChatProperty,
-    // Add missing property for useAppLogic compatibility
     addModelResponse: () => {} 
   };
 };

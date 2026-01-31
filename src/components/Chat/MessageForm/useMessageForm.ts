@@ -154,17 +154,13 @@ export const useMessageForm = (
     }
     
     if (!canSubmit) {
-        console.warn('[useMessageForm] Submission blocked. State:', { 
-            hasContent, 
-            isLoading, 
-            isEnhancing: enhancements.isEnhancing, 
-            isProcessingFiles 
-        });
+        console.warn('[useMessageForm] Submission blocked.', { hasContent, isLoading, isEnhancing: enhancements.isEnhancing, isProcessingFiles });
         return;
     }
 
     console.log('[useMessageForm] Submitting...', { inputValue });
-    onSubmit(inputValue, fileHandling.getFilesToSend());
+    // Pass explicit undefined for options to match callback signature expectation if optional
+    onSubmit(inputValue, fileHandling.getFilesToSend(), undefined);
     clearDraft();
   };
 
@@ -178,7 +174,6 @@ export const useMessageForm = (
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        console.log('[useMessageForm] Enter key pressed. Calling handleSubmit.');
         handleSubmit(); 
     }
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
