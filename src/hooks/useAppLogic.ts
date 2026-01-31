@@ -170,12 +170,12 @@ export const useAppLogic = () => {
     
     const handleModelChange = useCallback(async (modelId: string) => {
         settings.setActiveModel(modelId);
+        // Instant update: Update the active chat's model immediately in the cache
+        if (chat.currentChatId) {
+            chat.updateChatModel(chat.currentChatId, modelId);
+        }
         try {
             await updateSettings({ activeModel: modelId });
-            // Only update chat model if there is an active chat
-            if (chat.currentChatId) {
-                chat.updateChatModel(chat.currentChatId, modelId);
-            }
         } catch (e) { console.error(e); }
     }, [chat.updateChatModel, chat.currentChatId, settings]);
 
@@ -213,10 +213,16 @@ export const useAppLogic = () => {
             }
             
             // Explicitly auto-select the first available model when switching providers
+            // This ensures the active model is valid for the new provider
             if (modelsList.length > 0) {
                 const firstModel = modelsList[0].id;
                 settings.setActiveModel(firstModel);
                 await updateSettings({ activeModel: firstModel });
+                
+                // CRITICAL FIX: Update the active chat session to use the new provider's model
+                if (chat.currentChatId) {
+                    chat.updateChatModel(chat.currentChatId, firstModel);
+                }
             }
             
             toast.success(`Switched provider to ${newProvider === 'gemini' ? 'Google Gemini' : newProvider === 'openrouter' ? 'OpenRouter' : 'Ollama'}.`);
@@ -227,7 +233,7 @@ export const useAppLogic = () => {
         } finally {
             setModelsLoading(false);
         }
-    }, [processModelData, fetchModels, settings]);
+    }, [processModelData, fetchModels, settings, chat.currentChatId, chat.updateChatModel]);
 
     const onSaveApiKey = useCallback(async (key: string, providerType: 'gemini' | 'openrouter' | 'ollama') => {
         setModelsLoading(true); // Signal start of refresh
@@ -252,11 +258,20 @@ export const useAppLogic = () => {
             if (response.models) {
                 processModelData(response);
                 
-                // Auto-select first model if we have a fresh list (helps new users)
-                if (response.models.length > 0 && !response.models.some((m: Model) => m.id === settings.activeModel)) {
+                // Auto-select first model if we have a fresh list
+                if (response.models.length > 0) {
                     const firstModel = response.models[0].id;
-                    settings.setActiveModel(firstModel);
-                    updateSettings({ activeModel: firstModel }).catch(console.error);
+                    const currentModelValid = response.models.some((m: Model) => m.id === settings.activeModel);
+                    
+                    if (!currentModelValid) {
+                        settings.setActiveModel(firstModel);
+                        updateSettings({ activeModel: firstModel }).catch(console.error);
+                        
+                        // Update active chat if needed
+                        if (chat.currentChatId) {
+                            chat.updateChatModel(chat.currentChatId, firstModel);
+                        }
+                    }
                 }
 
                 if (response.models.length === 0) {
@@ -274,7 +289,7 @@ export const useAppLogic = () => {
         } finally {
             setModelsLoading(false); // Signal end
         }
-    }, [processModelData, fetchModels, settings]);
+    }, [processModelData, fetchModels, settings, chat.currentChatId, chat.updateChatModel]);
 
     const onSaveOllamaHost = useCallback(async (host: string) => {
         setModelsLoading(true);
@@ -287,10 +302,18 @@ export const useAppLogic = () => {
                 processModelData(response);
                 
                 // Auto-select first model if needed
-                if (response.models.length > 0 && !response.models.some((m: Model) => m.id === settings.activeModel)) {
+                if (response.models.length > 0) {
                     const firstModel = response.models[0].id;
-                    settings.setActiveModel(firstModel);
-                    updateSettings({ activeModel: firstModel }).catch(console.error);
+                    const currentModelValid = response.models.some((m: Model) => m.id === settings.activeModel);
+                    
+                    if (!currentModelValid) {
+                        settings.setActiveModel(firstModel);
+                        updateSettings({ activeModel: firstModel }).catch(console.error);
+                        
+                        if (chat.currentChatId) {
+                            chat.updateChatModel(chat.currentChatId, firstModel);
+                        }
+                    }
                 }
             } else {
                 await fetchModels();
@@ -302,7 +325,7 @@ export const useAppLogic = () => {
         } finally {
             setModelsLoading(false); // Signal end
         }
-    }, [processModelData, fetchModels, settings]);
+    }, [processModelData, fetchModels, settings, chat.currentChatId, chat.updateChatModel]);
 
     const onSaveServerUrl = useCallback(async (url: string) => {
         settings.setServerUrl(url);
