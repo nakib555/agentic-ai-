@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -34,14 +35,23 @@ export const parseContentSegments = (text: string): RenderSegment[] => {
 
     // Regex to capture component tags and their content
     const tagsPattern = SUPPORTED_COMPONENTS.join('|');
-    const componentRegex = new RegExp(`(\\[(?:${tagsPattern})\\][\\s\\S]*?\\[\\/(?:${tagsPattern})\\])`, 'g');
     
-    const parts = text.split(componentRegex).filter(part => part);
+    // Combined regex for [COMPONENT]...[/COMPONENT] AND <chart>...</chart> style tags
+    // Matches:
+    // 1. [TAG]{...}[/TAG]
+    // 2. <d3>...</d3>
+    // 3. <ploty>...</ploty>
+    // 4. <hybird>...</hybird>
+    const combinedRegex = new RegExp(
+        `(\\[(?:${tagsPattern})\\][\\s\\S]*?\\[\\/(?:${tagsPattern})\\]|<(?:d3|ploty|hybird)>[\\s\\S]*?<\\/(?:d3|ploty|hybird)>)`, 
+        'g'
+    );
+
+    const parts = text.split(combinedRegex).filter(part => part);
 
     return parts.map((part): RenderSegment | null => {
-        // Regex to identify which specific tag this part is
-        const matchPattern = new RegExp(`^\\[(${tagsPattern})\\]([\\s\\S]*?)\\[\\/\\1\\]$`);
-        const componentMatch = part.match(matchPattern);
+        // 1. Check for Standard JSON Components
+        const componentMatch = part.match(new RegExp(`^\\[(${tagsPattern})\\]([\\s\\S]*?)\\[\\/\\1\\]$`));
         
         if (componentMatch) {
             const tagType = componentMatch[1];
@@ -86,9 +96,31 @@ export const parseContentSegments = (text: string): RenderSegment[] => {
             }
         }
         
+        // 2. Check for Chart Tags (<d3>, <ploty>, <hybird>)
+        const chartMatch = part.match(/^<(d3|ploty|hybird)>([\s\S]*?)<\/\1>$/);
+        if (chartMatch) {
+            const rawTag = chartMatch[1]; // d3, ploty, or hybird
+            const content = chartMatch[2].trim();
+            
+            // Map to internal engine names
+            const engineMap: Record<string, string> = {
+                'd3': 'd3',
+                'ploty': 'plotly',
+                'hybird': 'hybrid'
+            };
+
+            return {
+                type: 'component',
+                componentType: 'CHART',
+                data: {
+                    engine: engineMap[rawTag],
+                    content: content
+                }
+            };
+        }
+        
         // Handle incomplete tags at the very end of the stream (during typing)
-        // We strip the opening tag to prevent the user seeing raw "[IMAGE_COMPONENT]" text before data arrives
-        const incompleteTagRegex = new RegExp(`\\[(?:${tagsPattern})\\]$`);
+        const incompleteTagRegex = new RegExp(`(?:\\[(?:${tagsPattern})\\]|<(?:d3|ploty|hybird)>)$`);
         const cleanedPart = part.replace(incompleteTagRegex, '');
         
         // Preserve whitespace-only segments (like newlines) to maintain markdown structure
@@ -163,14 +195,10 @@ export const parseAgenticWorkflow = (
   // Parse Execution Log Steps
   const textNodes: WorkflowNodeData[] = [];
   
-  // Regex to match [STEP] Title: [AGENT: Name] ... content ...
-  // Non-greedy match for content until next [STEP] or end of string
   const stepRegex = /(?:^|\n)\[STEP\]\s*(.*?):\s*([\s\S]*?)(?=(?:^|\n)\[STEP\]|$)/g;
   
   let match;
   let stepIndex = 0;
-  
-  // We track the last seen agent to attribute tool calls correctly
   let currentContextAgent = 'System'; 
 
   while ((match = stepRegex.exec(executionText)) !== null) {
@@ -178,21 +206,18 @@ export const parseAgenticWorkflow = (
     let details = match[2].trim().replace(/\[AUTO_CONTINUE\]/g, '').trim();
     const lowerCaseTitle = title.toLowerCase();
 
-    // Skip final answer step (handled separately) and legacy plan step
     if (lowerCaseTitle === 'final answer' || lowerCaseTitle === 'strategic plan') continue;
 
     let type: WorkflowNodeType = 'plan';
     let agentName: string | undefined;
     let handoff: { from: string; to: string } | undefined;
 
-    // Extract AGENT tag from the details body
     const agentMatch = details.match(/^\[AGENT:\s*([^\]]+)\]\s*/);
     if (agentMatch) {
         agentName = agentMatch[1].trim();
-        currentContextAgent = agentName; // Update context
+        currentContextAgent = agentName; 
         details = details.replace(agentMatch[0], '').trim();
     } else {
-        // Inherit from context if not explicitly tagged
         agentName = currentContextAgent;
     }
 
@@ -201,32 +226,29 @@ export const parseAgenticWorkflow = (
     if (handoffMatch) {
         type = 'handoff';
         handoff = { from: handoffMatch[1].trim(), to: handoffMatch[2].trim() };
-        currentContextAgent = handoff.to; // Update context to the new agent
+        currentContextAgent = handoff.to;
     } else if (lowerCaseTitle.startsWith('validate')) {
         type = 'validation';
     } else if (lowerCaseTitle.startsWith('corrective action')) {
         type = 'correction';
     } else if (lowerCaseTitle === 'think' || lowerCaseTitle === 'adapt') {
         type = 'thought';
-        details = details || title; // Use title if details empty
+        details = details || title; 
         title = 'Reasoning';
     } else if (lowerCaseTitle === 'observe') {
         type = 'observation';
         title = 'Observation';
     } else if (ACTION_KEYWORDS.has(lowerCaseTitle)) {
         type = 'act_marker';
-    } else if (GENERIC_STEP_KEYWORDS.has(lowerCaseTitle)) {
-        // Fallback generic steps
     }
 
-    // Default title cleanup
     if (title.length > 50) title = title.substring(0, 50) + '...';
 
     textNodes.push({
         id: `step-${stepIndex++}`,
         type: type,
         title: title,
-        status: 'pending', // Will be updated later
+        status: 'pending', 
         details: details || 'No details provided.',
         agentName: agentName,
         handoff: handoff,
@@ -248,16 +270,13 @@ export const parseAgenticWorkflow = (
         status: nodeStatus,
         details: event,
         duration: duration,
-        agentName: currentContextAgent // Default assignment, updated below
+        agentName: currentContextAgent 
     } as WorkflowNodeData;
   });
 
   const executionLog: WorkflowNodeData[] = [];
   
-  // Logic to interleave text steps and tool steps
-  // We assume tools generally happen *inside* or *immediately following* an 'Act' or 'Tool' step marker.
   for (const textNode of textNodes) {
-    // If it's an Act marker, try to attach available tools to it
     if (textNode.type === 'act_marker') {
         if (toolNodesQueue.length > 0) {
             const toolNode = toolNodesQueue.shift();
@@ -266,8 +285,6 @@ export const parseAgenticWorkflow = (
                 executionLog.push(toolNode);
             }
         }
-        // We usually don't push the raw 'Act' text marker if we have a real tool to show instead,
-        // to keep the UI clean. But if there's text detail in the Act marker, we might want it.
         if (textNode.details && textNode.details !== 'No details provided.') {
              executionLog.push(textNode);
         }
@@ -276,32 +293,27 @@ export const parseAgenticWorkflow = (
     }
   }
   
-  // Append any remaining tools that didn't match an explicit 'Act' block
-  // This handles cases where the model calls a tool without an explicit [STEP] Act marker
   for (const toolNode of toolNodesQueue) {
       executionLog.push(toolNode);
   }
 
-  // Post-processing for status updates (Active/Pending/Done)
+  // Post-processing for status updates
   if (error) {
     let failureAssigned = false;
     for (let i = executionLog.length - 1; i >= 0; i--) {
         const node = executionLog[i];
-        // Mark the last non-done node as failed
         if (node.status === 'active' || node.status === 'pending') {
             node.status = 'failed';
-            node.details = error; // Attach global error to the failed step
+            node.details = error; 
             failureAssigned = true;
             break;
         }
     }
-    // If nothing was active, append a failed step
     if (!failureAssigned && executionLog.length > 0) {
         executionLog[executionLog.length - 1].status = 'failed';
         executionLog[executionLog.length - 1].details = error;
     }
     
-    // Mark everything before the failure as done
     let failurePointReached = false;
     executionLog.forEach(node => {
         if (node.status === 'failed') failurePointReached = true;
@@ -309,12 +321,10 @@ export const parseAgenticWorkflow = (
     });
 
   } else if (isThinkingComplete) {
-    // If thinking is fully done, everything should be marked done
     executionLog.forEach(node => {
       if (node.status !== 'failed') node.status = 'done';
     });
   } else {
-    // Determine active state for ongoing stream
     let lastActiveNodeFound = false;
     for (let i = executionLog.length - 1; i >= 0; i--) {
         const node = executionLog[i];
@@ -323,10 +333,7 @@ export const parseAgenticWorkflow = (
             node.status = 'active';
             lastActiveNodeFound = true;
         } else if (node.status === 'active') {
-            // If we found a newer active node (later in list), mark previous active as done
             node.status = 'done'; 
-        } else if (node.status === 'pending' && !lastActiveNodeFound) {
-             // Leave as pending
         }
     }
   }

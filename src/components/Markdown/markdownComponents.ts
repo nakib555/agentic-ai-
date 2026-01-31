@@ -12,7 +12,6 @@ import { InlineCode } from './InlineCode';
 import { StyledMark } from './StyledMark';
 import { Collapsible } from './Collapsible';
 import { ChecklistItem } from './ChecklistItem';
-import { UniversalChart } from '../AI/UniversalChart';
 
 // Custom Blockquote component that acts as a router for Callouts and Bubbles
 const BlockquoteRouter = (props: any) => {
@@ -126,13 +125,6 @@ export const getMarkdownComponents = (options: MarkdownOptions = {}) => ({
                 codeContent = String(children ?? '');
             }
             codeContent = codeContent.replace(/\n$/, '');
-
-            // --- Custom Chart Renderer Hook ---
-            // Auto-detect chart syntax (UCL) even if language tag is wrong or missing.
-            // Checks if content starts with the UCL directive `@engine:`
-            if (language === 'chart' || codeContent.trim().startsWith('@engine:')) {
-                return React.createElement(UniversalChart, { content: codeContent });
-            }
 
             return React.createElement(CodeBlock, { 
                 language: language || 'plaintext', 

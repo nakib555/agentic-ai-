@@ -1,23 +1,24 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 // Use factory to create Plot component to avoid bundling issues with Vite/React
 import Plotly from 'plotly.js-dist-min';
 import createPlotlyComponent from 'react-plotly.js/factory';
 import * as d3 from 'd3';
-import { parseChartMarkdown, ChartConfig } from '../../utils/chartParser';
-import { ErrorDisplay } from '../UI/ErrorDisplay';
+import { parseChartConfig, ChartConfig, ChartEngine } from '../../utils/chartParser';
 
 const Plot = createPlotlyComponent(Plotly);
 
 type UniversalChartProps = {
     content: string;
+    engine?: ChartEngine; // Optional, defaults to plotly if parsing legacy
 };
 
-export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ content }) => {
+export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ content, engine }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [config, setConfig] = useState<ChartConfig | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -26,14 +27,18 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
     // Parse configuration
     useEffect(() => {
         try {
-            const parsed = parseChartMarkdown(content);
+            // If engine is provided (new system), use it. Otherwise try legacy parser.
+            const parsed = engine 
+                ? parseChartConfig(engine, content)
+                : parseChartConfig('plotly', content); // Default fallback
+
             setConfig(parsed);
             setError(null);
             setPlotKey(p => p + 1);
         } catch (e) {
             setError('Failed to parse chart configuration.');
         }
-    }, [content]);
+    }, [content, engine]);
 
     // Handle D3 and Hybrid Scripting
     useEffect(() => {

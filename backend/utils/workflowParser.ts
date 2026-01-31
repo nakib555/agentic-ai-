@@ -9,6 +9,18 @@ import type { MessageError, ToolCallEvent, WorkflowNodeData, WorkflowNodeType, P
 const GENERIC_STEP_KEYWORDS = new Set(['observe', 'adapt', 'system']);
 const ACTION_KEYWORDS = new Set(['act', 'action', 'tool call']);
 
+const SUPPORTED_COMPONENTS = [
+    'VIDEO_COMPONENT', 
+    'ONLINE_VIDEO_COMPONENT', 
+    'IMAGE_COMPONENT', 
+    'ONLINE_IMAGE_COMPONENT', 
+    'MCQ_COMPONENT', 
+    'MAP_COMPONENT', 
+    'FILE_ATTACHMENT_COMPONENT', 
+    'BROWSER_COMPONENT', 
+    'CODE_OUTPUT_COMPONENT'
+];
+
 /**
  * Parses raw text into component segments (e.g. text vs [IMAGE_COMPONENT]...[/...]).
  * This is used by the frontend to render components dynamically as text is typed.
@@ -16,14 +28,25 @@ const ACTION_KEYWORDS = new Set(['act', 'action', 'tool call']);
 export const parseContentSegments = (text: string): RenderSegment[] => {
     if (!text) return [];
 
-    // Regex to capture component tags and their content
-    const componentRegex = /(\[(?:VIDEO_COMPONENT|ONLINE_VIDEO_COMPONENT|IMAGE_COMPONENT|ONLINE_IMAGE_COMPONENT|MCQ_COMPONENT|MAP_COMPONENT|FILE_ATTACHMENT_COMPONENT|BROWSER_COMPONENT|CODE_OUTPUT_COMPONENT)\].*?\[\/(?:VIDEO_COMPONENT|ONLINE_VIDEO_COMPONENT|IMAGE_COMPONENT|ONLINE_IMAGE_COMPONENT|MCQ_COMPONENT|MAP_COMPONENT|FILE_ATTACHMENT_COMPONENT|BROWSER_COMPONENT|CODE_OUTPUT_COMPONENT)\])/s;
+    // Regex to capture standard component tags and their content
+    const tagsPattern = SUPPORTED_COMPONENTS.join('|');
     
-    const parts = text.split(componentRegex).filter(part => part);
+    // Combined regex for [COMPONENT]...[/COMPONENT] AND <chart>...</chart> style tags
+    // Matches:
+    // 1. [TAG]{...}[/TAG]
+    // 2. <d3>...</d3>
+    // 3. <ploty>...</ploty>
+    // 4. <hybird>...</hybird>
+    const combinedRegex = new RegExp(
+        `(\\[(?:${tagsPattern})\\][\\s\\S]*?\\[\\/(?:${tagsPattern})\\]|<(?:d3|ploty|hybird)>[\\s\\S]*?<\\/(?:d3|ploty|hybird)>)`, 
+        'g'
+    );
+    
+    const parts = text.split(combinedRegex).filter(part => part);
 
     return parts.map((part): RenderSegment | null => {
-        const componentMatch = part.match(/^\[(VIDEO_COMPONENT|ONLINE_VIDEO_COMPONENT|IMAGE_COMPONENT|ONLINE_IMAGE_COMPONENT|MCQ_COMPONENT|MAP_COMPONENT|FILE_ATTACHMENT_COMPONENT|BROWSER_COMPONENT|CODE_OUTPUT_COMPONENT)\](\{.*?\})\[\/\1\]$/s);
-        
+        // 1. Check for Standard JSON Components
+        const componentMatch = part.match(new RegExp(`^\\[(${tagsPattern})\\]([\\s\\S]*?)\\[\\/\\1\\]$`));
         if (componentMatch) {
             try {
                 const typeMap: Record<string, string> = {
@@ -43,18 +66,43 @@ export const parseContentSegments = (text: string): RenderSegment[] => {
                     data: JSON.parse(componentMatch[2])
                 };
             } catch (e) {
-                // Fallback if JSON parse fails
+                // Fallback
                 return { type: 'text', content: part };
             }
         }
+
+        // 2. Check for Chart Tags (<d3>, <ploty>, <hybird>)
+        const chartMatch = part.match(/^<(d3|ploty|hybird)>([\s\S]*?)<\/\1>$/);
+        if (chartMatch) {
+            const rawTag = chartMatch[1]; // d3, ploty, or hybird
+            const content = chartMatch[2].trim();
+            
+            // Map to internal engine names
+            const engineMap: Record<string, string> = {
+                'd3': 'd3',
+                'ploty': 'plotly',
+                'hybird': 'hybrid'
+            };
+
+            return {
+                type: 'component',
+                componentType: 'CHART',
+                data: {
+                    engine: engineMap[rawTag],
+                    content: content
+                }
+            };
+        }
         
         // Handle incomplete tags at the very end of the stream (during typing)
-        // We strip partial tags to prevent UI glitching during streaming/typing
-        const incompleteTagRegex = /\[(VIDEO_COMPONENT|ONLINE_VIDEO_COMPONENT|IMAGE_COMPONENT|ONLINE_IMAGE_COMPONENT|MCQ_COMPONENT|MAP_COMPONENT|FILE_ATTACHMENT_COMPONENT|BROWSER_COMPONENT|CODE_OUTPUT_COMPONENT)\].*$/s;
+        const incompleteTagRegex = new RegExp(`(?:\\[(?:${tagsPattern})\\]|<(?:d3|ploty|hybird)>)$`);
         const cleanedPart = part.replace(incompleteTagRegex, '');
         
-        // CRITICAL FIX: Do not trim() the content check. 
-        // We must preserve whitespace-only segments (like newlines) to maintain markdown structure (lists, tables).
+        // Preserve whitespace-only segments (like newlines) to maintain markdown structure (lists, tables).
+        if (cleanedPart.length === 0 && part.length > 0 && !part.match(incompleteTagRegex)) {
+             return null;
+        }
+
         if (cleanedPart.length === 0) return null; 
 
         return { type: 'text', content: cleanedPart };
