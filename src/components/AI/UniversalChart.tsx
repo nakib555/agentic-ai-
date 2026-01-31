@@ -78,13 +78,14 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
 
     // Handle D3 and Hybrid Scripting
     useEffect(() => {
-        if (!config || !containerRef.current) return;
+        const container = containerRef.current;
+        if (!config || !container) return;
         if (config.engine === 'plotly') return; // Plotly handled by component
 
         const executeD3 = async () => {
             // Cleanup previous D3
             if (config.engine === 'd3') {
-                d3.select(containerRef.current).selectAll('*').remove();
+                d3.select(container).selectAll('*').remove();
             }
 
             if (config.script) {
@@ -97,8 +98,8 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                     const func = new Function('d3', 'container', 'width', 'height', 'Plotly', config.script);
                     func(
                         d3, 
-                        containerRef.current, 
-                        config.width || containerRef.current.clientWidth, 
+                        container, 
+                        config.width || container.clientWidth, 
                         config.height || 400,
                         (window as any).Plotly
                     );
