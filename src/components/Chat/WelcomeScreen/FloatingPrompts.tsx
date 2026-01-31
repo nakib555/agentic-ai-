@@ -68,8 +68,12 @@ export const FloatingPrompts = ({ onPromptClick }: FloatingPromptsProps) => {
   const prompts = CHAT_PROMPTS;
 
   const handleClick = (prompt: string) => {
-      console.log('[FloatingPrompts] Clicked:', prompt);
-      onPromptClick(prompt, { isThinkingModeEnabled: false });
+      console.log('[FloatingPrompts] Clicked prompt:', prompt);
+      try {
+          onPromptClick(prompt, { isThinkingModeEnabled: false });
+      } catch (e) {
+          console.error('[FloatingPrompts] Error triggering prompt click:', e);
+      }
   };
 
   return (

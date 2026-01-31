@@ -1,9 +1,10 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { forwardRef, useState, Suspense, useCallback } from 'react';
+import React, { forwardRef, useState, Suspense, useCallback, useEffect } from 'react';
 import { AnimatePresence, motion as motionTyped } from 'framer-motion';
 import { useDropzone } from 'react-dropzone';
 import { Mic, Send, Paperclip, Sparkles, X, Plus } from 'lucide-react';
@@ -41,13 +42,26 @@ export const MessageForm = forwardRef<MessageFormHandle, MessageFormProps>((prop
   } = props;
 
   const logic = useMessageForm(
-    (msg, files, options) => onSubmit(msg, files, { ...options, isThinkingModeEnabled: false }),
+    (msg, files, options) => {
+        console.log('[MessageForm] Invoking onSubmit prop with:', { msg, filesCount: files?.length });
+        onSubmit(msg, files, { ...options, isThinkingModeEnabled: false });
+    },
     isLoading,
     ref,
     props.messages,
     false,
     hasApiKey
   );
+
+  useEffect(() => {
+      // Log connection status issues that might disable the form
+      if (backendStatus === 'offline') {
+          console.warn('[MessageForm] Backend is offline. Input disabled.');
+      }
+      if (isAppLoading) {
+          console.log('[MessageForm] App is loading. Input disabled.');
+      }
+  }, [backendStatus, isAppLoading]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
       if (acceptedFiles.length > 0) {
@@ -64,6 +78,15 @@ export const MessageForm = forwardRef<MessageFormHandle, MessageFormProps>((prop
   const isGeneratingResponse = isLoading;
   const isSendDisabled = !logic.canSubmit || isAppLoading || backendStatus === 'offline';
   const hasFiles = logic.processedFiles.length > 0;
+
+  const handleSendClick = (e: React.MouseEvent) => {
+      console.log('[MessageForm] Send button clicked');
+      if (isGeneratingResponse) {
+          onCancel();
+      } else {
+          logic.handleSubmit(e as any);
+      }
+  };
 
   return (
     <div className="w-full mx-auto max-w-4xl relative" {...getRootProps()}>
@@ -239,7 +262,7 @@ export const MessageForm = forwardRef<MessageFormHandle, MessageFormProps>((prop
                 <Tooltip content={isGeneratingResponse ? "Stop generating" : "Send message"} position="top">
                     <motion.button
                         type="button"
-                        onClick={isGeneratingResponse ? onCancel : logic.handleSubmit}
+                        onClick={handleSendClick}
                         disabled={!isGeneratingResponse && isSendDisabled}
                         className={`
                             w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 shadow-sm group border

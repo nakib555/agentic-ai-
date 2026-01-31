@@ -304,7 +304,7 @@ export const useChat = (
     };
 
     const sendMessage = useCallback((text: string, files?: File[], options: any = {}) => {
-        console.log('[useChat] sendMessage called. Input:', { text, files, options, currentChatId });
+        console.log('[useChat] sendMessage CALLED', { text, hasFiles: !!files, options, currentChatId, currentState: stateWithServices.value });
         abortCurrent();
         sendWithServices({ 
             type: 'SEND', 
@@ -314,7 +314,7 @@ export const useChat = (
             initialModel,
             chatId: currentChatId 
         });
-    }, [sendWithServices, initialModel, currentChatId]);
+    }, [sendWithServices, initialModel, currentChatId, stateWithServices.value]);
 
     const regenerateResponse = useCallback((messageId: string) => {
         const deps = depsRef.current;
