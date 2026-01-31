@@ -170,10 +170,13 @@ export const useAppLogic = () => {
     
     const handleModelChange = useCallback(async (modelId: string) => {
         settings.setActiveModel(modelId);
+        
         // Instant update: Update the active chat's model immediately in the cache
+        // This ensures the current session uses the new model without needing a reload/new chat
         if (chat.currentChatId) {
             chat.updateChatModel(chat.currentChatId, modelId);
         }
+
         try {
             await updateSettings({ activeModel: modelId });
         } catch (e) { console.error(e); }
@@ -219,7 +222,7 @@ export const useAppLogic = () => {
                 settings.setActiveModel(firstModel);
                 await updateSettings({ activeModel: firstModel });
                 
-                // CRITICAL FIX: Update the active chat session to use the new provider's model
+                // CRITICAL: Update the active chat session to use the new provider's model
                 if (chat.currentChatId) {
                     chat.updateChatModel(chat.currentChatId, firstModel);
                 }
@@ -267,7 +270,7 @@ export const useAppLogic = () => {
                         settings.setActiveModel(firstModel);
                         updateSettings({ activeModel: firstModel }).catch(console.error);
                         
-                        // Update active chat if needed
+                        // Update active chat if needed to prevent mismatch error
                         if (chat.currentChatId) {
                             chat.updateChatModel(chat.currentChatId, firstModel);
                         }
