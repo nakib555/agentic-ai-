@@ -1,4 +1,3 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -47,6 +46,7 @@ type AiMessageProps = {
     messageFormRef: React.RefObject<MessageFormHandle>;
     onRegenerate: (messageId: string) => void;
     onSetActiveResponseIndex: (messageId: string, index: number) => void;
+    onNavigateBranch?: (messageId: string, direction: 'next' | 'prev') => void;
     userQuery?: string;
     isLast?: boolean;
 };
@@ -60,7 +60,7 @@ const StopIcon = () => (
 const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
   const { msg, isLoading, sendMessage, ttsVoice, ttsModel, currentChatId, 
           onShowSources, messageFormRef, onRegenerate,
-          onSetActiveResponseIndex, isLast = false } = props;
+          onNavigateBranch, isLast = false } = props;
   const { id } = msg;
 
   const logic = useAiMessageLogic(msg, ttsVoice, ttsModel, sendMessage, isLoading);
@@ -237,7 +237,7 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
                 onRegenerate={() => onRegenerate(id)}
                 responseCount={msg.responses?.length || 0}
                 activeResponseIndex={msg.activeResponseIndex}
-                onResponseChange={(index) => onSetActiveResponseIndex(id, index)}
+                onNavigateBranch={onNavigateBranch}
             />
           </motion.div>
       )}

@@ -6,6 +6,11 @@
 import { Message, ModelResponse } from '../../types';
 
 /**
+ * Helper to deep clone messages to prevent mutation of the readonly source state.
+ */
+const deepClone = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
+
+/**
  * Creates a new version branch for a user message.
  * It effectively "forks" the conversation at this point by creating a new version entry
  * and saving the "future" messages of the current branch into the payload of the *previous* version.
@@ -20,7 +25,7 @@ export const createBranchForUserMessage = (
     if (messageIndex === -1) return null;
 
     // Clone to avoid mutation
-    const updatedMessages = JSON.parse(JSON.stringify(messages)) as Message[];
+    const updatedMessages = deepClone(messages);
     const targetMessage = updatedMessages[messageIndex];
     
     // The "future" is everything after this message in the current timeline
@@ -38,7 +43,9 @@ export const createBranchForUserMessage = (
         }];
     } else {
         // Save the future of the current branch into the current version
-        targetMessage.versions[currentVersionIndex].historyPayload = futureMessages;
+        if (targetMessage.versions[currentVersionIndex]) {
+            targetMessage.versions[currentVersionIndex].historyPayload = futureMessages;
+        }
     }
 
     // Create the new version
@@ -51,7 +58,7 @@ export const createBranchForUserMessage = (
     });
 
     targetMessage.activeVersionIndex = newVersionIndex;
-    targetMessage.text = newText;
+    targetMessage.text = newText; // Update main text property for easy access
 
     // Truncate the main list to just this message (future is cleared for the new branch)
     const truncatedList = [...updatedMessages.slice(0, messageIndex), targetMessage];
@@ -72,25 +79,26 @@ export const createBranchForModelResponse = (
     // Can't regenerate if it's not an AI message or if it's the very first message (unlikely)
     if (messageIndex < 1 || messages[messageIndex-1].role !== 'user') return null;
 
-    const updatedMessages = JSON.parse(JSON.stringify(messages)) as Message[];
+    const updatedMessages = deepClone(messages);
     const targetMessage = updatedMessages[messageIndex];
     
     // The "future" relative to this AI response
     const futureMessages = updatedMessages.slice(messageIndex + 1);
 
-    // Initialize responses if legacy
+    // Initialize responses if legacy or empty
     if (!targetMessage.responses || targetMessage.responses.length === 0) {
         targetMessage.responses = [{
             text: targetMessage.text,
             startTime: Date.now(),
-            toolCallEvents: []
+            toolCallEvents: [],
+            historyPayload: futureMessages
         }];
         targetMessage.activeResponseIndex = 0;
     }
 
     const currentResponseIndex = targetMessage.activeResponseIndex;
     
-    // Save state of current response
+    // Save state of current response specifically
     if (targetMessage.responses[currentResponseIndex]) {
         targetMessage.responses[currentResponseIndex].historyPayload = futureMessages;
     }
@@ -99,7 +107,8 @@ export const createBranchForModelResponse = (
     const newResponse: ModelResponse = { 
         text: '', 
         toolCallEvents: [], 
-        startTime: Date.now() 
+        startTime: Date.now(),
+        historyPayload: [] // New branch starts with no future
     };
     
     targetMessage.responses.push(newResponse);
@@ -125,7 +134,7 @@ export const navigateBranch = (
     const messageIndex = messages.findIndex(m => m.id === messageId);
     if (messageIndex === -1) return null;
 
-    const updatedMessages = JSON.parse(JSON.stringify(messages)) as Message[];
+    const updatedMessages = deepClone(messages);
     const targetMessage = updatedMessages[messageIndex];
     
     // Helper to get total count based on role
@@ -149,14 +158,20 @@ export const navigateBranch = (
     if (newIdx === currentIdx) return null;
 
     // 1. Save current future to the *current* index slot
+    // This snapshot ensures if we come back to this branch, the future matches what we left.
     const currentFuture = updatedMessages.slice(messageIndex + 1);
     
     if (targetMessage.role === 'user') {
         if (!targetMessage.versions) targetMessage.versions = [{ text: targetMessage.text, createdAt: Date.now() }];
-        targetMessage.versions[currentIdx].historyPayload = currentFuture;
+        // Ensure array exists at index
+        if (targetMessage.versions[currentIdx]) {
+            targetMessage.versions[currentIdx].historyPayload = currentFuture;
+        }
     } else {
         if (!targetMessage.responses) targetMessage.responses = [{ text: targetMessage.text, startTime: Date.now() }];
-        targetMessage.responses[currentIdx].historyPayload = currentFuture;
+        if (targetMessage.responses[currentIdx]) {
+            targetMessage.responses[currentIdx].historyPayload = currentFuture;
+        }
     }
 
     // 2. Restore future from the *new* index slot
@@ -164,17 +179,28 @@ export const navigateBranch = (
     
     if (targetMessage.role === 'user') {
         const targetVersion = targetMessage.versions![newIdx];
-        targetMessage.text = targetVersion.text;
-        targetMessage.attachments = targetVersion.attachments;
-        targetMessage.activeVersionIndex = newIdx;
-        restoredFuture = targetVersion.historyPayload || [];
+        if (targetVersion) {
+            targetMessage.text = targetVersion.text;
+            targetMessage.attachments = targetVersion.attachments;
+            targetMessage.activeVersionIndex = newIdx;
+            restoredFuture = targetVersion.historyPayload || [];
+        }
     } else {
         const targetResponse = targetMessage.responses![newIdx];
-        targetMessage.activeResponseIndex = newIdx;
-        restoredFuture = targetResponse.historyPayload || [];
+        if (targetResponse) {
+            targetMessage.activeResponseIndex = newIdx;
+            // Also restore the main text display properties for legacy views if needed, 
+            // though AiMessage component mostly reads from responses[index]
+            restoredFuture = targetResponse.historyPayload || [];
+        }
     }
 
-    const newMessagesList = [...updatedMessages.slice(0, messageIndex), targetMessage, ...restoredFuture];
+    // Reconstruct the linear history: [Past] + [Switched Node] + [Restored Future]
+    const newMessagesList = [
+        ...updatedMessages.slice(0, messageIndex), 
+        targetMessage, 
+        ...restoredFuture
+    ];
 
     return { updatedMessages: newMessagesList };
 };

@@ -1,4 +1,3 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -29,7 +28,7 @@ type MessageToolbarProps = {
     onRegenerate: () => void;
     responseCount: number;
     activeResponseIndex: number;
-    onResponseChange: (index: number) => void;
+    onNavigateBranch?: (messageId: string, direction: 'next' | 'prev') => void;
 };
 
 type FeedbackState = 'up' | 'down' | null;
@@ -82,7 +81,7 @@ const IconButton: React.FC<{
 
 export const MessageToolbar: React.FC<MessageToolbarProps> = ({
     chatId, messageId, messageText, sources, onShowSources, ttsState, ttsErrorMessage, onTtsClick, onRegenerate,
-    responseCount, activeResponseIndex, onResponseChange,
+    responseCount, activeResponseIndex, onNavigateBranch,
 }) => {
     const [isCopied, setIsCopied] = useState(false);
     const [feedback, setFeedback] = useState<FeedbackState>(null);
@@ -106,6 +105,12 @@ export const MessageToolbar: React.FC<MessageToolbarProps> = ({
                 silent: true
             });
         }
+    };
+
+    const handleBranchChange = (index: number) => {
+        if (!onNavigateBranch) return;
+        const direction = index > activeResponseIndex ? 'next' : 'prev';
+        onNavigateBranch(messageId, direction);
     };
 
     return (
@@ -207,7 +212,11 @@ export const MessageToolbar: React.FC<MessageToolbarProps> = ({
             
             <div className="flex items-center gap-3">
                  <SourcesPills sources={sources} onShowSources={() => onShowSources(sources)} />
-                 <BranchSwitcher count={responseCount} activeIndex={activeResponseIndex} onChange={onResponseChange} />
+                 <BranchSwitcher 
+                    count={responseCount} 
+                    activeIndex={activeResponseIndex} 
+                    onChange={handleBranchChange} 
+                 />
             </div>
         </div>
     );
