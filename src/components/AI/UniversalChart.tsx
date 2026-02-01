@@ -124,7 +124,7 @@ const enforceResponsiveConfig = (option: any, isDark: boolean) => {
     };
 
     // 3. Fix Axis Overlap
-    const fixAxis = (axis: any) => {
+    const fixAxis = (axis: any): any => {
         if (!axis) return axis;
         // If array of axes
         if (Array.isArray(axis)) return axis.map(fixAxis);
