@@ -27,21 +27,18 @@ const SQUARE_COMPONENT_TAGS = [
 ];
 
 const XML_COMPONENT_TAGS = [
-    'plotly',
-    'd3',
-    'hybrid',
-    'chart.js' // Added to prevent flicker for potential hallucinations or future support
+    'echarts'
 ];
 
 /**
- * Parses raw text into component segments (e.g. text vs [IMAGE_COMPONENT]...[/...] vs <d3>...</d3>).
+ * Parses raw text into component segments (e.g. text vs [IMAGE_COMPONENT]...[/...] vs <echarts>...</echarts>).
  * This is used by the frontend to render components dynamically as text is typed.
  */
 export const parseContentSegments = (text: string): RenderSegment[] => {
     if (!text) return [];
 
     const squarePattern = SQUARE_COMPONENT_TAGS.join('|');
-    const xmlPattern = XML_COMPONENT_TAGS.map(t => t.replace('.', '\\.')).join('|');
+    const xmlPattern = XML_COMPONENT_TAGS.join('|');
     
     // Regex to capture COMPLETE component tags and their content
     // Group 1: Square Brackets -> \[(TAGS)\][\s\S]*?\[\/\1\]
@@ -56,8 +53,6 @@ export const parseContentSegments = (text: string): RenderSegment[] => {
         // 1. Handle Text Before Match
         if (match.index > lastIndex) {
             const textPart = text.substring(lastIndex, match.index);
-            // In a complete flow, text before a tag is usually just text.
-            // We assume the model doesn't open a tag and leave it dangling BEFORE a valid closed tag.
             if (textPart) segments.push({ type: 'text', content: textPart });
         }
 
@@ -66,7 +61,6 @@ export const parseContentSegments = (text: string): RenderSegment[] => {
         
         if (componentString.startsWith('[')) {
             // Square Bracket Component
-            // Extract type and content using a specific regex to be safe
             const squareMatch = componentString.match(new RegExp(`^\\[(${squarePattern})\\]([\\s\\S]*?)\\[\\/\\1\\]$`, 'i'));
             
             if (squareMatch) {
@@ -87,7 +81,7 @@ export const parseContentSegments = (text: string): RenderSegment[] => {
                     type: 'component',
                     componentType: 'CHART',
                     data: {
-                        engine: tagType === 'hybrid' ? 'hybrid' : (tagType === 'd3' ? 'd3' : 'plotly'),
+                        engine: 'echarts',
                         content: contentString
                     }
                 });
@@ -103,15 +97,13 @@ export const parseContentSegments = (text: string): RenderSegment[] => {
     if (lastIndex < text.length) {
         const remainingText = text.substring(lastIndex);
         
-        // Check for an OPENING tag that hasn't been closed (since completeRegex didn't catch it)
-        // This regex looks for <(plotly|d3|hybrid)>
+        // Check for an OPENING tag that hasn't been closed
         const openTagRegex = new RegExp(`(<(${xmlPattern})>)`, 'i');
         const openTagMatch = remainingText.match(openTagRegex);
         
         if (openTagMatch) {
-            // We found an unclosed start tag!
             const textBefore = remainingText.substring(0, openTagMatch.index);
-            const tagType = openTagMatch[2].toLowerCase(); // plotly, d3, hybrid
+            const tagType = openTagMatch[2].toLowerCase();
             
             if (textBefore) {
                  segments.push({ type: 'text', content: textBefore });
@@ -123,19 +115,13 @@ export const parseContentSegments = (text: string): RenderSegment[] => {
                 componentType: 'LOADING_CHART',
                 data: { type: tagType }
             });
-            
-            // NOTE: We intentionally swallow the content after the opening tag 
-            // while it is streaming to prevent raw code/json from flickering on screen.
         } else {
-             // Handle partial tags to avoid glitching
              let cleanedPart = remainingText;
 
              // 1. Partial XML Tag at end: matches < followed by potential tag characters
-             // e.g. "<d", "<plo", "<chart."
              const partialXmlRegex = /(<[a-z0-9\._-]*)$/i;
              
              // 2. Partial Square Tag at end: matches [ followed by potential tag characters
-             // e.g. "[IMA", "[VIDEO_"
              const partialSquareRegex = /(\[[a-z0-9_]*)$/i;
 
              cleanedPart = cleanedPart.replace(partialXmlRegex, '');
@@ -168,12 +154,11 @@ const parseSquareComponent = (tagType: string, contentString: string, originalPa
             'ARTIFACT_DATA': 'ARTIFACT_DATA'
         };
 
-        // Special handling for simple text-wrapped components vs JSON components
         if (['VEO_API_KEY_SELECTION_COMPONENT', 'LOCATION_PERMISSION_REQUEST'].includes(tagType)) {
              return {
                 type: 'component',
                 componentType: typeMap[tagType] as any,
-                data: { text: contentString } // Pass string content directly
+                data: { text: contentString }
             };
         }
 
@@ -184,7 +169,6 @@ const parseSquareComponent = (tagType: string, contentString: string, originalPa
         };
     } catch (e) {
         console.warn(`Failed to parse component data for ${tagType}`, e);
-        // Fallback: treat as plain text if JSON parse fails to prevent crash
         return { type: 'text', content: originalPart };
     }
 };
@@ -199,27 +183,22 @@ export const parseAgenticWorkflow = (
   let executionText = '';
   let finalAnswerText = '';
 
-  // 1. Check for Agentic Workflow Markers
   const briefingMatch = rawText.match(/\[BRIEFING\]([\s\S]*?)\[\/BRIEFING\]/);
-  const planMarker = '[STEP] Strategic Plan:'; // Legacy Fallback
+  const planMarker = '[STEP] Strategic Plan:';
   const finalAnswerMarker = '[STEP] Final Answer:';
   const finalAnswerIndex = rawText.lastIndexOf(finalAnswerMarker);
 
   const hasSteps = rawText.includes('[STEP]') || !!briefingMatch;
 
   if (!hasSteps) {
-      // Chat Mode: Everything is the final answer
       finalAnswerText = rawText;
   } else {
-      // Agent Mode: Parse Steps
       let contentStartIndex = 0;
 
-      // Extract Plan / Briefing
       if (briefingMatch) {
           planText = briefingMatch[1].trim();
           contentStartIndex = briefingMatch.index! + briefingMatch[0].length;
       } else {
-          // Fallback parsing for legacy "Strategic Plan" steps
           const planMarkerIndex = rawText.indexOf(planMarker);
           if (planMarkerIndex !== -1) {
               const planStart = planMarkerIndex + planMarker.length;
@@ -230,31 +209,24 @@ export const parseAgenticWorkflow = (
           }
       }
 
-      // Extract Final Answer
       if (finalAnswerIndex !== -1) {
           finalAnswerText = rawText.substring(finalAnswerIndex + finalAnswerMarker.length);
-          // Extract execution text (between plan and final answer)
           if (contentStartIndex < finalAnswerIndex) {
               executionText = rawText.substring(contentStartIndex, finalAnswerIndex);
           }
       } else {
-          // No final answer yet, everything after plan is execution log
           executionText = rawText.substring(contentStartIndex);
       }
   }
 
-  // Cleanup strings
   planText = planText.replace(/\[AGENT:.*?\]\s*/g, '').replace(/\[USER_APPROVAL_REQUIRED\]/g, '').trim();
   finalAnswerText = finalAnswerText.replace(/^\s*:?\s*\[AGENT:\s*[^\]]+\]\s*/g, '').replace(/\[AUTO_CONTINUE\]/g, '').trim();
 
-  // Parse Execution Log Steps
   const textNodes: WorkflowNodeData[] = [];
-  
   const stepRegex = /(?:^|\n)\[STEP\]\s*(.*?):\s*([\s\S]*?)(?=(?:^|\n)\[STEP\]|$)/g;
   
   let match;
   let stepIndex = 0;
-  
   let currentContextAgent = 'System'; 
 
   while ((match = stepRegex.exec(executionText)) !== null) {
@@ -278,7 +250,6 @@ export const parseAgenticWorkflow = (
     }
 
     const handoffMatch = title.match(/^Handoff:\s*(.*?)\s*->\s*(.*)/i);
-    
     if (handoffMatch) {
         type = 'handoff';
         handoff = { from: handoffMatch[1].trim(), to: handoffMatch[2].trim() };
@@ -314,7 +285,6 @@ export const parseAgenticWorkflow = (
   const toolNodesQueue = toolCallEvents.map(event => {
     const isDuckDuckGoSearch = event.call.name === 'duckduckgoSearch';
     const duration = event.startTime && event.endTime ? (event.endTime - event.startTime) / 1000 : null;
-    
     const isError = event.result?.startsWith('Tool execution failed');
     const nodeStatus = event.result ? (isError ? 'failed' : 'done') : 'active';
 
@@ -382,7 +352,6 @@ export const parseAgenticWorkflow = (
     let lastActiveNodeFound = false;
     for (let i = executionLog.length - 1; i >= 0; i--) {
         const node = executionLog[i];
-        
         if (!lastActiveNodeFound && node.status !== 'done') {
             node.status = 'active';
             lastActiveNodeFound = true;

@@ -7,66 +7,52 @@
 import { MATH_RENDERING_INSTRUCTIONS } from './math';
 
 const UNIVERSAL_CHART_LANGUAGE_DOCS = `
-# 📊 VISUALIZATION ENGINE (UCL)
+# 📊 VISUALIZATION ENGINE (ECHARTS)
 
-To visualize data, relationships, or concepts, you **MUST** use the specialized XML-style component tags. 
+To visualize data, relationships, or concepts, you **MUST** use the specialized XML-style component tag for Apache ECharts.
 **DO NOT** use standard markdown code blocks (e.g. \`\`\`json) for charts. The UI will not render them.
 
-## 1. Plotly Mode (<plotly>)
-Use for: Statistical graphs, line/bar/scatter plots, 3D charts, heatmaps.
-*   **Syntax**:
-    <plotly>
-    {
-      "data": [...],
-      "layout": { ... }
-    }
-    </plotly>
-*   **Content**: Valid JSON object with \`data\` (array) and \`layout\` (object).
-*   **Note**: Do not wrap the JSON in backticks or parentheses inside the tag. Provide raw JSON only.
+## ECharts Mode (<echarts>)
+Use for: All statistical graphs, line/bar/scatter plots, heatmaps, pie charts, radar charts, and complex data visualizations.
 
-## 2. D3 Mode (<d3>)
-Use for: Custom diagrams, network graphs, trees, complex animations, or novel visualizations.
 *   **Syntax**:
-    <d3>
-    // JavaScript code here
-    const svg = d3.select(container).append("svg")...
-    </d3>
-*   **Content**: Raw JavaScript code.
-*   **Context**: 
-    *   \`d3\`: The D3.js v7 library object.
-    *   \`container\`: The HTMLDivElement to append your SVG/Canvas to.
-    *   \`containerWidth\`, \`containerHeight\`: Dimensions of the container. Use these instead of declaring your own 'width' variable if possible.
-    *   \`width\`, \`height\`: Legacy aliases for container dimensions (available only if you do NOT declare 'width' or 'height' variables yourself).
+    <echarts>
+    {
+      "title": { "text": "Chart Title" },
+      "tooltip": { "trigger": "axis" },
+      "xAxis": { "type": "category", "data": [...] },
+      "yAxis": { "type": "value" },
+      "series": [ ... ]
+    }
+    </echarts>
+
+*   **Content**: A valid JSON object representing the ECharts \`option\` object.
 *   **Rules**:
-    *   Always append to \`container\`. Never select "body".
-    *   The system handles cleanup automatically.
-    *   **Transforms**: Use template literals for transforms: \`.attr("transform", \`translate(\${x}, \${y})\`)\`. Do NOT miss the quotes around translate.
-
-## 3. Hybrid Mode (<hybrid>)
-Use for: Plotly charts with custom D3 annotations or overlays.
-*   **Syntax**:
-    <hybrid>
-    {
-      "data": [...],
-      "layout": { ... },
-      "script": "d3.select(container)..."
-    }
-    </hybrid>
-*   **Content**: Valid JSON object containing \`data\`, \`layout\`, and a \`script\` string.
+    *   Do not wrap the JSON in backticks or parentheses inside the tag. Provide raw JSON only.
+    *   Ensure the JSON is valid (double quotes for keys and string values).
+    *   Include \`tooltip\` configuration for interactivity.
+    *   Use the default theme colors; do not hardcode specific hex colors unless strictly necessary for data meaning.
 
 ---
 
 **Example Response Structure:**
 "Here is the sales data you requested:
 
-<plotly>
+<echarts>
 {
-  "data": [{"x": ["Q1", "Q2"], "y": [100, 150], "type": "bar"}],
-  "layout": {"title": "Quarterly Sales"}
+  "title": { "text": "Quarterly Sales" },
+  "tooltip": {},
+  "xAxis": { "data": ["Q1", "Q2", "Q3", "Q4"] },
+  "yAxis": {},
+  "series": [{
+    "name": "Sales",
+    "type": "bar",
+    "data": [100, 150, 120, 200]
+  }]
 }
-</plotly>
+</echarts>
 
-As you can see, Q2 performed better."
+As you can see, Q4 performed better."
 `;
 
 export const CHAT_PERSONA_AND_UI_FORMATTING = `
