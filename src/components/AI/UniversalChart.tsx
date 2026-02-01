@@ -82,7 +82,7 @@ const enforceResponsiveConfig = (option: any, isDark: boolean) => {
         left: '2%',
         right: '2%',
         bottom: '5%',
-        top: option.title ? 60 : 40, 
+        top: 80, // Fixed padding to accommodate titles/legends without overlap
         // Force auto dimensions
         width: 'auto',
         height: 'auto'
@@ -148,7 +148,7 @@ const enforceResponsiveConfig = (option: any, isDark: boolean) => {
         
         // Prevent legend from overlapping dataZoom
         if (responsiveOption.dataZoom) {
-            responsiveOption.legend.top = option.title ? 25 : 5;
+            responsiveOption.legend.top = 35; // Fixed position below title
             delete responsiveOption.legend.bottom;
         }
     }
@@ -167,6 +167,7 @@ const enforceResponsiveConfig = (option: any, isDark: boolean) => {
     if (option.title) {
         responsiveOption.title = {
             ...option.title,
+            top: 10, // Force consistent title position
             textStyle: {
                 color: isDark ? '#f4f4f5' : '#1e293b',
                 fontWeight: 600,
