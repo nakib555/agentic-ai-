@@ -266,7 +266,7 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
     }
 
     return (
-        <div className="my-6 border border-gray-200 dark:border-white/10 rounded-2xl overflow-hidden bg-white dark:bg-[#121212] shadow-sm relative z-0 group transition-colors duration-300">
+        <div className="my-6 border border-gray-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-sm relative z-0 group transition-colors duration-300">
             {/* Header */}
             <div className="px-4 py-2 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/5 backdrop-blur-sm">
                 <div className="flex items-center gap-2">
@@ -277,13 +277,17 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                 </div>
             </div>
             
-            {/* Chart Canvas */}
-            <div className="p-4 bg-white dark:bg-[#121212]">
+            {/* Chart Canvas - Remove wrapper styling to allow full chart control */}
+            <div className="w-full h-full">
                 <ReactECharts
                     option={config.option}
-                    theme={isDark ? 'dark' : undefined}
+                    // Only apply 'dark' theme if no explicit backgroundColor is set in the options, 
+                    // or if the user explicitly didn't provide a background.
+                    // However, we generally prefer the user/AI to define the look.
+                    // Passing 'undefined' allows the AI's option object to take full precedence.
+                    theme={isDark && !config.option.backgroundColor ? 'dark' : undefined}
                     style={{ height: config.height || 400, width: '100%' }}
-                    opts={{ renderer: 'svg' }} // Use SVG for sharper text rendering
+                    opts={{ renderer: 'svg' }}
                 />
             </div>
         </div>

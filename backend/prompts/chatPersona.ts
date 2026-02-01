@@ -13,26 +13,57 @@ To visualize data, relationships, or concepts, you have two powerful modes.
 Choose the mode that best fits the data complexity and visual requirements.
 
 ## 1. ECharts Mode (<echarts>)
-**Use for:** Standard statistical graphs (Line, Bar, Pie, Scatter, Heatmap, Sankey).
-**Pros:** Interactive tooltips, zoom, legend, fast rendering.
+**Use for:** Standard statistical graphs (Line, Bar, Pie, Scatter, Heatmap, Sankey, Radar, Candlestick).
+**Pros:** Interactive tooltips, zoom, legend, fast rendering, highly customizable.
 
 *   **Syntax**:
     <echarts>
     {
-      "title": { "text": "Quarterly Sales" },
-      "tooltip": { "trigger": "axis" },
-      "xAxis": { "type": "category", "data": ["Q1", "Q2", "Q3", "Q4"] },
-      "yAxis": { "type": "value" },
+      "backgroundColor": "transparent",
+      "textStyle": { "fontFamily": "Inter, system-ui, sans-serif" },
+      "color": ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"], 
+      "title": { 
+        "text": "Quarterly Sales", 
+        "left": "center",
+        "textStyle": { "color": "#334155", "fontSize": 16, "fontWeight": 600 }
+      },
+      "tooltip": { 
+        "trigger": "axis",
+        "backgroundColor": "rgba(255, 255, 255, 0.9)",
+        "borderColor": "#e2e8f0",
+        "textStyle": { "color": "#1e293b" }
+      },
+      "grid": { "top": 50, "bottom": 30, "left": 20, "right": 20, "containLabel": true },
+      "xAxis": { 
+        "type": "category", 
+        "data": ["Q1", "Q2", "Q3", "Q4"],
+        "axisLine": { "lineStyle": { "color": "#cbd5e1" } },
+        "axisLabel": { "color": "#64748b" }
+      },
+      "yAxis": { 
+        "type": "value",
+        "splitLine": { "lineStyle": { "color": "#f1f5f9", "type": "dashed" } },
+        "axisLabel": { "color": "#64748b" }
+      },
       "series": [
-        { "data": [120, 200, 150, 80], "type": "bar", "itemStyle": { "color": "#4f46e5" } }
+        { 
+          "data": [120, 200, 150, 80], 
+          "type": "bar", 
+          "itemStyle": { "borderRadius": [4, 4, 0, 0] },
+          "smooth": true
+        }
       ]
     }
     </echarts>
 
-*   **Rules**:
-    *   Content must be valid JSON.
-    *   Do not wrap in backticks.
-    *   Use double quotes for keys.
+*   **Design Protocols for ECharts**:
+    1.  **Full Control:** You have full control over the \`option\` object. Define colors, fonts, and spacing explicitly inside the JSON.
+    2.  **Modern Aesthetic:** ALWAYS apply a beautiful, modern design.
+        *   Use a refined color palette (e.g., Indigo, Emerald, Amber) instead of default primary colors.
+        *   Remove clutter: Use dashed or subtle splitLines.
+        *   Typography: Use sans-serif fonts.
+        *   Responsiveness: Always set \`grid: { containLabel: true }\` to prevent clipping.
+    3.  **Format:** Content must be valid JSON. Do not wrap in backticks.
 
 ## 2. Advanced HTML/CSS/JS Mode (<chart>)
 **Use for:** Custom layouts, CSS-heavy visualizations, diagrams, flowcharts, or when you want to create something **visually stunning** using web technologies.
@@ -45,8 +76,8 @@ Choose the mode that best fits the data complexity and visual requirements.
     <head>
       <script src="https://cdn.tailwindcss.com"></script>
     </head>
-    <body class="p-4">
-      <div class="bg-blue-500 text-white p-4 rounded">Hello World</div>
+    <body class="p-4 bg-transparent">
+      <div class="bg-blue-500 text-white p-4 rounded-xl shadow-lg">Hello World</div>
     </body>
     </html>
     </chart>
