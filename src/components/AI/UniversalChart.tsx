@@ -127,24 +127,28 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
             if (rawContent) {
                 const trimmedCode = stripMarkdown(rawContent);
 
+                // Inject a base style reset to ensure the iframe looks clean by default
+                // Includes Inter font for better typography
+                const baseResetStyle = `
+                    <link rel="preconnect" href="https://fonts.googleapis.com">
+                    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+                    <style>
+                        body { margin: 0; padding: 0; font-family: 'Inter', system-ui, sans-serif; box-sizing: border-box; background: transparent; }
+                        *, *:before, *:after { box-sizing: inherit; }
+                        ::-webkit-scrollbar { width: 6px; height: 6px; }
+                        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+                        ::-webkit-scrollbar-track { background: transparent; }
+                    </style>
+                `;
+
                 // Heuristic: If it looks like HTML (starts with <), treat as HTML directly
                 if (trimmedCode.trim().startsWith('<')) {
                      setActiveEngine('html');
-                     // Inject a base style reset to ensure the iframe looks clean by default
-                     // even if the AI doesn't provide extensive CSS.
-                     const resetStyle = `
-                        <style>
-                            body { margin: 0; padding: 0; font-family: 'Inter', system-ui, sans-serif; box-sizing: border-box; }
-                            *, *:before, *:after { box-sizing: inherit; }
-                            ::-webkit-scrollbar { width: 8px; height: 8px; }
-                            ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-                            ::-webkit-scrollbar-track { background: transparent; }
-                        </style>
-                     `;
                      // Append reset style to head if head exists, otherwise prepend to content
                      const cleanHtml = trimmedCode.includes('<head>') 
-                        ? trimmedCode.replace('<head>', `<head>${resetStyle}`)
-                        : `${resetStyle}${trimmedCode}`;
+                        ? trimmedCode.replace('<head>', `<head>${baseResetStyle}`)
+                        : `${baseResetStyle}${trimmedCode}`;
 
                      setHtmlContent(cleanHtml);
                      setError(null);
@@ -156,9 +160,23 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                 
                 if (parsed && typeof parsed === 'object') {
                     // Check if explicit engine is defined
-                    if (parsed.engine === 'html' && parsed.code) {
+                    if (parsed.engine === 'html' || parsed.type === 'html') {
                         setActiveEngine('html');
-                        setHtmlContent(parsed.code);
+                        
+                        let combinedContent = parsed.code || parsed.html || '';
+                        
+                        // Inject separated CSS if provided
+                        if (parsed.css) {
+                            combinedContent = `<style>${parsed.css}</style>\n${combinedContent}`;
+                        }
+                        
+                        // Inject separated JS if provided
+                        if (parsed.javascript || parsed.js) {
+                            combinedContent = `${combinedContent}\n<script>${parsed.javascript || parsed.js}</script>`;
+                        }
+
+                        // Apply base reset
+                        setHtmlContent(`${baseResetStyle}${combinedContent}`);
                     } else {
                         // Default to ECharts
                         setActiveEngine('echarts');

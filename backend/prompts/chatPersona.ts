@@ -9,22 +9,28 @@ import { MATH_RENDERING_INSTRUCTIONS } from './math';
 const UNIVERSAL_CHART_LANGUAGE_DOCS = `
 # 📊 VISUALIZATION ENGINE
 
-To visualize data, relationships, or concepts, you have two powerful modes. 
-Choose the mode that best fits the data complexity and visual requirements.
+To visualize data, use one of the following modes.
+**ALWAYS prioritize modern, beautiful aesthetics.**
 
 ## 1. ECharts Mode (<echarts>)
 **Use for:** Standard statistical graphs (Line, Bar, Pie, Scatter, Heatmap, Sankey).
-**Pros:** Interactive tooltips, zoom, legend, fast rendering.
+**Design Rules:**
+*   Use a modern color palette (e.g., ['#6366f1', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b']).
+*   Hide unnecessary grid lines.
+*   Use rounded bar ends (\`itemStyle: { borderRadius: [4, 4, 0, 0] }\`).
+*   Ensure text is legible and uses system fonts.
 
 *   **Syntax**:
     <echarts>
     {
-      "title": { "text": "Quarterly Sales" },
-      "tooltip": { "trigger": "axis" },
-      "xAxis": { "type": "category", "data": ["Q1", "Q2", "Q3", "Q4"] },
-      "yAxis": { "type": "value" },
+      "color": ["#6366f1", "#a855f7", "#ec4899"],
+      "title": { "text": "Quarterly Sales", "textStyle": { "fontFamily": "Inter, sans-serif" } },
+      "tooltip": { "trigger": "axis", "backgroundColor": "rgba(255,255,255,0.9)", "borderRadius": 8, "padding": 12 },
+      "grid": { "left": "3%", "right": "4%", "bottom": "3%", "containLabel": true },
+      "xAxis": { "type": "category", "data": ["Q1", "Q2", "Q3", "Q4"], "axisLine": { "show": false }, "axisTick": { "show": false } },
+      "yAxis": { "type": "value", "splitLine": { "lineStyle": { "type": "dashed", "color": "#eee" } } },
       "series": [
-        { "data": [120, 200, 150, 80], "type": "bar", "itemStyle": { "color": "#4f46e5" } }
+        { "data": [120, 200, 150, 80], "type": "bar", "barWidth": "40%", "itemStyle": { "borderRadius": [6, 6, 0, 0] } }
       ]
     }
     </echarts>
@@ -35,72 +41,45 @@ Choose the mode that best fits the data complexity and visual requirements.
     *   Use double quotes for keys.
 
 ## 2. Advanced HTML/CSS/JS Mode (<chart>)
-**Use for:** Custom layouts, CSS-heavy visualizations, diagrams, flowcharts, or when you want to create something **visually stunning** using web technologies.
-**Capabilities:** You can use Tailwind CSS via CDN, CSS Gradients, Flexbox/Grid, and SVGs.
+**Use for:** Custom layouts, diagrams, flowcharts, or when you want **stunning visual impact**.
 
-*   **Syntax**:
+**DESIGN MANDATE:**
+*   **Font:** Use 'Inter' or system-ui.
+*   **Style:** Glassmorphism, Neumorphism, or Clean Flat Design.
+*   **Colors:** Use vibrant gradients or harmonious palettes.
+*   **Shape:** Rounded corners (12px-24px), soft shadows.
+*   **Animation:** Add subtle CSS animations (fade-in, slide-up).
+
+*   **Format A: Raw HTML (Direct Injection)**
     <chart>
     <!DOCTYPE html>
     <html>
     <head>
       <script src="https://cdn.tailwindcss.com"></script>
-      <style>
-        body { font-family: 'Inter', sans-serif; background: transparent; }
-        .glass-card {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
-        }
-        .gradient-text {
-            background: linear-gradient(135deg, #6366f1, #a855f7);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .bar-fill { transition: width 1s ease-out; }
-      </style>
     </head>
-    <body class="p-4 flex flex-col items-center justify-center min-h-[400px]">
-      
-      <div class="glass-card rounded-2xl p-8 w-full max-w-lg">
-         <h2 class="text-2xl font-bold mb-6 gradient-text text-center">User Growth</h2>
-         
-         <!-- Example Custom Bar -->
-         <div class="mb-4">
-            <div class="flex justify-between text-sm text-slate-600 mb-1">
-                <span>January</span>
-                <span class="font-bold">85%</span>
-            </div>
-            <div class="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
-                <div class="h-full bg-indigo-500 bar-fill" style="width: 85%"></div>
-            </div>
-         </div>
-         
-         <div class="mb-4">
-            <div class="flex justify-between text-sm text-slate-600 mb-1">
-                <span>February</span>
-                <span class="font-bold">62%</span>
-            </div>
-            <div class="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
-                <div class="h-full bg-purple-500 bar-fill" style="width: 62%"></div>
-            </div>
-         </div>
-
+    <body class="p-4 bg-gray-50 flex items-center justify-center">
+      <div class="bg-white p-6 rounded-2xl shadow-xl">
+        <h2 class="text-xl font-bold text-gray-800">Total Revenue</h2>
+        <p class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-500 mt-2">$1,250,000</p>
       </div>
-
-      <script>
-        // You can add simple interaction scripts here
-        console.log('Chart rendered');
-      </script>
     </body>
     </html>
     </chart>
 
+*   **Format B: Structured JSON (Recommended for Style Separation)**
+    This format separates structure (HTML) from presentation (CSS) and logic (JS) for cleaner generation.
+    
+    <chart>
+    {
+      "engine": "html",
+      "css": "body { display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: transparent; } .card { background: white; padding: 24px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); font-family: 'Inter', sans-serif; text-align: center; animation: fadeIn 0.6s ease-out; } .value { font-size: 3rem; font-weight: 800; background: linear-gradient(135deg, #6366f1, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; } @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }",
+      "code": "<div class='card'><h2>Total Revenue</h2><div class='value'>$1,250,000</div></div>"
+    }
+    </chart>
+
 *   **Rules**:
-    *   Write **raw HTML code** directly inside the tag.
-    *   Include \`<!DOCTYPE html>\`.
-    *   Use \`<style>\` for CSS. Make it beautiful (shadows, gradients, rounded corners).
-    *   Use \`<script>\` for logic (e.g. D3.js, Chart.js, or custom DOM manipulation).
+    *   For Raw HTML: Write code directly inside the tag.
+    *   For JSON: Must be valid JSON. Keys: "engine": "html", "code" (HTML), "css" (optional styles), "javascript" (optional logic).
     *   **Sandbox:** Runs in a secure iframe.
 `;
 
