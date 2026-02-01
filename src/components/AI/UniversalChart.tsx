@@ -128,16 +128,12 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                 const trimmedCode = stripMarkdown(rawContent);
 
                 // Inject a base style reset to ensure the iframe looks clean by default
-                // Includes Inter font for better typography
                 const baseResetStyle = `
-                    <link rel="preconnect" href="https://fonts.googleapis.com">
-                    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-                    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
                     <style>
                         body { margin: 0; padding: 0; font-family: 'Inter', system-ui, sans-serif; box-sizing: border-box; background: transparent; }
                         *, *:before, *:after { box-sizing: inherit; }
-                        ::-webkit-scrollbar { width: 6px; height: 6px; }
-                        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+                        ::-webkit-scrollbar { width: 8px; height: 8px; }
+                        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
                         ::-webkit-scrollbar-track { background: transparent; }
                     </style>
                 `;
@@ -270,13 +266,26 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
     }
 
     return (
-        <div className="my-6 border border-border-default rounded-2xl overflow-hidden bg-layer-1 shadow-sm">
-            <ReactECharts
-                option={config.option}
-                theme={isDark ? 'dark' : undefined}
-                style={{ height: config.height || 400, width: '100%', background: 'transparent' }}
-                opts={{ renderer: 'svg' }} // Use SVG for sharper text rendering
-            />
+        <div className="my-6 border border-gray-200 dark:border-white/10 rounded-2xl overflow-hidden bg-white dark:bg-[#121212] shadow-sm relative z-0 group transition-colors duration-300">
+            {/* Header */}
+            <div className="px-4 py-2 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/5 backdrop-blur-sm">
+                <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]"></span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                        Apache ECharts
+                    </span>
+                </div>
+            </div>
+            
+            {/* Chart Canvas */}
+            <div className="p-4 bg-white dark:bg-[#121212]">
+                <ReactECharts
+                    option={config.option}
+                    theme={isDark ? 'dark' : undefined}
+                    style={{ height: config.height || 400, width: '100%' }}
+                    opts={{ renderer: 'svg' }} // Use SVG for sharper text rendering
+                />
+            </div>
         </div>
     );
 });

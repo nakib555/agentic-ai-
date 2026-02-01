@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -5,85 +6,37 @@
 
 import { MATH_RENDERING_INSTRUCTIONS } from './math';
 
-const VISUALIZATION_ENGINE = `
+const UNIVERSAL_CHART_LANGUAGE_DOCS = `
 # 📊 VISUALIZATION ENGINE
 
-To visualize data, use one of the following modes. You have full control over the ECharts option object, allowing for rich and customized visualizations.
+To visualize data, relationships, or concepts, you have two powerful modes. 
+Choose the mode that best fits the data complexity and visual requirements.
 
 ## 1. ECharts Mode (<echarts>)
-**Use for:** Standard and advanced statistical graphs (Line, Bar, Pie, Scatter, Heatmap, Sankey, Candlestick, etc.). This is the preferred mode for data visualization.
+**Use for:** Standard statistical graphs (Line, Bar, Pie, Scatter, Heatmap, Sankey).
+**Pros:** Interactive tooltips, zoom, legend, fast rendering.
 
-*   **Syntax**: Place a valid ECharts JSON option object directly inside the tag.
+*   **Syntax**:
     <echarts>
     {
-      // ECharts option object
-    }
-    </echarts>
-
-*   **DESIGN MANDATE**: Your charts must be visually stunning, modern, and clear.
-    *   **Use vibrant colors**: Employ gradients or harmonious color palettes (e.g., '#836AF9', '#28C76F', '#EA5455', '#FF9F43', '#00CFE8'). Avoid default, dull colors.
-    *   **Emphasize clarity**: Always include a descriptive \`title\`, helpful \`tooltip\` configuration, and clear \`xAxis\`/\`yAxis\` labels.
-    *   **Modern Aesthetics**:
-        *   Use \`itemStyle\` with \`borderRadius\` for modern-looking bar charts.
-        *   Enable \`animation: true\` for a dynamic feel.
-        *   Use grid padding (\`grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true }\`) to prevent labels from being cut off.
-        *   Add subtle shadows to series items for depth where appropriate.
-
-*   **Example (Modern Bar Chart)**:
-    <echarts>
-    {
-      "title": {
-        "text": "Quarterly Sales Performance",
-        "left": "center",
-        "textStyle": { "color": "#ccc" }
-      },
-      "tooltip": { "trigger": "axis", "axisPointer": { "type": "shadow" } },
-      "grid": { "left": "3%", "right": "4%", "bottom": "3%", "containLabel": true },
-      "xAxis": {
-        "type": "category",
-        "data": ["Q1", "Q2", "Q3", "Q4"],
-        "axisLine": { "lineStyle": { "color": "#888" } }
-      },
-      "yAxis": {
-        "type": "value",
-        "axisLine": { "lineStyle": { "color": "#888" } },
-        "splitLine": { "lineStyle": { "color": "#444" } }
-      },
+      "title": { "text": "Quarterly Sales" },
+      "tooltip": { "trigger": "axis" },
+      "xAxis": { "type": "category", "data": ["Q1", "Q2", "Q3", "Q4"] },
+      "yAxis": { "type": "value" },
       "series": [
-        {
-          "name": "Sales",
-          "type": "bar",
-          "barWidth": "60%",
-          "itemStyle": {
-            "borderRadius": [5, 5, 0, 0],
-            "color": {
-              "type": "linear",
-              "x": 0, "y": 0, "x2": 0, "y2": 1,
-              "colorStops": [
-                { "offset": 0, "color": "#836AF9" },
-                { "offset": 1, "color": "#28C76F" }
-              ]
-            }
-          },
-          "data": [12000, 19000, 15000, 25000]
-        }
+        { "data": [120, 200, 150, 80], "type": "bar", "itemStyle": { "color": "#4f46e5" } }
       ]
     }
     </echarts>
 
 *   **Rules**:
-    *   Content must be a valid ECharts JSON configuration.
-    *   Do not wrap the JSON in markdown backticks (\`\`\`).
+    *   Content must be valid JSON.
+    *   Do not wrap in backticks.
+    *   Use double quotes for keys.
 
 ## 2. Advanced HTML/CSS/JS Mode (<chart>)
-**Use for:** Custom layouts, diagrams, flowcharts, or when you want **stunning visual impact**.
-
-**DESIGN MANDATE:**
-*   **Font:** Use 'Inter' or system-ui.
-*   **Style:** Glassmorphism, Neumorphism, or Clean Flat Design.
-*   **Colors:** Use vibrant gradients or harmonious palettes.
-*   **Shape:** Rounded corners (12px-24px), soft shadows.
-*   **Animation:** Add subtle CSS animations (fade-in, slide-up).
+**Use for:** Custom layouts, CSS-heavy visualizations, diagrams, flowcharts, or when you want to create something **visually stunning** using web technologies.
+**Capabilities:** You can use Tailwind CSS via CDN, CSS Gradients, Flexbox/Grid, and SVGs.
 
 *   **Format A: Raw HTML (Direct Injection)**
     <chart>
@@ -92,11 +45,8 @@ To visualize data, use one of the following modes. You have full control over th
     <head>
       <script src="https://cdn.tailwindcss.com"></script>
     </head>
-    <body class="p-4 bg-gray-50 flex items-center justify-center">
-      <div class="bg-white p-6 rounded-2xl shadow-xl">
-        <h2 class="text-xl font-bold text-gray-800">Total Revenue</h2>
-        <p class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-500 mt-2">$1,250,000</p>
-      </div>
+    <body class="p-4">
+      <div class="bg-blue-500 text-white p-4 rounded">Hello World</div>
     </body>
     </html>
     </chart>
@@ -107,7 +57,7 @@ To visualize data, use one of the following modes. You have full control over th
     <chart>
     {
       "engine": "html",
-      "css": "body { display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: transparent; } .card { background: white; padding: 24px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); font-family: 'Inter', sans-serif; text-align: center; animation: fadeIn 0.6s ease-out; } .value { font-size: 3rem; font-weight: 800; background: linear-gradient(135deg, #6366f1, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; } @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }",
+      "css": ".card { background: linear-gradient(135deg, #6366f1, #a855f7); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); font-family: sans-serif; text-align: center; } .value { font-size: 2rem; font-weight: bold; }",
       "code": "<div class='card'><h2>Total Revenue</h2><div class='value'>$1,250,000</div></div>"
     }
     </chart>
@@ -168,7 +118,7 @@ Syntax:
 export const CHAT_PERSONA_AND_UI_FORMATTING = `
 ${MATH_RENDERING_INSTRUCTIONS}
 
-${VISUALIZATION_ENGINE}
+${UNIVERSAL_CHART_LANGUAGE_DOCS}
 
 ${MAP_COMPONENT_DOCS}
 
