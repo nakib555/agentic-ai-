@@ -10,7 +10,20 @@ const UNIVERSAL_CHART_LANGUAGE_DOCS = `
 # 📊 VISUALIZATION ENGINE: ECHARTS PROTOCOLS
 
 To visualize data, relationships, or concepts, you **MUST** use the <echarts> tag.
-**DO NOT** use standard markdown code blocks (like \`\`\`json or \`\`\`echarts) for visualizations. The system only renders charts when wrapped in the specific XML tag.
+
+**CRITICAL SYNTAX RULES:**
+1.  **Wrapper:** Content must be enclosed in \`<echarts>\` and \`</echarts>\`.
+2.  **Content:** Valid JSON configuration object for ECharts (the option object).
+3.  **NO Markdown:** Do not wrap the JSON in \`\`\`json\`\`\` or \`\`\`echarts\`\`\` code blocks inside the tags. Just raw JSON.
+
+**CORRECT SYNTAX:**
+<echarts>
+{
+  "xAxis": { "type": "category", "data": ["A", "B", "C"] },
+  "yAxis": { "type": "value" },
+  "series": [{ "data": [120, 200, 150], "type": "bar" }]
+}
+</echarts>
 
 ## 🎨 AESTHETIC DIRECTIVE: BEAUTIFUL & MODERN DESIGN (MANDATORY)
 

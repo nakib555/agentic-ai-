@@ -103,15 +103,15 @@ const enforceResponsiveConfig = (option: any, isDark: boolean) => {
     const responsiveOption = { ...option };
 
     // 1. Enforce Grid Containment
-    // We override AI-generated static margins with dynamic percentage-based ones.
+    // We override AI-generated static margins with fixed padding values.
     // This allows the chart to fill the container while 'containLabel: true' prevents clipping.
     responsiveOption.grid = {
         ...option.grid, // Keep specific settings like 'show: true' or borders
         
         containLabel: true,
-        left: '2%',   // Small dynamic padding relative to container width
-        right: '4%',  // Slightly larger buffer for right-aligned labels/tooltips
-        bottom: '3%', // Minimal bottom spacing for axis labels
+        left: 20,   // Fixed pixel padding
+        right: 20,  // Fixed pixel padding
+        bottom: 20, // Fixed pixel padding
         top: option.title ? 60 : 35, // Adjust top based on title
         
         // Force auto dimensions to override any fixed pixels the AI might have guessed
