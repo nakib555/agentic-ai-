@@ -36,7 +36,9 @@ export class ToolError extends Error {
 export const parseApiError = (error: any): MessageError => {
     // If it's already a well-formed MessageError (e.g. from backend pass-through), use it.
     if (error && typeof error === 'object' && 'code' in error && 'message' in error && !('stack' in error)) {
-         return error as MessageError;
+         const safeError = { ...error };
+         if (safeError.code !== undefined) safeError.code = String(safeError.code);
+         return safeError as MessageError;
     }
 
     if (error instanceof ToolError) {
@@ -52,7 +54,7 @@ export const parseApiError = (error: any): MessageError => {
     if (error instanceof Error) {
         if ((error as any).code) {
             return {
-                code: (error as any).code,
+                code: String((error as any).code),
                 message: error.message,
                 details: (error as any).details || error.stack,
                 suggestion: (error as any).suggestion

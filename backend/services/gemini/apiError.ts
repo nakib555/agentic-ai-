@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { MessageError, ToolError } from '../../types';
+import { MessageError } from '../../types';
+import { ToolError } from '../../utils/apiError';
 
 /**
  * Parses a generic Error from the Gemini API into a structured MessageError.
@@ -13,7 +14,6 @@ import { MessageError, ToolError } from '../../types';
 export const parseApiError = (error: any): MessageError => {
     // If it's already a well-formed MessageError (e.g. from backend pass-through), use it.
     if (error && typeof error === 'object' && 'code' in error && 'message' in error && !('stack' in error)) {
-         // Ensure code is string even if passed as number
          const safeError = { ...error };
          if (safeError.code !== undefined) safeError.code = String(safeError.code);
          return safeError as MessageError;

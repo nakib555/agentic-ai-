@@ -10,7 +10,10 @@ import type { MessageError } from '../../types';
 const motion = motionTyped as any;
 
 export const getErrorMessageSuggestion = (code?: string): string | null => {
-    switch (code) {
+    // Ensure code is a string to prevent "startsWith is not a function" errors
+    const safeCode = typeof code === 'string' ? code : String(code || '');
+
+    switch (safeCode) {
         case 'MODEL_NOT_FOUND':
             return 'The selected model is unavailable. This may be due to regional restrictions or API key limitations. Please select a different model in settings.';
         case 'INVALID_API_KEY':
@@ -34,7 +37,7 @@ export const getErrorMessageSuggestion = (code?: string): string | null => {
         case 'FILE_SYSTEM_ERROR':
             return 'There was a problem saving data. Ensure the server has write permissions.';
         default:
-            if (code?.startsWith('TOOL_')) {
+            if (safeCode.startsWith('TOOL_')) {
                 return 'An error occurred during tool execution. Check details below.';
             }
             return 'An unexpected error occurred. Please try again.';
@@ -51,7 +54,9 @@ type ErrorVariant = 'critical' | 'warning' | 'connection' | 'security' | 'tool' 
 const getErrorVariant = (code?: string): ErrorVariant => {
     if (!code) return 'critical';
     
-    const codeUpper = code.toUpperCase();
+    // Safely handle non-string codes
+    const safeCode = typeof code === 'string' ? code : String(code);
+    const codeUpper = safeCode.toUpperCase();
 
     if (['INVALID_API_KEY', 'CONTENT_BLOCKED', 'PERMISSION_DENIED', 'ACCESS_DENIED', 'SAFETY'].some(c => codeUpper.includes(c))) {
         return 'security';
@@ -94,7 +99,8 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({ error, onRetry }) =>
     };
 
     const parsedError = useMemo(() => {
-        let newCode = error.code;
+        // Ensure code is a string
+        let newCode = typeof error.code === 'string' ? error.code : (error.code ? String(error.code) : undefined);
         let newSuggestion = error.suggestion;
         const lowerMessage = (error.message || '').toLowerCase();
         
