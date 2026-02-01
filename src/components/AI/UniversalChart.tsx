@@ -413,7 +413,7 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                      </span>
                  </div>
                  
-                 {!isRendering && onFixCode && (
+                 {onFixCode && !isFixing && (
                      <button
                         onClick={handleFix}
                         disabled={isFixing}
