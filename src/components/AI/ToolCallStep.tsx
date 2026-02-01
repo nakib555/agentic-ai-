@@ -1,4 +1,5 @@
 
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -190,8 +191,8 @@ export const ToolCallStep = ({ event, sendMessage, onRegenerate, messageId }: To
 
     // Special rendering for the 'displayMap' tool call to embed the map directly.
     if (call.name === 'displayMap' && args) {
-        const { latitude, longitude, zoom, markerText } = args as { latitude: number, longitude: number, zoom?: number, markerText?: string };
-        return <MapDisplay latitude={latitude} longitude={longitude} zoom={zoom ?? 13} markerText={markerText} />;
+        const { location, latitude, longitude, zoom, markerText } = args as { location?: string, latitude?: number, longitude?: number, zoom?: number, markerText?: string };
+        return <MapDisplay location={location} latitude={latitude} longitude={longitude} zoom={zoom ?? 13} markerText={markerText} />;
     }
     
     // Special rendering for live browser session

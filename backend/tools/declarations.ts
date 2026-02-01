@@ -1,4 +1,5 @@
 
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -101,16 +102,16 @@ export const requestLocationPermissionDeclaration: FunctionDeclaration = {
 
 export const displayMapDeclaration: FunctionDeclaration = {
     name: 'displayMap',
-    description: 'Displays an interactive map widget centered on specific coordinates. [Execution: Fast | Cost: Free | Permissions: None]',
+    description: 'Displays an interactive map. You can provide a specific location name (e.g., "Paris", "Eiffel Tower") OR explicit latitude/longitude coordinates. [Execution: Fast | Cost: Free | Permissions: None]',
     parameters: {
       type: Type.OBJECT,
       properties: {
-        latitude: { type: Type.NUMBER, description: 'The decimal latitude.' },
-        longitude: { type: Type.NUMBER, description: 'The decimal longitude.' },
+        location: { type: Type.STRING, description: 'The name of the location to display (e.g. "Tokyo", "Times Square"). Preferred over coordinates if exact lat/long is unknown.' },
+        latitude: { type: Type.NUMBER, description: 'The decimal latitude (optional if location name is provided).' },
+        longitude: { type: Type.NUMBER, description: 'The decimal longitude (optional if location name is provided).' },
         zoom: { type: Type.NUMBER, description: 'Zoom level (1-18). 1=World, 10=City, 15=Street. Default 13.' },
         markerText: { type: Type.STRING, description: 'Text label for the location marker.' }
       },
-      required: ['latitude', 'longitude'],
     },
 };
   

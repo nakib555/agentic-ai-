@@ -54,6 +54,7 @@
     "jszip": "^3.10.1",
     "katex": "^0.16.9",
     "leaflet": "^1.9.4",
+    "leaflet-control-geocoder": "^2.4.0",
     "react-leaflet": "^4.2.1",
     "lucide-react": "^0.363.0",
     "playwright": "^1.49.0",
