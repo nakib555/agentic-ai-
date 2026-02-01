@@ -130,7 +130,23 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                 // Heuristic: If it looks like HTML (starts with <), treat as HTML directly
                 if (trimmedCode.trim().startsWith('<')) {
                      setActiveEngine('html');
-                     setHtmlContent(trimmedCode);
+                     // Inject a base style reset to ensure the iframe looks clean by default
+                     // even if the AI doesn't provide extensive CSS.
+                     const resetStyle = `
+                        <style>
+                            body { margin: 0; padding: 0; font-family: 'Inter', system-ui, sans-serif; box-sizing: border-box; }
+                            *, *:before, *:after { box-sizing: inherit; }
+                            ::-webkit-scrollbar { width: 8px; height: 8px; }
+                            ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+                            ::-webkit-scrollbar-track { background: transparent; }
+                        </style>
+                     `;
+                     // Append reset style to head if head exists, otherwise prepend to content
+                     const cleanHtml = trimmedCode.includes('<head>') 
+                        ? trimmedCode.replace('<head>', `<head>${resetStyle}`)
+                        : `${resetStyle}${trimmedCode}`;
+
+                     setHtmlContent(cleanHtml);
                      setError(null);
                      return;
                 }

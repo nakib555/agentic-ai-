@@ -9,61 +9,99 @@ import { MATH_RENDERING_INSTRUCTIONS } from './math';
 const UNIVERSAL_CHART_LANGUAGE_DOCS = `
 # 📊 VISUALIZATION ENGINE
 
-To visualize data, relationships, or concepts, you MUST use the specialized XML-style component tags.
-**DO NOT** use standard markdown code blocks (e.g. \`\`\`json) for charts. The UI will not render them.
+To visualize data, relationships, or concepts, you have two powerful modes. 
+Choose the mode that best fits the data complexity and visual requirements.
 
 ## 1. ECharts Mode (<echarts>)
-Use for: Statistical graphs, complex data plots, heatmaps, pie charts, etc.
+**Use for:** Standard statistical graphs (Line, Bar, Pie, Scatter, Heatmap, Sankey).
+**Pros:** Interactive tooltips, zoom, legend, fast rendering.
 
 *   **Syntax**:
     <echarts>
     {
-      "title": { "text": "Chart Title" },
+      "title": { "text": "Quarterly Sales" },
       "tooltip": { "trigger": "axis" },
-      "xAxis": { "type": "category", "data": ["A", "B"] },
+      "xAxis": { "type": "category", "data": ["Q1", "Q2", "Q3", "Q4"] },
       "yAxis": { "type": "value" },
-      "series": [ ... ]
+      "series": [
+        { "data": [120, 200, 150, 80], "type": "bar", "itemStyle": { "color": "#4f46e5" } }
+      ]
     }
     </echarts>
 
 *   **Rules**:
     *   Content must be valid JSON.
     *   Do not wrap in backticks.
-    *   Use double quotes for keys and strings.
+    *   Use double quotes for keys.
 
 ## 2. Advanced HTML/CSS/JS Mode (<chart>)
-Use for: Custom layouts, beautifully styled graphs, interactive diagrams, or when you need CSS-heavy visualizations (gradients, shadows, cards).
+**Use for:** Custom layouts, CSS-heavy visualizations, diagrams, flowcharts, or when you want to create something **visually stunning** using web technologies.
+**Capabilities:** You can use Tailwind CSS via CDN, CSS Gradients, Flexbox/Grid, and SVGs.
 
 *   **Syntax**:
     <chart>
     <!DOCTYPE html>
     <html>
     <head>
+      <script src="https://cdn.tailwindcss.com"></script>
       <style>
-        /* CSS for styling */
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        body { font-family: 'Inter', sans-serif; background: transparent; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .bar-fill { transition: width 1s ease-out; }
       </style>
     </head>
-    <body>
-      <div class="card">
-         <h3>Title</h3>
-         <div id="main" style="width: 100%; height: 400px;"></div>
+    <body class="p-4 flex flex-col items-center justify-center min-h-[400px]">
+      
+      <div class="glass-card rounded-2xl p-8 w-full max-w-lg">
+         <h2 class="text-2xl font-bold mb-6 gradient-text text-center">User Growth</h2>
+         
+         <!-- Example Custom Bar -->
+         <div class="mb-4">
+            <div class="flex justify-between text-sm text-slate-600 mb-1">
+                <span>January</span>
+                <span class="font-bold">85%</span>
+            </div>
+            <div class="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div class="h-full bg-indigo-500 bar-fill" style="width: 85%"></div>
+            </div>
+         </div>
+         
+         <div class="mb-4">
+            <div class="flex justify-between text-sm text-slate-600 mb-1">
+                <span>February</span>
+                <span class="font-bold">62%</span>
+            </div>
+            <div class="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div class="h-full bg-purple-500 bar-fill" style="width: 62%"></div>
+            </div>
+         </div>
+
       </div>
-      <!-- You can import libraries via CDN -->
-      <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+
       <script>
-         const chart = echarts.init(document.getElementById('main'));
-         chart.setOption({ ... });
+        // You can add simple interaction scripts here
+        console.log('Chart rendered');
       </script>
     </body>
     </html>
     </chart>
 
 *   **Rules**:
-    *   Place raw HTML/CSS/JS directly inside the <chart> tags.
-    *   You are running in a sandboxed iframe. 
-    *   You MUST use CDN links for external libraries (ECharts, D3, Chart.js, Tailwind).
-    *   Make it BEAUTIFUL. Use CSS gradients, shadows, rounded corners, and modern typography.
+    *   Write **raw HTML code** directly inside the tag.
+    *   Include \`<!DOCTYPE html>\`.
+    *   Use \`<style>\` for CSS. Make it beautiful (shadows, gradients, rounded corners).
+    *   Use \`<script>\` for logic (e.g. D3.js, Chart.js, or custom DOM manipulation).
+    *   **Sandbox:** Runs in a secure iframe.
 `;
 
 const MAP_COMPONENT_DOCS = `
