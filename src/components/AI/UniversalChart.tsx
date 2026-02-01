@@ -86,14 +86,6 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                 // Parse the JSON option object
                 const option = looseJsonParse(trimmedCode);
                 
-                // Set default configs if missing
-                if (!option.backgroundColor) {
-                    option.backgroundColor = 'transparent';
-                }
-                if (!option.grid) {
-                    option.grid = { top: 40, right: 20, bottom: 40, left: 40, containLabel: true };
-                }
-                
                 setConfig({ option });
                 setError(null);
             } 
