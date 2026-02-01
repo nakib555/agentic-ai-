@@ -66,56 +66,73 @@ const looseJsonParse = (str: string) => {
 
 /**
  * Enforces responsive layouts on ECharts options.
- * This injects "safety" properties to prevent overlap on small screens.
+ * Now intelligently handles both flat options and `baseOption`/`media` structures.
  */
 const enforceResponsiveConfig = (option: any, isDark: boolean) => {
     if (!option) return option;
     
-    const responsiveOption = { ...option };
+    const isResponsiveStructure = !!option.baseOption;
+    
+    // If it's a responsive structure, we apply safety settings to the baseOption.
+    // If it's a flat structure, we apply to the root.
+    const target = isResponsiveStructure ? { ...option.baseOption } : { ...option };
 
-    // 1. Enforce Grid Containment
-    // We override AI-generated static margins with fixed percentages/padding.
-    // 'containLabel: true' is the magic property that prevents label clipping.
-    responsiveOption.grid = {
-        ...option.grid,
-        containLabel: true,
-        left: '2%',
-        right: '2%',
-        bottom: '10%', // Increased bottom padding to ensure legend space
-        top: 80, // Fixed padding to accommodate titles/legends without overlap
-        // Force auto dimensions
-        width: 'auto',
-        height: 'auto'
-    };
+    // --- SAFETY DEFAULTS (Applied to both modes) ---
+    
+    // 1. Background
+    if (!target.backgroundColor) {
+        target.backgroundColor = 'transparent';
+    }
 
-    // 2. Confine Tooltips to Container
-    // Prevents tooltips from causing horizontal scrollbars or getting cut off on mobile.
-    responsiveOption.tooltip = {
+    // 2. Tooltip Confinement (Prevents overflow)
+    target.tooltip = {
         confine: true,
-        appendToBody: true, // Portal to body to avoid z-index issues
+        appendToBody: true,
         trigger: 'axis',
         backgroundColor: isDark ? 'rgba(24, 24, 27, 0.9)' : 'rgba(255, 255, 255, 0.9)',
         borderColor: isDark ? '#3f3f46' : '#e2e8f0',
         textStyle: { color: isDark ? '#f4f4f5' : '#1e293b' },
         padding: [10, 15],
         extraCssText: 'box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); border-radius: 8px; backdrop-filter: blur(8px);',
-        ...option.tooltip
+        ...target.tooltip
     };
 
-    // 3. Fix Axis Overlap & Labeling
+    // 3. Grid Safety (Only apply if NOT using media queries, otherwise trust the AI's layout)
+    if (!isResponsiveStructure) {
+        target.grid = {
+            containLabel: true,
+            left: '2%',
+            right: '2%',
+            bottom: '10%',
+            top: 80,
+            ...target.grid
+        };
+        
+        // Responsive Legend for flat structure
+        if (target.legend) {
+            target.legend = {
+                type: 'scroll',
+                bottom: 0,
+                top: 'auto',
+                padding: [5, 10],
+                textStyle: { color: isDark ? '#a1a1aa' : '#64748b' },
+                ...target.legend
+            };
+        }
+    } else {
+        // Even in responsive mode, ensure containLabel is true on base
+        if (target.grid) {
+             target.grid = { containLabel: true, ...target.grid };
+        }
+    }
+
+    // 4. Styling Adjustments (Colors, Fonts) - Applied safely
     const fixAxis = (axis: any): any => {
         if (!axis) return axis;
         if (Array.isArray(axis)) return axis.map(fixAxis);
-        
         return {
             ...axis,
-            nameLocation: 'middle',
-            nameGap: 30, 
             axisLabel: {
-                hideOverlap: true, // Critical: Hide labels if they crash into each other
-                interval: 'auto',
-                overflow: 'truncate',
-                width: 80, // Limit width on mobile
                 color: isDark ? '#a1a1aa' : '#64748b',
                 ...axis.axisLabel
             },
@@ -132,54 +149,29 @@ const enforceResponsiveConfig = (option: any, isDark: boolean) => {
         };
     };
 
-    if (responsiveOption.xAxis) responsiveOption.xAxis = fixAxis(responsiveOption.xAxis);
-    if (responsiveOption.yAxis) responsiveOption.yAxis = fixAxis(responsiveOption.yAxis);
-
-    // 4. Responsive Legend
-    if (responsiveOption.legend) {
-        responsiveOption.legend = {
-            type: 'scroll', // Scrollable legend is safer for mobile
-            bottom: 0,
-            top: 'auto', // Explicitly unset top to avoid conflicts
-            padding: [5, 10],
-            textStyle: { color: isDark ? '#a1a1aa' : '#64748b' },
-            itemGap: 15,
-            ...responsiveOption.legend
-        };
-        
-        // Prevent legend from overlapping dataZoom if present, but keep at bottom
-        if (responsiveOption.dataZoom) {
-            responsiveOption.legend.bottom = 0; 
-            responsiveOption.grid.bottom = '15%'; // Push grid up
-        }
-    }
+    if (target.xAxis) target.xAxis = fixAxis(target.xAxis);
+    if (target.yAxis) target.yAxis = fixAxis(target.yAxis);
     
-    // 5. Adjust for DataZoom
-    if (responsiveOption.dataZoom) {
-        // If dataZoom is bottom-oriented, ensure grid has space
-        responsiveOption.grid.bottom = '15%'; 
-    }
-
-    // 6. Default Background
-    if (!responsiveOption.backgroundColor) {
-        responsiveOption.backgroundColor = 'transparent';
-    }
-    
-    // 7. Title Styles
-    if (option.title) {
-        responsiveOption.title = {
-            ...option.title,
-            top: 10, // Force consistent title position
+    if (target.title) {
+         target.title = {
             textStyle: {
                 color: isDark ? '#f4f4f5' : '#1e293b',
                 fontWeight: 600,
-                fontSize: 14,
-                ...option.title.textStyle
-            }
-        };
+                ...target.title.textStyle
+            },
+            ...target.title
+         };
     }
 
-    return responsiveOption;
+    // Reassemble
+    if (isResponsiveStructure) {
+        return {
+            ...option,
+            baseOption: target
+        };
+    }
+    
+    return target;
 };
 
 export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ content, code, onFixCode, isStreaming }) => {
@@ -308,13 +300,11 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                 if (echartsRef.current) {
                     const instance = echartsRef.current.getEchartsInstance();
                     instance.dispatchAction({ type: 'hideTip' });
-                    // Optional: Clear axis pointer highlight
                     instance.dispatchAction({ type: 'updateAxisPointer', currTrigger: 'leave' });
                 }
             }
         };
 
-        // Capture event on window to detect clicks outside
         window.addEventListener('mousedown', handleClickOutside);
         window.addEventListener('touchstart', handleClickOutside);
 
@@ -359,7 +349,6 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         }
     };
 
-    // Helper to hide tooltip on mouse leave for desktop
     const handleMouseLeave = () => {
         if (activeEngine === 'echarts' && echartsRef.current) {
              const instance = echartsRef.current.getEchartsInstance();
@@ -445,18 +434,17 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         <div 
             className="my-6 w-full rounded-xl overflow-hidden relative z-0 border border-gray-200 dark:border-white/5 bg-white dark:bg-[#18181b] shadow-sm"
             ref={containerRef}
-            onMouseLeave={handleMouseLeave} // Hide tooltip when mouse leaves the component area
+            onMouseLeave={handleMouseLeave}
         >
             <div className="w-full relative">
                 <ReactECharts
                     ref={echartsRef}
                     option={finalOption}
-                    theme={isDark && !finalOption.backgroundColor ? 'dark' : undefined}
+                    theme={isDark && !finalOption.baseOption?.backgroundColor && !finalOption.backgroundColor ? 'dark' : undefined}
                     style={{ height: chartHeight, width: '100%', minHeight: '300px' }}
                     opts={{ renderer: 'svg' }}
                 />
             </div>
-            {/* Overlay for fullscreen button when hovering chart - Fixed pointer events to allow clicks through when hidden */}
             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
                 <button 
                     onClick={toggleFullscreen}

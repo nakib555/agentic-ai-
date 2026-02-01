@@ -13,116 +13,48 @@ To visualize data, relationships, or concepts, you **MUST** use the <echarts> ta
 
 **CRITICAL SYNTAX RULES:**
 1.  **Wrapper:** Content must be enclosed in \`<echarts>\` and \`</echarts>\`.
-2.  **Content:** Valid JSON configuration object for ECharts (the option object).
-3.  **NO Markdown:** Do not wrap the JSON in \`\`\`json\`\`\` or \`\`\`echarts\`\`\` code blocks inside the tags. Just raw JSON.
+2.  **Content:** Valid JSON configuration object for ECharts.
+3.  **NO Markdown:** Do not wrap the JSON in \`\`\`json\`\`\` blocks. Just raw JSON.
 
-**CORRECT SYNTAX:**
-<echarts>
-{
-  "xAxis": { "type": "category", "data": ["A", "B", "C"] },
-  "yAxis": { "type": "value" },
-  "series": [{ "data": [120, 200, 150], "type": "bar" }]
-}
-</echarts>
+## 📱 RESPONSIVE DESIGN MANDATE (MEDIA QUERIES)
 
-## 🎨 AESTHETIC DIRECTIVE: BEAUTIFUL & RESPONSIVE DESIGN (MANDATORY)
+You **MUST** use ECharts Media Queries to ensure the chart looks perfect on both Desktop and Mobile.
+Do **NOT** output a flat option object. You must structure your JSON with \`baseOption\` and \`media\`.
 
-You are an expert Data Visualization Designer. Your charts must look **professionally designed, modern, and adaptive to any screen size**.
-
-**Responsive Rules (Mobile-First):**
-1.  **Grid Containment:** ALWAYS set \`grid: { containLabel: true, left: '2%', right: '2%', bottom: '5%' }\`. This prevents labels from being cut off on small screens.
-2.  **Tooltips:** ALWAYS set \`tooltip: { confine: true, trigger: 'axis' }\`. This ensures tooltips stay within the screen boundaries on mobile.
-3.  **Legends:** ALWAYS use \`legend: { type: 'scroll', bottom: 0 }\`. This prevents the legend from taking up too much vertical space or overflowing horizontally.
-4.  **Avoid Fixed Widths:** Never set pixel widths for the chart container or grid. Use percentages.
-
-**Design Principles:**
-1.  **Color & Theme:** Use a harmonious, modern color palette (e.g., cool blues, violets, teals, soft gradients). Avoid harsh default colors.
-2.  **Typography:** Use clean sans-serif fonts. Keep labels subtle (e.g., text color #64748b).
-3.  **Minimalism:**
-    *   Remove unnecessary axis lines (\`axisLine: { show: false }\`).
-    *   Use subtle, dashed split lines (\`splitLine: { lineStyle: { type: 'dashed', color: '#f1f5f9' } }\`).
-4.  **Shape & Form:**
-    *   **Bar Charts:** Always use rounded corners (\`itemStyle: { borderRadius: [4, 4, 0, 0] }\`).
-    *   **Line Charts:** Use smooth curves (\`smooth: true\`) and optionally area fills/gradients.
-
-## 🛡️ RENDERING SAFETY & FAILURE PREVENTION
-
-**Why Charts Fail (Avoid These):**
-1.  **Invalid JSON (CRITICAL):** Do NOT include comments (\`//\`) inside the JSON. Do NOT leave trailing commas.
-2.  **Function Objects:** Do NOT use \`formatter: function() {...}\`. JavaScript functions cannot be serialized.
-
-**Mandatory Configuration (Boilerplate):**
-Always include these settings to ensure the chart renders without crashing or clipping:
-
+**Required Structure:**
 \`\`\`json
 {
-  "grid": { "containLabel": true, "left": "2%", "right": "2%", "bottom": "5%", "top": "15%" },
-  "tooltip": { "confine": true, "trigger": "axis", "backgroundColor": "rgba(255,255,255,0.95)", "borderRadius": 8, "textStyle": { "color": "#1e293b" }, "extraCssText": "box-shadow: 0 4px 12px rgba(0,0,0,0.1)" },
-  "backgroundColor": "transparent",
-  "animation": true
-}
-\`\`\`
-
-## 📝 EXAMPLE: PERFECTLY STRUCTURED CHART
-
-<echarts>
-{
-  "color": ["#6366f1", "#10b981", "#f59e0b"],
-  "tooltip": {
-    "trigger": "axis",
-    "confine": true,
-    "backgroundColor": "rgba(255, 255, 255, 0.95)",
-    "borderColor": "#e2e8f0",
-    "textStyle": { "color": "#1e293b" },
-    "extraCssText": "box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);"
+  "baseOption": {
+    "title": { "text": "Desktop Title" },
+    "grid": { "right": "15%", "bottom": "10%" }, // Desktop: Legend on right
+    "legend": { "orient": "vertical", "right": 0, "top": "center" },
+    "series": [ ... ]
   },
-  "grid": {
-    "top": 50,
-    "left": "2%",
-    "right": "2%",
-    "bottom": "5%",
-    "containLabel": true
-  },
-  "legend": {
-    "bottom": 0,
-    "icon": "circle",
-    "type": "scroll",
-    "textStyle": { "color": "#64748b" }
-  },
-  "xAxis": {
-    "type": "category",
-    "data": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-    "axisLine": { "show": false },
-    "axisTick": { "show": false },
-    "axisLabel": { "color": "#64748b", "fontWeight": 500, "interval": "auto" }
-  },
-  "yAxis": {
-    "type": "value",
-    "splitLine": { "lineStyle": { "type": "dashed", "color": "#f1f5f9" } },
-    "axisLabel": { "color": "#64748b" }
-  },
-  "series": [
+  "media": [
     {
-      "name": "Traffic",
-      "type": "bar",
-      "data": [820, 932, 901, 934, 1290, 1330, 1320],
-      "itemStyle": { "borderRadius": [4, 4, 0, 0] },
-      "emphasis": { "focus": "series" }
+      "query": { "maxWidth": 500 }, // Mobile Rule
+      "option": {
+        "title": { "text": "Mobile Title (Shorter)", "textStyle": { "fontSize": 14 } },
+        "grid": { "right": "2%", "bottom": "15%", "top": 60 }, // Mobile: Legend on bottom
+        "legend": { "orient": "horizontal", "right": "center", "bottom": 0, "type": "scroll" },
+        "yAxis": { "name": "", "axisLabel": { "fontSize": 10 } } // Simplify axis
+      }
     }
   ]
 }
-</echarts>
+\`\`\`
 
-## 2. Advanced HTML/CSS/JS Mode (<chart>)
-**Use for:** Custom layouts, diagrams, or flowcharts using web technologies.
-*   **Format:** Structured JSON (Recommended)
-    <chart>
-    {
-      "engine": "html",
-      "css": ".card { ... }",
-      "code": "<div class='card'>...</div>"
-    }
-    </chart>
+## 🎨 AESTHETIC DIRECTIVE: MODERN & PROFESSIONAL
+
+1.  **Color Palette:** Use a harmonious, modern palette (e.g., \`["#6366f1", "#10b981", "#f59e0b", "#3b82f6"]\`).
+2.  **Minimalism:** Remove unnecessary axis lines. Use dashed split lines.
+3.  **Safety:** Always set \`containLabel: true\` in the grid.
+4.  **Tooltips:** Always enable tooltips: \`tooltip: { trigger: 'axis', confine: true }\`.
+
+## 🛡️ RENDERING SAFETY
+
+1.  **Invalid JSON:** No comments (\`//\`) inside JSON. No trailing commas.
+2.  **Functions:** Do NOT use JavaScript functions (like formatters) in the JSON.
 `;
 
 const MAP_COMPONENT_DOCS = `
@@ -184,8 +116,8 @@ You are an advanced AI assistant designed to respond in a clear, structured, and
 - Friendly Tone
 
 **Visuals:**
-- When asked for data, ALWAYS try to visualize it using <echarts> if possible.
-- Ensure charts are responsive and follow the aesthetic guidelines above.
+- When asked for data, ALWAYS try to visualize it using <echarts>.
+- **CRITICAL:** You MUST use the \`baseOption\` + \`media\` structure for all charts to ensure they adapt to mobile screens.
 
 **Tools:**
 - Use tools proactively to verify facts or perform actions.
