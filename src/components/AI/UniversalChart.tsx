@@ -88,23 +88,27 @@ const enforceResponsiveConfig = (option: any, isDark: boolean) => {
     target.tooltip = {
         confine: true,
         appendToBody: true,
-        trigger: 'axis',
+        trigger: 'item', // Default to item for safety with diverse charts
         backgroundColor: isDark ? 'rgba(24, 24, 27, 0.9)' : 'rgba(255, 255, 255, 0.9)',
         borderColor: isDark ? '#3f3f46' : '#e2e8f0',
         textStyle: { color: isDark ? '#f4f4f5' : '#1e293b' },
         padding: [10, 15],
-        extraCssText: 'box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); border-radius: 8px; backdrop-filter: blur(8px);',
+        extraCssText: 'box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); border-radius: 8px; backdrop-filter: blur(8px); z-index: 50;',
         ...target.tooltip
     };
 
     // 3. Grid Safety (Only apply if NOT using media queries, otherwise trust the AI's layout)
     if (!isResponsiveStructure) {
+        // Only apply grid defaults if grid is relevant (pie charts don't usually use grid, but bar/line do)
+        // However, adding a safe grid usually doesn't hurt.
+        if (!target.grid) target.grid = {};
+        
         target.grid = {
             containLabel: true,
             left: '2%',
             right: '2%',
             bottom: '10%',
-            top: 80,
+            top: 60,
             ...target.grid
         };
         
@@ -113,8 +117,10 @@ const enforceResponsiveConfig = (option: any, isDark: boolean) => {
             target.legend = {
                 type: 'scroll',
                 bottom: 0,
+                left: 'center',
                 top: 'auto',
                 padding: [5, 10],
+                itemGap: 15,
                 textStyle: { color: isDark ? '#a1a1aa' : '#64748b' },
                 ...target.legend
             };
@@ -153,14 +159,47 @@ const enforceResponsiveConfig = (option: any, isDark: boolean) => {
     if (target.yAxis) target.yAxis = fixAxis(target.yAxis);
     
     if (target.title) {
-         target.title = {
-            textStyle: {
+         // Handle array title
+         const titleList = Array.isArray(target.title) ? target.title : [target.title];
+         target.title = titleList.map((t: any) => ({
+             ...t,
+             textStyle: {
                 color: isDark ? '#f4f4f5' : '#1e293b',
                 fontWeight: 600,
-                ...target.title.textStyle
-            },
-            ...target.title
-         };
+                fontSize: 14,
+                ...t.textStyle
+             }
+         }));
+    }
+
+    // 5. Pie Chart Specifics (Prevent Overlap)
+    if (target.series) {
+        const seriesList = Array.isArray(target.series) ? target.series : [target.series];
+        target.series = seriesList.map((s: any) => {
+            if (s.type === 'pie') {
+                return {
+                    avoidLabelOverlap: true,
+                    itemStyle: {
+                        borderColor: isDark ? '#18181b' : '#ffffff',
+                        borderWidth: 2,
+                        ...s.itemStyle
+                    },
+                    label: {
+                        show: true,
+                        color: isDark ? '#e4e4e7' : '#334155',
+                        ...s.label
+                    },
+                    labelLine: {
+                        lineStyle: {
+                            color: isDark ? '#52525b' : '#cbd5e1'
+                        },
+                        ...s.labelLine
+                    },
+                    ...s
+                };
+            }
+            return s;
+        });
     }
 
     // Reassemble
@@ -183,6 +222,9 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
     const [isFixing, setIsFixing] = useState(false);
     const [localCodeOverride, setLocalCodeOverride] = useState<string | null>(null);
     
+    // Resizable state
+    const [containerHeight, setContainerHeight] = useState<number>(500);
+
     const containerRef = useRef<HTMLDivElement>(null);
     const echartsRef = useRef<any>(null);
     
@@ -248,6 +290,21 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                     } else {
                         setActiveEngine('echarts');
                         setConfig({ option: parsed });
+                        
+                        // Set Initial Height based on config or heuristics
+                        if (parsed.height && typeof parsed.height === 'number') {
+                            setContainerHeight(parsed.height);
+                        } else {
+                            // Heuristic: If multiple pie series (donuts), taller default
+                            const series = parsed.baseOption?.series || parsed.series;
+                            if (Array.isArray(series) && series.length > 1 && series[0].type === 'pie') {
+                                setContainerHeight(650);
+                            } else if (Array.isArray(series) && series.length > 3) {
+                                setContainerHeight(600);
+                            } else {
+                                setContainerHeight(500);
+                            }
+                        }
                     }
                     setError(null);
                 } else {
@@ -270,7 +327,7 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         return enforceResponsiveConfig(config.option, isDark);
     }, [config, isDark]);
 
-    // Force resize on mount and window resize
+    // Force resize on mount, window resize, and CONTAINER RESIZE
     useEffect(() => {
         const handleResize = () => {
             if (echartsRef.current) {
@@ -279,6 +336,7 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         };
         window.addEventListener('resize', handleResize);
         
+        // This observer watches the container div for size changes (including our drag resize)
         const resizeObserver = new ResizeObserver(() => handleResize());
         if (containerRef.current) resizeObserver.observe(containerRef.current);
 
@@ -296,7 +354,6 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                 containerRef.current && 
                 !containerRef.current.contains(event.target as Node)
             ) {
-                // Dispatch hideTip action to ECharts
                 if (echartsRef.current) {
                     const instance = echartsRef.current.getEchartsInstance();
                     instance.dispatchAction({ type: 'hideTip' });
@@ -356,6 +413,30 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         }
     };
 
+    // --- Drag Resize Handler ---
+    const startResize = (e: React.MouseEvent) => {
+        e.preventDefault();
+        const startY = e.clientY;
+        const startHeight = containerHeight;
+        
+        const doDrag = (moveEvent: MouseEvent) => {
+            // Min height 300px, Max height 1200px
+            const newHeight = Math.min(Math.max(300, startHeight + (moveEvent.clientY - startY)), 1200);
+            setContainerHeight(newHeight);
+        };
+        
+        const stopDrag = () => {
+            window.removeEventListener('mousemove', doDrag);
+            window.removeEventListener('mouseup', stopDrag);
+            document.body.style.cursor = 'default';
+        };
+        
+        document.body.style.cursor = 'ns-resize';
+        window.addEventListener('mousemove', doDrag);
+        window.addEventListener('mouseup', stopDrag);
+    };
+
+
     if (error) {
         const isRendering = error === 'Rendering...' || error === 'Fixing chart...';
         return (
@@ -412,7 +493,7 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                     </button>
                 </div>
                 
-                <div className={`w-full bg-white dark:bg-[#121212] overflow-hidden ${isFullscreen ? 'h-screen' : 'h-[500px]'}`}>
+                <div className={`w-full bg-white dark:bg-[#121212] overflow-hidden ${isFullscreen ? 'h-screen' : ''}`} style={!isFullscreen ? { height: containerHeight } : {}}>
                      <iframe 
                         srcDoc={htmlContent}
                         className="w-full h-full border-none"
@@ -420,6 +501,16 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                         title="Custom Chart"
                     />
                 </div>
+
+                 {!isFullscreen && (
+                    <div 
+                        className="h-3 w-full bg-slate-50 dark:bg-white/5 border-t border-gray-100 dark:border-white/5 cursor-ns-resize flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                        onMouseDown={startResize}
+                        title="Drag to resize"
+                    >
+                        <div className="w-8 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                    </div>
+                )}
             </div>
         );
     }
@@ -428,24 +519,25 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         return <div className="h-64 bg-gray-100 dark:bg-white/5 rounded-lg animate-pulse my-6" />;
     }
 
-    const chartHeight = config?.height || 450;
-
     return (
         <div 
-            className="my-6 w-full rounded-xl overflow-hidden relative z-0 border border-gray-200 dark:border-white/5 bg-white dark:bg-[#18181b] shadow-sm"
+            className="my-6 w-full rounded-xl overflow-hidden relative z-0 border border-gray-200 dark:border-white/5 bg-white dark:bg-[#18181b] shadow-sm flex flex-col"
             ref={containerRef}
             onMouseLeave={handleMouseLeave}
+            style={{ transition: 'none' }} // Disable transitions during resize for perf
         >
-            <div className="w-full relative">
+            <div className="w-full relative flex-1">
                 <ReactECharts
                     ref={echartsRef}
                     option={finalOption}
                     theme={isDark && !finalOption.baseOption?.backgroundColor && !finalOption.backgroundColor ? 'dark' : undefined}
-                    style={{ height: chartHeight, width: '100%', minHeight: '300px' }}
+                    style={{ height: containerHeight, width: '100%', minHeight: '300px' }}
                     opts={{ renderer: 'svg' }}
                 />
             </div>
-            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
+
+            {/* Controls Overlay */}
+            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-10">
                 <button 
                     onClick={toggleFullscreen}
                     className="p-2 bg-white/80 dark:bg-black/50 backdrop-blur rounded-lg text-slate-500 hover:text-indigo-500 shadow-sm transition-colors"
@@ -453,6 +545,15 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                 >
                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M13.28 7.78l3.22-3.22v2.69a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-.75-.75h-4.5a.75.75 0 0 0 0 1.5h2.69l-3.22 3.22a.75.75 0 0 0 1.06 1.06zM2 17.25v-4.5a.75.75 0 0 1 1.5 0v2.69l3.22-3.22a.75.75 0 1 1 1.06 1.06l-3.22 3.22h2.69a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1-.75-.75z"/></svg>
                 </button>
+            </div>
+
+            {/* Resize Handle */}
+            <div 
+                className="h-4 w-full bg-slate-50 dark:bg-white/5 border-t border-gray-200 dark:border-white/5 cursor-ns-resize flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/10 transition-colors z-20 flex-shrink-0"
+                onMouseDown={startResize}
+                title="Drag to resize height"
+            >
+                <div className="w-12 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></div>
             </div>
         </div>
     );
