@@ -32,24 +32,24 @@ export const ResponsePaginator: React.FC<ResponsePaginatorProps> = ({ count, act
   };
 
   return (
-    <div className="flex items-center gap-0.5 p-1 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border border-zinc-200/80 dark:border-zinc-700/50 rounded-full shadow-sm shadow-zinc-200/20 dark:shadow-black/20 select-none mr-2">
+    <div className="flex items-center bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border border-zinc-200/60 dark:border-zinc-800/60 rounded-full shadow-sm p-0.5 select-none mr-2 transition-colors hover:border-zinc-300 dark:hover:border-zinc-700 group">
         <motion.button
             onClick={handlePrev}
             disabled={activeIndex === 0}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="w-6 h-6 flex items-center justify-center rounded-full text-zinc-500 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-zinc-500"
+            className="w-6 h-6 flex items-center justify-center rounded-full text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
             aria-label="Previous version"
             title="Previous version"
         >
              <ChevronLeft className="w-3.5 h-3.5" strokeWidth={2.5} />
         </motion.button>
         
-        <div className="flex items-center justify-center min-w-[32px] px-0.5 cursor-default">
-            <span className="text-[11px] font-bold text-zinc-700 dark:text-zinc-200 tabular-nums leading-none">
+        <div className="flex items-center justify-center min-w-[36px] px-1 cursor-default">
+            <span className="text-[11px] font-bold text-zinc-800 dark:text-zinc-100 tabular-nums leading-none">
                 {activeIndex + 1}
             </span>
-            <span className="text-[9px] text-zinc-400 dark:text-zinc-600 mx-0.5 font-semibold">/</span>
+            <span className="text-[10px] text-zinc-400 dark:text-zinc-600 mx-0.5 font-medium">/</span>
             <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-500 tabular-nums leading-none">
                 {count}
             </span>
@@ -60,7 +60,7 @@ export const ResponsePaginator: React.FC<ResponsePaginatorProps> = ({ count, act
             disabled={activeIndex === count - 1}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="w-6 h-6 flex items-center justify-center rounded-full text-zinc-500 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-zinc-500"
+            className="w-6 h-6 flex items-center justify-center rounded-full text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
             aria-label="Next version"
             title="Next version"
         >
