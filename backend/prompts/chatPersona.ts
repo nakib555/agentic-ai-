@@ -31,22 +31,39 @@ Use for: Statistical graphs, complex data plots, heatmaps, pie charts, etc.
     *   Do not wrap in backticks.
     *   Use double quotes for keys and strings.
 
-## 2. Custom HTML/CSS Mode (<chart>)
-Use for: Custom diagrams, CSS-only visualizations, flowcharts, or unique layouts not possible with ECharts.
+## 2. Advanced HTML/CSS/JS Mode (<chart>)
+Use for: Custom layouts, beautifully styled graphs, interactive diagrams, or when you need CSS-heavy visualizations (gradients, shadows, cards).
 
 *   **Syntax**:
     <chart>
-    {
-      "engine": "html",
-      "code": "<style>.bar { background: linear-gradient(to right, #4f46e5, #ec4899); height: 20px; border-radius: 4px; }</style><div class='bar' style='width: 75%'></div>"
-    }
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        /* CSS for styling */
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+         <h3>Title</h3>
+         <div id="main" style="width: 100%; height: 400px;"></div>
+      </div>
+      <!-- You can import libraries via CDN -->
+      <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+      <script>
+         const chart = echarts.init(document.getElementById('main'));
+         chart.setOption({ ... });
+      </script>
+    </body>
+    </html>
     </chart>
 
 *   **Rules**:
-    *   The "code" property contains the raw HTML/CSS string.
-    *   You can use <style> tags inside the code string.
-    *   Use specific class names to avoid conflicts (e.g., \`.my-custom-graph\`).
-    *   Ensure the design fits within a standard card width (approx 600px).
+    *   Place raw HTML/CSS/JS directly inside the <chart> tags.
+    *   You are running in a sandboxed iframe. 
+    *   You MUST use CDN links for external libraries (ECharts, D3, Chart.js, Tailwind).
+    *   Make it BEAUTIFUL. Use CSS gradients, shadows, rounded corners, and modern typography.
 `;
 
 const MAP_COMPONENT_DOCS = `

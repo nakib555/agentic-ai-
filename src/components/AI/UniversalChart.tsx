@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import ReactECharts from 'echarts-for-react';
 
 export type ChartEngine = 'echarts' | 'html';
@@ -96,6 +96,8 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
     const [htmlContent, setHtmlContent] = useState<string | null>(null);
     const [activeEngine, setActiveEngine] = useState<ChartEngine>('echarts');
     const [error, setError] = useState<string | null>(null);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
     
     // Theme state
     const [isDark, setIsDark] = useState(() => {
@@ -124,6 +126,14 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
             const rawContent = code || content;
             if (rawContent) {
                 const trimmedCode = stripMarkdown(rawContent);
+
+                // Heuristic: If it looks like HTML (starts with <), treat as HTML directly
+                if (trimmedCode.trim().startsWith('<')) {
+                     setActiveEngine('html');
+                     setHtmlContent(trimmedCode);
+                     setError(null);
+                     return;
+                }
                 
                 // Parse the JSON option object
                 const parsed = looseJsonParse(trimmedCode);
@@ -154,11 +164,29 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         }
     }, [content, code]);
 
+    const toggleFullscreen = () => {
+        if (!containerRef.current) return;
+        if (!document.fullscreenElement) {
+            containerRef.current.requestFullscreen().then(() => setIsFullscreen(true)).catch(err => {
+                console.error(`Error enabling fullscreen: ${err.message}`);
+            });
+        } else {
+            document.exitFullscreen().then(() => setIsFullscreen(false));
+        }
+    };
+    
+    // Listen for fullscreen change events to update state if exited via Esc key
+    useEffect(() => {
+        const handleFSChange = () => setIsFullscreen(!!document.fullscreenElement);
+        document.addEventListener('fullscreenchange', handleFSChange);
+        return () => document.removeEventListener('fullscreenchange', handleFSChange);
+    }, []);
+
     if (error) {
         return (
             <div className="my-6 p-4 border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 rounded-xl text-sm flex items-center gap-3">
                  <div className="animate-spin w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
-                 <span className="text-slate-500 dark:text-slate-400 font-medium">Generating visualization...</span>
+                 <span className="text-slate-500 dark:text-slate-400 font-medium">{error}</span>
             </div>
         );
     }
@@ -166,20 +194,36 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
     if (activeEngine === 'html') {
         if (!htmlContent) return <div className="h-64 bg-gray-100 dark:bg-white/5 rounded-lg animate-pulse my-6" />;
         return (
-            <div className="my-6 border border-gray-200 dark:border-white/10 rounded-2xl overflow-hidden bg-white dark:bg-[#121212] shadow-sm relative z-0 group transition-colors duration-300">
-                <div className="px-4 py-2 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/5 backdrop-blur-sm">
+            <div 
+                ref={containerRef}
+                className={`
+                    my-6 border border-gray-200 dark:border-white/10 rounded-2xl overflow-hidden bg-white dark:bg-[#121212] shadow-sm relative z-0 group transition-all duration-300
+                    ${isFullscreen ? 'bg-white dark:bg-black p-0 border-0 rounded-none' : ''}
+                `}
+            >
+                <div className={`px-4 py-2 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/5 backdrop-blur-sm ${isFullscreen ? 'hidden' : ''}`}>
                     <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.6)]"></span>
                         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                            Custom Visual
+                            HTML Visualization
                         </span>
                     </div>
+                    <button 
+                        onClick={toggleFullscreen}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-white/10 transition-colors"
+                        title="Fullscreen"
+                    >
+                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M13.28 7.78l3.22-3.22v2.69a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-.75-.75h-4.5a.75.75 0 0 0 0 1.5h2.69l-3.22 3.22a.75.75 0 0 0 1.06 1.06zM2 17.25v-4.5a.75.75 0 0 1 1.5 0v2.69l3.22-3.22a.75.75 0 1 1 1.06 1.06l-3.22 3.22h2.69a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1-.75-.75z"/></svg>
+                    </button>
                 </div>
-                <div className="p-6 bg-white dark:bg-[#121212] overflow-x-auto">
-                    {/* Render HTML content safely. Ensure the AI scopes CSS or uses standard classes. */}
-                    <div 
-                        className="prose dark:prose-invert max-w-none w-full"
-                        dangerouslySetInnerHTML={{ __html: htmlContent }} 
+                
+                {/* Iframe Container */}
+                <div className={`w-full bg-white dark:bg-[#121212] overflow-hidden ${isFullscreen ? 'h-screen' : 'h-[500px]'}`}>
+                     <iframe 
+                        srcDoc={htmlContent}
+                        className="w-full h-full border-none"
+                        sandbox="allow-scripts allow-forms allow-popups allow-same-origin allow-modals" 
+                        title="Custom Chart"
                     />
                 </div>
             </div>
