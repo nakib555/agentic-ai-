@@ -9,10 +9,40 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import Plotly from 'plotly.js-dist-min';
 import createPlotlyComponent from 'react-plotly.js/factory';
 import * as d3 from 'd3';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+  RadialLinearScale,
+} from 'chart.js';
+import { Chart } from 'react-chartjs-2';
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+  RadialLinearScale
+);
 
 const Plot = createPlotlyComponent(Plotly);
 
-export type ChartEngine = 'plotly' | 'd3' | 'hybrid';
+export type ChartEngine = 'plotly' | 'd3' | 'hybrid' | 'chart.js';
 
 type UniversalChartProps = {
     content?: string; // Legacy support for markdown parsing
@@ -23,10 +53,11 @@ type UniversalChartProps = {
 interface ChartConfig {
     engine: ChartEngine;
     data?: any;
-    layout?: any;
+    layout?: any; // Used as 'options' for Chart.js
     script?: string;
     width?: number;
     height?: number;
+    type?: string; // For Chart.js chart type
 }
 
 // --- Modern Aesthetics Configuration ---
@@ -124,7 +155,7 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
     // Effect to parse configuration
     useEffect(() => {
         try {
-            // Priority 1: New XML-tag based flow (<plotly>, <d3>, <hybrid>)
+            // Priority 1: New XML-tag based flow (<plotly>, <d3>, <hybrid>, <chart.js>)
             if (engine && code) {
                 const newConfig: ChartConfig = { engine };
                 // Strip markdown blocks first for all engines
@@ -133,6 +164,16 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                 if (engine === 'd3') {
                     // For D3, the content is raw JavaScript
                     newConfig.script = trimmedCode;
+                } else if (engine === 'chart.js') {
+                    // For Chart.js, content is usually a config object with type, data, options
+                    if (trimmedCode) {
+                        let jsonStr = extractJson(trimmedCode);
+                        const parsedData = looseJsonParse(jsonStr);
+                        
+                        newConfig.type = parsedData.type || 'bar';
+                        newConfig.data = parsedData.data;
+                        newConfig.layout = parsedData.options; // Map options to layout property for consistency
+                    }
                 } else {
                     // For Plotly or Hybrid, the content is JSON-like
                     if (trimmedCode) {
@@ -150,7 +191,7 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                 }
                 setConfig(newConfig);
                 setError(null);
-                setPlotKey(p => p + 1); // Force re-render of Plotly
+                setPlotKey(p => p + 1); // Force re-render of Plotly/ChartJS
             } 
             // Priority 2: Legacy markdown-based parsing logic (@engine: syntax)
             else if (content) {
@@ -172,7 +213,7 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         if (!wrapperRef.current) return;
 
         const resizeObserver = new ResizeObserver(() => {
-            // Increment revision to tell Plotly to update/resize
+            // Increment revision to tell Plotly/ChartJS to update/resize
             setRevision(prev => prev + 1);
         });
 
@@ -186,8 +227,8 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         const container = containerRef.current;
         if (!config || !container) return;
         
-        // Pure Plotly is handled by the <Plot /> component below
-        if (config.engine === 'plotly') return;
+        // Pure Plotly and Chart.js are handled by their respective components
+        if (config.engine === 'plotly' || config.engine === 'chart.js') return;
 
         const executeD3 = async () => {
             try {
@@ -288,6 +329,48 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         };
     }, [isDark]);
 
+    // --- Chart.js Options Generation ---
+    const chartJsOptions = useMemo(() => {
+        if (!config || config.engine !== 'chart.js') return {};
+        
+        const textColor = isDark ? '#94a3b8' : '#475569';
+        const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+        
+        // Base options
+        const baseOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            color: textColor,
+            scales: {
+                x: {
+                    grid: { color: gridColor },
+                    ticks: { color: textColor }
+                },
+                y: {
+                    grid: { color: gridColor },
+                    ticks: { color: textColor }
+                }
+            },
+            plugins: {
+                legend: {
+                    labels: { color: textColor }
+                },
+                title: {
+                    color: isDark ? '#f1f5f9' : '#1e293b'
+                }
+            },
+            // Merge with user options (config.layout maps to options)
+            ...config.layout
+        };
+
+        // Handle specific chart types that don't use standard scales (like pie/doughnut)
+        if (['pie', 'doughnut', 'polarArea'].includes(config.type || '')) {
+             delete baseOptions.scales;
+        }
+
+        return baseOptions;
+    }, [config, isDark]);
+
     if (error) {
         return (
             <div className="my-4 p-4 border border-red-200 bg-red-50 dark:bg-red-900/10 rounded-lg text-sm text-red-600 dark:text-red-400 font-mono overflow-auto">
@@ -317,7 +400,7 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                 <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]"></span>
                     <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                        {config.engine === 'hybrid' ? 'Interactive Hybrid' : config.engine === 'd3' ? 'Data Visualization' : 'Analysis'}
+                        {config.engine === 'hybrid' ? 'Interactive Hybrid' : config.engine === 'd3' ? 'Data Visualization' : config.engine === 'chart.js' ? 'Chart.js' : 'Analysis'}
                     </span>
                 </div>
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity">
@@ -354,6 +437,18 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                             modeBarButtonsToRemove: ['lasso2d', 'select2d', 'toggleSpikelines']
                         }}
                     />
+                )}
+                
+                {/* Chart.js Render Layer */}
+                {config.engine === 'chart.js' && (
+                    <div style={{ position: 'relative', height: '100%', width: '100%' }}>
+                         <Chart 
+                            key={`chartjs-${plotKey}-${revision}`}
+                            type={config.type as any || 'bar'}
+                            data={config.data || { labels: [], datasets: [] }}
+                            options={chartJsOptions}
+                         />
+                    </div>
                 )}
 
                 {/* D3 Render Layer (Overlay or Standalone) */}

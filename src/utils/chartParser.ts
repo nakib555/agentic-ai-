@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type ChartEngine = 'plotly' | 'd3' | 'hybrid';
+export type ChartEngine = 'plotly' | 'd3' | 'hybrid' | 'chart.js';
 
 export interface ChartConfig {
     engine: ChartEngine;
@@ -58,7 +58,7 @@ export const parseChartMarkdown = (content: string): ChartConfig => {
         if (trimmed.startsWith('@engine:')) {
             flushBuffer();
             const engine = trimmed.replace('@engine:', '').trim().toLowerCase();
-            if (['plotly', 'd3', 'hybrid'].includes(engine)) {
+            if (['plotly', 'd3', 'hybrid', 'chart.js'].includes(engine)) {
                 config.engine = engine as ChartEngine;
             }
             currentSection = null;
