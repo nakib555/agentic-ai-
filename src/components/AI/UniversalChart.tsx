@@ -25,37 +25,11 @@ interface EChartsConfig {
 const stripMarkdown = (code: string): string => {
     let clean = code.trim();
     // Remove wrapping ```language ... ``` blocks
-    // Check for start with ```
     if (clean.startsWith('```')) {
         // Remove first line (```json etc) and last line (```)
         clean = clean.replace(/^```[a-zA-Z0-9]*\s*/, '').replace(/\s*```$/, '').trim();
     }
     return clean;
-};
-
-// Helper to find the JSON/JS Object substring within a larger string
-const extractJsonCandidate = (str: string): string => {
-    const firstBrace = str.indexOf('{');
-    const firstBracket = str.indexOf('[');
-    
-    let start = -1;
-    if (firstBrace !== -1 && firstBracket !== -1) {
-        start = Math.min(firstBrace, firstBracket);
-    } else if (firstBrace !== -1) {
-        start = firstBrace;
-    } else {
-        start = firstBracket;
-    }
-
-    if (start === -1) return str;
-
-    const lastBrace = str.lastIndexOf('}');
-    const lastBracket = str.lastIndexOf(']');
-    const end = Math.max(lastBrace, lastBracket);
-
-    if (end === -1 || end < start) return str;
-
-    return str.substring(start, end + 1);
 };
 
 // Robust parser that handles trailing commas, comments, and unquoted keys
@@ -66,29 +40,26 @@ const looseJsonParse = (str: string) => {
     } catch (e) { /* continue */ }
     
     // 2. Extract potential JSON part (removes "Here is the data:" prefixes)
-    const candidate = extractJsonCandidate(str);
+    const firstBrace = str.indexOf('{');
+    const lastBrace = str.lastIndexOf('}');
+    if (firstBrace === -1 || lastBrace === -1) return str;
+    
+    const candidate = str.substring(firstBrace, lastBrace + 1);
     
     // 3. Pre-process for JS Eval to fix common LLM JSON errors
     let jsFriendly = candidate
-        // Replace Python booleans/None if they look like values
         .replace(/:\s*True\b/g, ': true')
         .replace(/:\s*False\b/g, ': false')
         .replace(/:\s*None\b/g, ': null')
-        // Fix double commas which cause syntax errors in JS objects (e.g. [1,,2] is sparse, but ,, in obj is bad)
-        .replace(/,,\s*/g, ',')
-        // Fix: Remove keys that are missing values before a comma, closing brace, or closing bracket
-        // e.g. "data":, OR "borderRadius": } OR "items": ]
-        .replace(/"[\w\d_]+"\s*:\s*(?=[,}\]])/g, '')
-        // Fix: Remove trailing commas before closing braces or brackets (e.g. , } or , ])
-        .replace(/,\s*([\]}])/g, '$1');
+        .replace(/,,\s*/g, ',') // Fix double commas
+        .replace(/"[\w\d_]+"\s*:\s*(?=[,}\]])/g, '') // Remove empty keys
+        .replace(/,\s*([\]}])/g, '$1'); // Remove trailing commas
 
-    // 4. Try JS Eval on candidate (Handles trailing commas, unquoted keys, comments natively in JS)
+    // 4. Try JS Eval on candidate
     try {
          // eslint-disable-next-line no-new-func
          return new Function(`return ${jsFriendly}`)();
     } catch (evalErr) {
-        // 5. If JS Eval failed, it might be due to security or strict syntax issues.
-        // We throw here, but the calling effect catches it to set the error state.
         throw evalErr;
     }
 };
@@ -103,27 +74,25 @@ const enforceResponsiveConfig = (option: any, isDark: boolean) => {
     const responsiveOption = { ...option };
 
     // 1. Enforce Grid Containment
-    // We override AI-generated static margins with fixed padding values.
-    // This allows the chart to fill the container while 'containLabel: true' prevents clipping.
+    // We override AI-generated static margins with fixed percentages/padding.
+    // 'containLabel: true' is the magic property that prevents label clipping.
     responsiveOption.grid = {
-        ...option.grid, // Keep specific settings like 'show: true' or borders
-        
+        ...option.grid,
         containLabel: true,
-        left: 20,   // Fixed pixel padding
-        right: 20,  // Fixed pixel padding
-        bottom: 20, // Fixed pixel padding
-        top: option.title ? 60 : 35, // Adjust top based on title
-        
-        // Force auto dimensions to override any fixed pixels the AI might have guessed
+        left: '2%',
+        right: '2%',
+        bottom: '5%',
+        top: option.title ? 60 : 40, 
+        // Force auto dimensions
         width: 'auto',
         height: 'auto'
     };
 
-    // 2. Confine Tooltips
-    // Prevents tooltips from causing horizontal scrollbars or getting cut off
+    // 2. Confine Tooltips to Container
+    // Prevents tooltips from causing horizontal scrollbars or getting cut off on mobile.
     responsiveOption.tooltip = {
         confine: true,
-        appendToBody: true, // Use portal to ensure z-index correctness
+        appendToBody: true, // Portal to body to avoid z-index issues
         trigger: 'axis',
         backgroundColor: isDark ? 'rgba(24, 24, 27, 0.9)' : 'rgba(255, 255, 255, 0.9)',
         borderColor: isDark ? '#3f3f46' : '#e2e8f0',
@@ -133,21 +102,20 @@ const enforceResponsiveConfig = (option: any, isDark: boolean) => {
         ...option.tooltip
     };
 
-    // 3. Fix Axis Overlap
+    // 3. Fix Axis Overlap & Labeling
     const fixAxis = (axis: any): any => {
         if (!axis) return axis;
-        // If array of axes
         if (Array.isArray(axis)) return axis.map(fixAxis);
         
         return {
             ...axis,
             nameLocation: 'middle',
-            nameGap: 30, // Move title away from numbers
+            nameGap: 30, 
             axisLabel: {
-                hideOverlap: true, // Hide labels if they crash into each other
+                hideOverlap: true, // Critical: Hide labels if they crash into each other
                 interval: 'auto',
-                overflow: 'truncate', // Truncate very long labels
-                width: 80, // Max width for labels on mobile
+                overflow: 'truncate',
+                width: 80, // Limit width on mobile
                 color: isDark ? '#a1a1aa' : '#64748b',
                 ...axis.axisLabel
             },
@@ -158,9 +126,7 @@ const enforceResponsiveConfig = (option: any, isDark: boolean) => {
                 ...axis.splitLine
             },
             axisLine: {
-                lineStyle: {
-                    color: isDark ? '#52525b' : '#cbd5e1'
-                },
+                lineStyle: { color: isDark ? '#52525b' : '#cbd5e1' },
                 ...axis.axisLine
             }
         };
@@ -172,15 +138,15 @@ const enforceResponsiveConfig = (option: any, isDark: boolean) => {
     // 4. Responsive Legend
     if (responsiveOption.legend) {
         responsiveOption.legend = {
-            type: 'scroll', // Scrollable legend for small screens
+            type: 'scroll', // Scrollable legend is safer for mobile
             bottom: 0,
             padding: [5, 10],
             textStyle: { color: isDark ? '#a1a1aa' : '#64748b' },
-            // Override potentially bad AI defaults
+            itemGap: 15,
             ...responsiveOption.legend
         };
         
-        // If dataZoom is present, move legend to top or adjust bottom to prevent overlap
+        // Prevent legend from overlapping dataZoom
         if (responsiveOption.dataZoom) {
             responsiveOption.legend.top = option.title ? 25 : 5;
             delete responsiveOption.legend.bottom;
@@ -189,8 +155,7 @@ const enforceResponsiveConfig = (option: any, isDark: boolean) => {
     
     // 5. Adjust for DataZoom
     if (responsiveOption.dataZoom) {
-        // Ensure dataZoom doesn't overlap chart content
-        responsiveOption.grid.bottom = 40; 
+        responsiveOption.grid.bottom = 45; 
     }
 
     // 6. Default Background
@@ -198,7 +163,7 @@ const enforceResponsiveConfig = (option: any, isDark: boolean) => {
         responsiveOption.backgroundColor = 'transparent';
     }
     
-    // 7. Text Styles
+    // 7. Title Styles
     if (option.title) {
         responsiveOption.title = {
             ...option.title,
@@ -221,12 +186,10 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
     const [error, setError] = useState<string | null>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isFixing, setIsFixing] = useState(false);
-    
-    // New local state to handle optimistic updates during "Fix Chart"
     const [localCodeOverride, setLocalCodeOverride] = useState<string | null>(null);
     
     const containerRef = useRef<HTMLDivElement>(null);
-    const echartsRef = useRef<any>(null); // Ref for ECharts instance
+    const echartsRef = useRef<any>(null);
     
     // Theme state
     const [isDark, setIsDark] = useState(() => {
@@ -236,7 +199,6 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         return false;
     });
 
-    // Listen for theme changes
     useEffect(() => {
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
@@ -249,19 +211,16 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         return () => observer.disconnect();
     }, []);
 
-    // Effect to parse configuration
+    // Parse configuration
     useEffect(() => {
         try {
-            // Prefer local override (optimistic fix) over props
             const rawContent = localCodeOverride || code || content;
 
             if (rawContent) {
-                // If we are actively fixing via API, wait. But if we have a localOverride, use it immediately.
                 if (isFixing && !localCodeOverride) return;
 
                 const trimmedCode = stripMarkdown(rawContent);
 
-                // Inject a base style reset to ensure the iframe looks clean by default
                 const baseResetStyle = `
                     <style>
                         body { margin: 0; padding: 0; font-family: 'Inter', system-ui, sans-serif; box-sizing: border-box; background: transparent; }
@@ -272,43 +231,26 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                     </style>
                 `;
 
-                // Heuristic: If it looks like HTML (starts with <), treat as HTML directly
                 if (trimmedCode.trim().startsWith('<')) {
                      setActiveEngine('html');
-                     // Append reset style to head if head exists, otherwise prepend to content
                      const cleanHtml = trimmedCode.includes('<head>') 
                         ? trimmedCode.replace('<head>', `<head>${baseResetStyle}`)
                         : `${baseResetStyle}${trimmedCode}`;
-
                      setHtmlContent(cleanHtml);
                      setError(null);
                      return;
                 }
                 
-                // Parse the JSON option object
                 const parsed = looseJsonParse(trimmedCode);
                 
                 if (parsed && typeof parsed === 'object') {
-                    // Check if explicit engine is defined
                     if (parsed.engine === 'html' || parsed.type === 'html') {
                         setActiveEngine('html');
-                        
                         let combinedContent = parsed.code || parsed.html || '';
-                        
-                        // Inject separated CSS if provided
-                        if (parsed.css) {
-                            combinedContent = `<style>${parsed.css}</style>\n${combinedContent}`;
-                        }
-                        
-                        // Inject separated JS if provided
-                        if (parsed.javascript || parsed.js) {
-                            combinedContent = `${combinedContent}\n<script>${parsed.javascript || parsed.js}</script>`;
-                        }
-
-                        // Apply base reset
+                        if (parsed.css) combinedContent = `<style>${parsed.css}</style>\n${combinedContent}`;
+                        if (parsed.javascript || parsed.js) combinedContent = `${combinedContent}\n<script>${parsed.javascript || parsed.js}</script>`;
                         setHtmlContent(`${baseResetStyle}${combinedContent}`);
                     } else {
-                        // Default to ECharts
                         setActiveEngine('echarts');
                         setConfig({ option: parsed });
                     }
@@ -318,7 +260,6 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                 }
             } 
         } catch (e: any) {
-            // Logic to handle streaming vs error state
             if (isStreaming) {
                  setError(`Rendering...`); 
             } else {
@@ -328,30 +269,23 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         }
     }, [content, code, isFixing, localCodeOverride, isStreaming]);
 
-    // Apply responsive fixes whenever config or theme changes
+    // Compute final options with responsive overrides
     const finalOption = useMemo(() => {
         if (!config?.option) return null;
         return enforceResponsiveConfig(config.option, isDark);
     }, [config, isDark]);
 
-    // Force resize when container changes size or on mount
+    // Force resize on mount and window resize
     useEffect(() => {
         const handleResize = () => {
             if (echartsRef.current) {
                 echartsRef.current.getEchartsInstance().resize();
             }
         };
-
         window.addEventListener('resize', handleResize);
         
-        // Also observe container resize for more robustness
-        const resizeObserver = new ResizeObserver(() => {
-            handleResize();
-        });
-        
-        if (containerRef.current) {
-            resizeObserver.observe(containerRef.current);
-        }
+        const resizeObserver = new ResizeObserver(() => handleResize());
+        if (containerRef.current) resizeObserver.observe(containerRef.current);
 
         return () => {
             window.removeEventListener('resize', handleResize);
@@ -362,15 +296,12 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
     const toggleFullscreen = () => {
         if (!containerRef.current) return;
         if (!document.fullscreenElement) {
-            containerRef.current.requestFullscreen().then(() => setIsFullscreen(true)).catch(err => {
-                console.error(`Error enabling fullscreen: ${err.message}`);
-            });
+            containerRef.current.requestFullscreen().then(() => setIsFullscreen(true)).catch(console.error);
         } else {
             document.exitFullscreen().then(() => setIsFullscreen(false));
         }
     };
     
-    // Listen for fullscreen change events to update state if exited via Esc key
     useEffect(() => {
         const handleFSChange = () => setIsFullscreen(!!document.fullscreenElement);
         document.addEventListener('fullscreenchange', handleFSChange);
@@ -379,24 +310,18 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
 
     const handleFix = async () => {
         if (!onFixCode) return;
-        
         setIsFixing(true);
-        // Clear error momentarily to show loading state more cleanly
         setError('Fixing chart...'); 
-        
         try {
             const raw = code || content || '';
             const fixedCode = await onFixCode(raw);
-            
             if (fixedCode) {
-                // Optimistic update: Render the new code immediately while the parent handles persistence
                 setLocalCodeOverride(fixedCode);
                 setError(null); 
             } else {
                 setError("Fix failed. Please try again.");
             }
         } catch (e) {
-            console.error("Chart fix failed:", e);
             setError("Failed to fix chart code.");
         } finally {
             setIsFixing(false);
@@ -426,10 +351,6 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                         disabled={isFixing}
                         className="px-2 py-1 bg-white dark:bg-white/10 hover:bg-slate-50 dark:hover:bg-white/20 border border-slate-200 dark:border-white/10 rounded font-semibold text-slate-700 dark:text-slate-200 shadow-sm transition-all flex items-center gap-1.5 whitespace-nowrap"
                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 text-indigo-500">
-                           <path d="m5.433 13.917 1.262-3.155A4 4 0 0 1 7.58 9.42l6.92-6.918a2.121 2.121 0 0 1 3 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 0 1-.65-.65Z" />
-                           <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0 0 10 3H4.75A2.75 2.75 0 0 0 2 5.75v9.5A2.75 2.75 0 0 0 4.75 18h9.5A2.75 2.75 0 0 0 17 15.25V10a.75.75 0 0 0-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5Z" />
-                        </svg>
                         Fix
                      </button>
                  )}
@@ -463,7 +384,6 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                     </button>
                 </div>
                 
-                {/* Iframe Container */}
                 <div className={`w-full bg-white dark:bg-[#121212] overflow-hidden ${isFullscreen ? 'h-screen' : 'h-[500px]'}`}>
                      <iframe 
                         srcDoc={htmlContent}
@@ -476,12 +396,10 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         );
     }
 
-    // Default ECharts Render
     if (!finalOption) {
         return <div className="h-64 bg-gray-100 dark:bg-white/5 rounded-lg animate-pulse my-6" />;
     }
 
-    // Use a minimum height of 400px or the model-provided height (parsed from config outside options)
     const chartHeight = config?.height || 450;
 
     return (
@@ -489,7 +407,6 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
             className="my-6 w-full rounded-xl overflow-hidden relative z-0 border border-gray-200 dark:border-white/5 bg-white dark:bg-[#18181b] shadow-sm"
             ref={containerRef}
         >
-            {/* Chart Canvas - Full Control */}
             <div className="w-full relative">
                 <ReactECharts
                     ref={echartsRef}
@@ -498,6 +415,16 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                     style={{ height: chartHeight, width: '100%', minHeight: '300px' }}
                     opts={{ renderer: 'svg' }}
                 />
+            </div>
+            {/* Overlay for fullscreen button when hovering chart */}
+            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button 
+                    onClick={toggleFullscreen}
+                    className="p-2 bg-white/80 dark:bg-black/50 backdrop-blur rounded-lg text-slate-500 hover:text-indigo-500 shadow-sm"
+                    title="Fullscreen"
+                >
+                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M13.28 7.78l3.22-3.22v2.69a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-.75-.75h-4.5a.75.75 0 0 0 0 1.5h2.69l-3.22 3.22a.75.75 0 0 0 1.06 1.06zM2 17.25v-4.5a.75.75 0 0 1 1.5 0v2.69l3.22-3.22a.75.75 0 1 1 1.06 1.06l-3.22 3.22h2.69a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1-.75-.75z"/></svg>
+                </button>
             </div>
         </div>
     );
