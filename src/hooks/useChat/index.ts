@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -417,14 +418,17 @@ export const useChat = (
         }
     }, [isLoading, chatHistory, currentChatId]);
 
-    const unifiedHistory = chatHistory.map(c => c.id === currentChatId ? (chatHistory.find(ch => ch.id === currentChatId) || c) : c);
+    // Stable wrapper for updateChatModel
+    const updateChatModel = useCallback((id: string, m: string) => {
+        updateChatProperty(id, { model: m });
+    }, [updateChatProperty]);
 
     return { 
-        chatHistory: unifiedHistory, 
+        chatHistory,
         currentChatId, 
         isHistoryLoading,
         updateChatTitle, updateChatProperty, loadChat: loadChatHistory, deleteChat: deleteChatHistory, clearAllChats: clearAllChatsHistory, importChat, startNewChat: startNewChatHistory,
-        messages: unifiedHistory.find(c => c.id === currentChatId)?.messages || [], 
+        messages: chatHistory.find(c => c.id === currentChatId)?.messages || [], 
         sendMessage, 
         isLoading, 
         cancelGeneration, 
@@ -433,7 +437,7 @@ export const useChat = (
         editMessage, 
         navigateBranch, 
         setResponseIndex, 
-        updateChatModel: (id: string, m: string) => updateChatProperty(id, { model: m }), 
+        updateChatModel,
         updateChatSettings: (id: string, s: any) => updateChatProperty(id, s)
     };
 };

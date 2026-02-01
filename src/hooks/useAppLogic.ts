@@ -169,14 +169,16 @@ export const useAppLogic = () => {
     const handleSetTtsVoice = createSettingUpdater(settings.setTtsVoice, 'ttsVoice');
     
     const handleModelChange = useCallback(async (modelId: string) => {
+        // 1. Update Global State (for new chats)
         settings.setActiveModel(modelId);
         
-        // Instant update: Update the active chat's model immediately in the cache
+        // 2. Instant update: Update the active chat's model immediately in the cache
         // This ensures the current session uses the new model without needing a reload/new chat
         if (chat.currentChatId) {
             chat.updateChatModel(chat.currentChatId, modelId);
         }
 
+        // 3. Persist to backend
         try {
             await updateSettings({ activeModel: modelId });
         } catch (e) { console.error(e); }
@@ -226,6 +228,8 @@ export const useAppLogic = () => {
                 if (chat.currentChatId) {
                     chat.updateChatModel(chat.currentChatId, firstModel);
                 }
+            } else {
+                toast.warning(`No models found for ${newProvider}. Please check your API key.`);
             }
             
             toast.success(`Switched provider to ${newProvider === 'gemini' ? 'Google Gemini' : newProvider === 'openrouter' ? 'OpenRouter' : 'Ollama'}.`);
