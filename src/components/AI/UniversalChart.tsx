@@ -270,7 +270,7 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
     }
 
     return (
-        <div className="w-full my-6">
+        <div className="my-6 border border-border-default rounded-2xl overflow-hidden bg-layer-1 shadow-sm">
             <ReactECharts
                 option={config.option}
                 theme={isDark ? 'dark' : undefined}
