@@ -284,7 +284,7 @@ export const apiHandler = async (req: any, res: any) => {
     const globalSettings: any = await readData(SETTINGS_FILE_PATH);
     const defaultModel = globalSettings.activeModel || 'gemini-2.5-flash';
 
-    const isSuggestionTask = ['title', 'suggestions', 'enhance', 'memory_suggest', 'memory_consolidate', 'run_piston'].includes(task);
+    const isSuggestionTask = ['title', 'suggestions', 'enhance', 'memory_suggest', 'memory_consolidate', 'run_piston', 'fix_code'].includes(task);
     const BYPASS_TASKS = ['cancel', 'debug_data_tree', 'feedback', 'count_tokens', 'tool_exec', 'tool_response'];
     
     // Validation: Require key for paid providers, skip for Ollama/bypass
@@ -585,6 +585,37 @@ Output ONLY the raw text of the improved prompt.
                     res.write(text);
                 } catch (e) { res.write(input); }
                 res.end();
+                break;
+            }
+            case 'fix_code': {
+                const { code, error, context, model } = req.body;
+                
+                const fixPrompt = `
+You are an expert code debugger specializing in ECharts and data visualization.
+The user provided the following ECharts code which failed to parse or render.
+
+INVALID CODE:
+${code}
+
+ERROR DETAILS (Optional):
+${error || "Syntax or Logic Error"}
+
+CONTEXT (Optional):
+${context || ""}
+
+TASK:
+1. Fix the syntax errors (e.g. trailing commas, missing braces, unquoted keys).
+2. Ensure it is valid JSON/JavaScript object structure.
+3. If it's ECharts, ensure the "option" object is correctly structured.
+4. Output ONLY the fixed XML block: <echarts>{ ... }</echarts>
+5. Do NOT output markdown ticks.
+`;
+                try {
+                    const result = await generateProviderCompletion(activeProviderName, chatApiKey, model || defaultModel, fixPrompt);
+                    res.status(200).json({ fixedCode: result });
+                } catch (e) {
+                    res.status(500).json({ error: parseApiError(e) });
+                }
                 break;
             }
             case 'memory_suggest': {

@@ -13,6 +13,7 @@ type UniversalChartProps = {
     content?: string; // Legacy support for markdown parsing or raw code
     engine?: string;
     code?: string; // Raw content from XML tag
+    onFixCode?: (code: string) => Promise<string | undefined>;
 };
 
 interface EChartsConfig {
@@ -104,15 +105,20 @@ const enforceResponsiveConfig = (option: any, isDark: boolean) => {
     // This ensures labels (axis text) are calculated as part of the chart size, preventing crop.
     responsiveOption.grid = {
         containLabel: true,
-        left: '2%', // Minimal padding
-        right: '4%',
-        bottom: '3%',
-        top: option.title ? 40 : 10, // Adjust top based on title presence
-        ...option.grid // Allow model to override specific spacing if it knows what it's doing
+        left: 0,  // Maximize width by removing arbitrary padding
+        right: 10, // Small buffer for max values
+        bottom: 0,
+        top: option.title ? 50 : 30, // Adjust top based on title presence
+        ...option.grid 
     };
     
-    // Force containLabel to be true regardless of override
-    if (responsiveOption.grid) responsiveOption.grid.containLabel = true;
+    // CRITICAL FIX: Remove fixed width/height from grid if present to prevent shrinking
+    if (responsiveOption.grid) {
+        delete responsiveOption.grid.width;
+        delete responsiveOption.grid.height;
+        // Force containLabel to be true regardless of override
+        responsiveOption.grid.containLabel = true;
+    }
 
     // 2. Confine Tooltips
     // Prevents tooltips from causing horizontal scrollbars or getting cut off
@@ -120,6 +126,11 @@ const enforceResponsiveConfig = (option: any, isDark: boolean) => {
         confine: true,
         appendToBody: true, // Use portal to ensure z-index correctness
         trigger: 'axis',
+        backgroundColor: isDark ? 'rgba(24, 24, 27, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+        borderColor: isDark ? '#3f3f46' : '#e2e8f0',
+        textStyle: { color: isDark ? '#f4f4f5' : '#1e293b' },
+        padding: [10, 15],
+        extraCssText: 'box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); border-radius: 8px; backdrop-filter: blur(8px);',
         ...option.tooltip
     };
 
@@ -140,6 +151,18 @@ const enforceResponsiveConfig = (option: any, isDark: boolean) => {
                 width: 80, // Max width for labels on mobile
                 color: isDark ? '#a1a1aa' : '#64748b',
                 ...axis.axisLabel
+            },
+            splitLine: {
+                lineStyle: {
+                    color: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'
+                },
+                ...axis.splitLine
+            },
+            axisLine: {
+                lineStyle: {
+                    color: isDark ? '#52525b' : '#cbd5e1'
+                },
+                ...axis.axisLine
             }
         };
     };
@@ -156,23 +179,50 @@ const enforceResponsiveConfig = (option: any, isDark: boolean) => {
             textStyle: { color: isDark ? '#a1a1aa' : '#64748b' },
             ...responsiveOption.legend
         };
+        
+        // If dataZoom is present, move legend to top or adjust bottom
+        if (responsiveOption.dataZoom) {
+            responsiveOption.legend.top = option.title ? 25 : 5;
+            delete responsiveOption.legend.bottom;
+        }
+    }
+    
+    // 5. Adjust for DataZoom
+    if (responsiveOption.dataZoom) {
+        // Ensure dataZoom doesn't overlap chart content
+        responsiveOption.grid.bottom = 40; 
     }
 
-    // 5. Default Background
+    // 6. Default Background
     if (!responsiveOption.backgroundColor) {
         responsiveOption.backgroundColor = 'transparent';
+    }
+    
+    // 7. Text Styles
+    if (option.title) {
+        responsiveOption.title = {
+            ...option.title,
+            textStyle: {
+                color: isDark ? '#f4f4f5' : '#1e293b',
+                fontWeight: 600,
+                fontSize: 14,
+                ...option.title.textStyle
+            }
+        };
     }
 
     return responsiveOption;
 };
 
-export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ content, code }) => {
+export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ content, code, onFixCode }) => {
     const [config, setConfig] = useState<EChartsConfig | null>(null);
     const [htmlContent, setHtmlContent] = useState<string | null>(null);
     const [activeEngine, setActiveEngine] = useState<ChartEngine>('echarts');
     const [error, setError] = useState<string | null>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isFixing, setIsFixing] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
+    const echartsRef = useRef<any>(null); // Ref for ECharts instance
     
     // Theme state
     const [isDark, setIsDark] = useState(() => {
@@ -200,6 +250,9 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         try {
             const rawContent = code || content;
             if (rawContent) {
+                // If we are actively fixing, ignore updates until complete (handled by parent prop change)
+                if (isFixing) return;
+
                 const trimmedCode = stripMarkdown(rawContent);
 
                 // Inject a base style reset to ensure the iframe looks clean by default
@@ -267,13 +320,38 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
             }
             setError(`Rendering...`); 
         }
-    }, [content, code]);
+    }, [content, code, isFixing]);
 
     // Apply responsive fixes whenever config or theme changes
     const finalOption = useMemo(() => {
         if (!config?.option) return null;
         return enforceResponsiveConfig(config.option, isDark);
     }, [config, isDark]);
+
+    // Force resize when container changes size or on mount
+    useEffect(() => {
+        const handleResize = () => {
+            if (echartsRef.current) {
+                echartsRef.current.getEchartsInstance().resize();
+            }
+        };
+
+        window.addEventListener('resize', handleResize);
+        
+        // Also observe container resize for more robustness
+        const resizeObserver = new ResizeObserver(() => {
+            handleResize();
+        });
+        
+        if (containerRef.current) {
+            resizeObserver.observe(containerRef.current);
+        }
+
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            resizeObserver.disconnect();
+        };
+    }, []);
 
     const toggleFullscreen = () => {
         if (!containerRef.current) return;
@@ -293,11 +371,61 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         return () => document.removeEventListener('fullscreenchange', handleFSChange);
     }, []);
 
+    const handleFix = async () => {
+        if (!onFixCode) return;
+        
+        setIsFixing(true);
+        // Clear error momentarily to show loading state more cleanly
+        setError('Fixing chart...'); 
+        
+        try {
+            const raw = code || content || '';
+            const fixedCode = await onFixCode(raw);
+            
+            if (fixedCode) {
+                // If fix successful, the prop update (via parent) will trigger useEffect
+                // We just unset isFixing in the effect when props change, or here if prop update is fast
+            } else {
+                setError("Fix failed. Please try again.");
+            }
+        } catch (e) {
+            console.error("Chart fix failed:", e);
+            setError("Failed to fix chart code.");
+        } finally {
+            setIsFixing(false);
+        }
+    };
+
     if (error) {
+        const isRendering = error === 'Rendering...' || error === 'Fixing chart...';
         return (
-            <div className="my-6 p-4 border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 rounded-xl text-sm flex items-center gap-3">
-                 <div className="animate-spin w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
-                 <span className="text-slate-500 dark:text-slate-400 font-medium">{error}</span>
+            <div className="my-6 p-4 border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 rounded-xl text-sm flex flex-col sm:flex-row items-center justify-between gap-3 min-h-[80px]">
+                 <div className="flex items-center gap-3">
+                     {isRendering ? (
+                         <div className="animate-spin w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
+                     ) : (
+                         <div className="w-4 h-4 text-red-500">
+                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                         </div>
+                     )}
+                     <span className="text-slate-500 dark:text-slate-400 font-medium">
+                        {isRendering ? (isFixing ? "Fixing Graph..." : "Rendering...") : "Failed to load chart"}
+                     </span>
+                 </div>
+                 
+                 {!isRendering && onFixCode && (
+                     <button
+                        onClick={handleFix}
+                        disabled={isFixing}
+                        className="px-3 py-1.5 bg-white dark:bg-white/10 hover:bg-slate-50 dark:hover:bg-white/20 border border-slate-200 dark:border-white/10 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-sm transition-all flex items-center gap-2"
+                     >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-indigo-500">
+                           <path d="m5.433 13.917 1.262-3.155A4 4 0 0 1 7.58 9.42l6.92-6.918a2.121 2.121 0 0 1 3 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 0 1-.65-.65Z" />
+                           <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0 0 10 3H4.75A2.75 2.75 0 0 0 2 5.75v9.5A2.75 2.75 0 0 0 4.75 18h9.5A2.75 2.75 0 0 0 17 15.25V10a.75.75 0 0 0-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5Z" />
+                        </svg>
+                        Fix Chart
+                     </button>
+                 )}
             </div>
         );
     }
@@ -346,19 +474,22 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         return <div className="h-64 bg-gray-100 dark:bg-white/5 rounded-lg animate-pulse my-6" />;
     }
 
-    // Ensure we use the configured height or default to a reasonable responsive minimum
-    const chartHeight = config?.height || 400;
+    // Use a minimum height of 400px or the model-provided height (parsed from config outside options)
+    const chartHeight = config?.height || 450;
 
     return (
-        <div className="my-6 w-full rounded-xl overflow-hidden relative z-0">
+        <div 
+            className="my-6 w-full rounded-xl overflow-hidden relative z-0 border border-gray-200 dark:border-white/5 bg-white dark:bg-[#18181b] shadow-sm"
+            ref={containerRef}
+        >
             {/* Chart Canvas - Full Control */}
-            <div className="w-full">
+            <div className="w-full relative">
                 <ReactECharts
+                    ref={echartsRef}
                     option={finalOption}
                     theme={isDark && !finalOption.backgroundColor ? 'dark' : undefined}
                     style={{ height: chartHeight, width: '100%', minHeight: '300px' }}
                     opts={{ renderer: 'svg' }}
-                    // Auto-resize is true by default in echarts-for-react
                 />
             </div>
         </div>

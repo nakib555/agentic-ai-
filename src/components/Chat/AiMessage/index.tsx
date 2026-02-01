@@ -1,4 +1,5 @@
 
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -26,6 +27,7 @@ import { useTypewriter } from '../../../hooks/useTypewriter';
 import { parseContentSegments } from '../../../utils/workflowParsing';
 import { CodeExecutionResult } from '../../AI/CodeExecutionResult';
 import { UniversalChart } from '../../AI/UniversalChart';
+import { fetchFromApi } from '../../../utils/api';
 
 // Lazy load the heavy ArtifactRenderer
 const ArtifactRenderer = React.lazy(() => import('../../Artifacts/ArtifactRenderer').then(m => ({ default: m.ArtifactRenderer })));
@@ -51,6 +53,7 @@ type AiMessageProps = {
     onNavigateBranch?: (messageId: string, direction: 'next' | 'prev') => void;
     userQuery?: string;
     isLast?: boolean;
+    onEditMessage?: (messageId: string, newText: string) => void;
 };
 
 const StopIcon = () => (
@@ -81,13 +84,86 @@ const ChartLoadingPlaceholder: React.FC<{ type: string }> = ({ type }) => {
 const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
   const { msg, isLoading, sendMessage, ttsVoice, ttsModel, currentChatId, 
           onShowSources, messageFormRef, onRegenerate,
-          onNavigateBranch, isLast = false } = props;
+          onNavigateBranch, isLast = false, onEditMessage, userQuery } = props;
   const { id } = msg;
 
   const logic = useAiMessageLogic(msg, ttsVoice, ttsModel, sendMessage, isLoading);
   const { activeResponse, finalAnswerText } = logic;
   
   const typedFinalAnswer = useTypewriter(finalAnswerText, msg.isThinking ?? false);
+  
+  // Handler for Fixing Code Snippets (Charts, etc)
+  const handleFixCode = async (badCode: string, context?: string) => {
+      if (!onEditMessage) return;
+      
+      try {
+          // Call backend to fix
+          const response = await fetchFromApi('/api/handler?task=fix_code', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                  code: badCode,
+                  context: context || userQuery, // Pass original query as context
+                  model: 'gemini-2.5-flash' // Fast model for quick fixes
+              })
+          });
+
+          if (!response.ok) throw new Error("Fix request failed");
+          
+          const { fixedCode } = await response.json();
+          
+          if (fixedCode) {
+              // Replace the bad code block in the message text with the fixed one.
+              // We use simple string replacement. If code appears multiple times, this might be tricky,
+              // but usually unique enough.
+              const cleanFixed = fixedCode.trim();
+              
+              // Try to find the exact block to replace in the raw text
+              const currentText = activeResponse?.text || '';
+              
+              // We need to match loose spacing or formatting differences
+              // For simplicity, we just look for the known bad block. 
+              // In reality, 'badCode' passed here is usually stripped. 
+              // We might need to find where it sits in the text.
+              
+              // Strategy: Replace the entire chart block match
+              // The universal chart logic strips fences, so we should look for 
+              // fences + code OR just the code if fences missing.
+              
+              // Simplest approach: Replace the *exact string* if found.
+              // If not found (due to formatting stripping), we might fail.
+              // Ideally UniversalChart passes us the *exact raw string* it extracted.
+              
+              // Re-construct likely original shape
+              const probableOriginal = `<echarts>${badCode}</echarts>`;
+              const probableFixed = `<echarts>${cleanFixed}</echarts>`;
+              
+              let newText = currentText;
+              
+              // Try replacing pure tag content first (if caller stripped tags)
+              if (currentText.includes(badCode)) {
+                  newText = currentText.replace(badCode, cleanFixed);
+              } 
+              // Try replacing with tags re-added (if badCode was just inner content)
+              else {
+                  // RegEx replacement for the block
+                  // This is aggressive but likely what we want if exact string match fails
+                  // We look for the <echarts> block that contains a significant chunk of the bad code
+                  const snippet = badCode.substring(0, 20); 
+                  const regex = new RegExp(`<echarts>[\\s\\S]*?${snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*?<\\/echarts>`, 'i');
+                  newText = currentText.replace(regex, probableFixed);
+              }
+
+              if (newText !== currentText) {
+                  onEditMessage(id, newText);
+                  return cleanFixed;
+              }
+          }
+      } catch (e) {
+          console.error("Failed to fix code:", e);
+      }
+      return undefined;
+  };
 
   const displaySegments = useMemo(() => {
       // Enhanced parsing to detect artifact tags
@@ -197,7 +273,7 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
                         case 'FILE': return <FileAttachment key={key} {...data} />;
                         case 'BROWSER': return <BrowserSessionDisplay key={key} {...data} />;
                         case 'CODE_OUTPUT': return <CodeExecutionResult key={key} {...data} />;
-                        case 'CHART': return <UniversalChart key={key} engine={data.engine} code={data.content} />;
+                        case 'CHART': return <UniversalChart key={key} engine={data.engine} code={data.content} onFixCode={handleFixCode} />;
                         case 'LOADING_CHART': return <ChartLoadingPlaceholder key={key} type={data.type} />;
                         case 'ARTIFACT_CODE': return (
                             <Suspense fallback={<div className="h-64 w-full bg-gray-100 dark:bg-white/5 rounded-xl animate-pulse my-4" />}>
