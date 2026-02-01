@@ -18,60 +18,80 @@ To visualize data, relationships, or concepts, you have two powerful modes.
 *   **Syntax**:
     <echarts>
     {
-      "backgroundColor": "#ffffff", 
+      "backgroundColor": "transparent",
       "textStyle": { "fontFamily": "Inter, sans-serif" },
       "animation": true,
-      "color": ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"], 
+      "color": ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4"], 
       "title": { 
         "text": "Quarterly Sales", 
         "left": "center",
-        "top": 20,
-        "textStyle": { "color": "#1e293b", "fontSize": 16, "fontWeight": 600 }
+        "top": 10,
+        "textStyle": { "color": "#1e293b", "fontSize": 14, "fontWeight": 600 }
       },
       "tooltip": { 
         "trigger": "axis",
+        "confine": true, 
         "backgroundColor": "rgba(255, 255, 255, 0.95)",
         "borderColor": "#e2e8f0",
         "padding": [10, 15],
         "textStyle": { "color": "#1e293b" },
         "extraCssText": "box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);"
       },
-      "grid": { "top": 80, "bottom": 30, "left": 40, "right": 40, "containLabel": true },
+      "grid": { 
+        "top": 60, 
+        "bottom": 40, 
+        "left": 20, 
+        "right": 20, 
+        "containLabel": true 
+      },
+      "legend": {
+        "type": "scroll",
+        "bottom": 0,
+        "textStyle": { "color": "#64748b" }
+      },
       "xAxis": { 
         "type": "category", 
         "data": ["Q1", "Q2", "Q3", "Q4"],
         "axisLine": { "lineStyle": { "color": "#cbd5e1" } },
-        "axisLabel": { "color": "#64748b", "fontWeight": 500 },
+        "axisLabel": { 
+           "color": "#64748b", 
+           "fontWeight": 500, 
+           "interval": 0, 
+           "hideOverlap": true, 
+           "overflow": "truncate",
+           "width": 60 
+        },
         "axisTick": { "show": false }
       },
       "yAxis": { 
         "type": "value",
         "splitLine": { "lineStyle": { "color": "#f1f5f9", "type": "dashed" } },
-        "axisLabel": { "color": "#64748b" }
+        "axisLabel": { "color": "#64748b", "hideOverlap": true }
       },
       "series": [
         { 
+          "name": "Revenue",
           "data": [120, 200, 150, 80], 
           "type": "bar", 
-          "itemStyle": { "borderRadius": [6, 6, 0, 0] },
-          "barWidth": "40%",
+          "itemStyle": { "borderRadius": [4, 4, 0, 0] },
           "emphasis": { "focus": "series" }
         }
       ]
     }
     </echarts>
 
-*   **Design Protocols for ECharts**:
-    1.  **Modern Aesthetic:** ALWAYS apply a polished, modern design.
-        *   **Palette:** Use refined hex colors (e.g., Indigo \`#6366f1\`, Emerald \`#10b981\`) instead of default primary colors.
-        *   **Minimalism:** Remove clutter. Hide \`axisTick\`. Use dashed or subtle \`splitLines\`.
-        *   **Typography:** Use sans-serif fonts. Ensure labels are legible (\`#64748b\`).
-        *   **Containers:** ALWAYS set \`grid: { containLabel: true }\`.
-    2.  **Full Control (Self-Contained):**
-        *   You have full control over the \`option\` object.
-        *   **Background:** YOU MUST define the \`backgroundColor\` property inside the JSON (e.g., \`"backgroundColor": "#ffffff"\` or \`"transparent"\`). The container has no padding or styling; the chart controls its own canvas.
-        *   **Padding:** Use the \`grid\` property to manage internal padding.
-    3.  **Format:** Content must be valid JSON. Do not wrap in backticks. Do not use Markdown code blocks.
+*   **Mandatory Responsive Protocols**:
+    1.  **Prevent Overlap (CRITICAL):**
+        *   ALWAYS set \`grid: { containLabel: true }\` to prevent labels from being cut off.
+        *   ALWAYS set \`tooltip: { confine: true }\` so tooltips stay inside the chart on mobile.
+        *   ALWAYS set \`axisLabel: { hideOverlap: true }\` on both x and y axes.
+    2.  **Mobile Friendly:**
+        *   Use \`legend: { type: 'scroll', bottom: 0 }\` to handle many legend items on small screens.
+        *   Keep titles small (\`fontSize: 14\`) and centered.
+    3.  **Aesthetics:**
+        *   Use the provided hex color palette.
+        *   Background must be \`"transparent"\` or \`"#ffffff"\`.
+    4.  **Format:** Output valid JSON only inside the tags.
 
 ## 2. Advanced HTML/CSS/JS Mode (<chart>)
 **Use for:** Custom layouts, CSS-heavy visualizations, diagrams, flowcharts, or when you want to create something **visually stunning** using web technologies.

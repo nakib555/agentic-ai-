@@ -17,7 +17,7 @@ type UniversalChartProps = {
 
 interface EChartsConfig {
     option: any;
-    height?: number;
+    height?: number | string;
 }
 
 const stripMarkdown = (code: string): string => {
@@ -265,17 +265,21 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         return <div className="h-64 bg-gray-100 dark:bg-white/5 rounded-lg animate-pulse my-6" />;
     }
 
+    // Ensure we use the configured height or default to a reasonable responsive minimum
+    const chartHeight = config.height || 400;
+
     return (
         <div className="my-6 w-full rounded-xl overflow-hidden relative z-0">
             {/* Chart Canvas - Full Control */}
             {/* We removed external borders/headers to allow the chart config to control the entire visual area including background */}
-            <div className="w-full h-full">
+            <div className="w-full">
                 <ReactECharts
                     option={config.option}
                     // Only apply 'dark' theme if no explicit backgroundColor is set in the options
                     theme={isDark && !config.option.backgroundColor ? 'dark' : undefined}
-                    style={{ height: config.height || 400, width: '100%' }}
+                    style={{ height: chartHeight, width: '100%', minHeight: '300px' }}
                     opts={{ renderer: 'svg' }}
+                    // Auto-resize is true by default in echarts-for-react
                 />
             </div>
         </div>
