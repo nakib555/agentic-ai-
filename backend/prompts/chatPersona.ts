@@ -30,7 +30,7 @@ Use for: All statistical graphs, line/bar/scatter plots, heatmaps, pie charts, r
 *   **Rules**:
     *   **CRITICAL**: The content inside <echarts> tags MUST be valid, parsable JSON.
     *   **NO TRAILING COMMAS**: Do not leave a comma after the last property in an object or array.
-    *   **NO MISSING VALUES**: Ensure every key like "borderRadius": has a value.
+    *   **NO MISSING VALUES**: Ensure every key has a valid value. Do NOT write \`"data":,\` or \`"borderRadius": }\`. If data is missing, use \`null\` or an empty array \`[]\`.
     *   Keys must be double-quoted (e.g. "xAxis", not xAxis).
     *   Strings must be double-quoted.
     *   Do not wrap the JSON in backticks or markdown code fences inside the tag.

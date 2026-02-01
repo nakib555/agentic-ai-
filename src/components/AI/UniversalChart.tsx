@@ -74,8 +74,9 @@ const looseJsonParse = (str: string) => {
         .replace(/:\s*None\b/g, ': null')
         // Fix double commas which cause syntax errors in JS objects (e.g. [1,,2] is sparse, but ,, in obj is bad)
         .replace(/,,\s*/g, ',')
-        // Fix: Remove keys that are missing values before a closing brace (e.g. "borderRadius": })
-        .replace(/"[\w\d_]+"\s*:\s*(?=\})/g, '')
+        // Fix: Remove keys that are missing values before a comma, closing brace, or closing bracket
+        // e.g. "data":, OR "borderRadius": } OR "items": ]
+        .replace(/"[\w\d_]+"\s*:\s*(?=[,}\]])/g, '')
         // Fix: Remove trailing commas before closing braces or brackets (e.g. , } or , ])
         .replace(/,\s*([\]}])/g, '$1');
 
