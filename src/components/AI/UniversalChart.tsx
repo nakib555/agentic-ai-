@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
 
 export type ChartEngine = 'echarts' | 'html';
@@ -89,6 +89,81 @@ const looseJsonParse = (str: string) => {
         // We throw here, but the calling effect catches it to set the error state.
         throw evalErr;
     }
+};
+
+/**
+ * Enforces responsive layouts on ECharts options.
+ * This injects "safety" properties to prevent overlap on small screens.
+ */
+const enforceResponsiveConfig = (option: any, isDark: boolean) => {
+    if (!option) return option;
+    
+    const responsiveOption = { ...option };
+
+    // 1. Enforce Grid Containment
+    // This ensures labels (axis text) are calculated as part of the chart size, preventing crop.
+    responsiveOption.grid = {
+        containLabel: true,
+        left: '2%', // Minimal padding
+        right: '4%',
+        bottom: '3%',
+        top: option.title ? 40 : 10, // Adjust top based on title presence
+        ...option.grid // Allow model to override specific spacing if it knows what it's doing
+    };
+    
+    // Force containLabel to be true regardless of override
+    if (responsiveOption.grid) responsiveOption.grid.containLabel = true;
+
+    // 2. Confine Tooltips
+    // Prevents tooltips from causing horizontal scrollbars or getting cut off
+    responsiveOption.tooltip = {
+        confine: true,
+        appendToBody: true, // Use portal to ensure z-index correctness
+        trigger: 'axis',
+        ...option.tooltip
+    };
+
+    // 3. Fix Axis Overlap
+    const fixAxis = (axis: any) => {
+        if (!axis) return axis;
+        // If array of axes
+        if (Array.isArray(axis)) return axis.map(fixAxis);
+        
+        return {
+            ...axis,
+            nameLocation: 'middle',
+            nameGap: 30, // Move title away from numbers
+            axisLabel: {
+                hideOverlap: true, // Hide labels if they crash into each other
+                interval: 'auto',
+                overflow: 'truncate', // Truncate very long labels
+                width: 80, // Max width for labels on mobile
+                color: isDark ? '#a1a1aa' : '#64748b',
+                ...axis.axisLabel
+            }
+        };
+    };
+
+    if (responsiveOption.xAxis) responsiveOption.xAxis = fixAxis(responsiveOption.xAxis);
+    if (responsiveOption.yAxis) responsiveOption.yAxis = fixAxis(responsiveOption.yAxis);
+
+    // 4. Responsive Legend
+    if (responsiveOption.legend) {
+        responsiveOption.legend = {
+            type: 'scroll', // Scrollable legend for small screens
+            bottom: 0,
+            padding: [5, 10],
+            textStyle: { color: isDark ? '#a1a1aa' : '#64748b' },
+            ...responsiveOption.legend
+        };
+    }
+
+    // 5. Default Background
+    if (!responsiveOption.backgroundColor) {
+        responsiveOption.backgroundColor = 'transparent';
+    }
+
+    return responsiveOption;
 };
 
 export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ content, code }) => {
@@ -194,6 +269,12 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         }
     }, [content, code]);
 
+    // Apply responsive fixes whenever config or theme changes
+    const finalOption = useMemo(() => {
+        if (!config?.option) return null;
+        return enforceResponsiveConfig(config.option, isDark);
+    }, [config, isDark]);
+
     const toggleFullscreen = () => {
         if (!containerRef.current) return;
         if (!document.fullscreenElement) {
@@ -261,22 +342,20 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
     }
 
     // Default ECharts Render
-    if (!config) {
+    if (!finalOption) {
         return <div className="h-64 bg-gray-100 dark:bg-white/5 rounded-lg animate-pulse my-6" />;
     }
 
     // Ensure we use the configured height or default to a reasonable responsive minimum
-    const chartHeight = config.height || 400;
+    const chartHeight = config?.height || 400;
 
     return (
         <div className="my-6 w-full rounded-xl overflow-hidden relative z-0">
             {/* Chart Canvas - Full Control */}
-            {/* We removed external borders/headers to allow the chart config to control the entire visual area including background */}
             <div className="w-full">
                 <ReactECharts
-                    option={config.option}
-                    // Only apply 'dark' theme if no explicit backgroundColor is set in the options
-                    theme={isDark && !config.option.backgroundColor ? 'dark' : undefined}
+                    option={finalOption}
+                    theme={isDark && !finalOption.backgroundColor ? 'dark' : undefined}
                     style={{ height: chartHeight, width: '100%', minHeight: '300px' }}
                     opts={{ renderer: 'svg' }}
                     // Auto-resize is true by default in echarts-for-react
