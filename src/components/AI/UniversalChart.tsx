@@ -81,7 +81,7 @@ const enforceResponsiveConfig = (option: any, isDark: boolean) => {
         containLabel: true,
         left: '2%',
         right: '2%',
-        bottom: '5%',
+        bottom: '10%', // Increased bottom padding to ensure legend space
         top: 80, // Fixed padding to accommodate titles/legends without overlap
         // Force auto dimensions
         width: 'auto',
@@ -140,22 +140,24 @@ const enforceResponsiveConfig = (option: any, isDark: boolean) => {
         responsiveOption.legend = {
             type: 'scroll', // Scrollable legend is safer for mobile
             bottom: 0,
+            top: 'auto', // Explicitly unset top to avoid conflicts
             padding: [5, 10],
             textStyle: { color: isDark ? '#a1a1aa' : '#64748b' },
             itemGap: 15,
             ...responsiveOption.legend
         };
         
-        // Prevent legend from overlapping dataZoom
+        // Prevent legend from overlapping dataZoom if present, but keep at bottom
         if (responsiveOption.dataZoom) {
-            responsiveOption.legend.top = 35; // Fixed position below title
-            delete responsiveOption.legend.bottom;
+            responsiveOption.legend.bottom = 0; 
+            responsiveOption.grid.bottom = '15%'; // Push grid up
         }
     }
     
     // 5. Adjust for DataZoom
     if (responsiveOption.dataZoom) {
-        responsiveOption.grid.bottom = 45; 
+        // If dataZoom is bottom-oriented, ensure grid has space
+        responsiveOption.grid.bottom = '15%'; 
     }
 
     // 6. Default Background
@@ -417,11 +419,11 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                     opts={{ renderer: 'svg' }}
                 />
             </div>
-            {/* Overlay for fullscreen button when hovering chart */}
-            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Overlay for fullscreen button when hovering chart - Fixed pointer events to allow clicks through when hidden */}
+            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
                 <button 
                     onClick={toggleFullscreen}
-                    className="p-2 bg-white/80 dark:bg-black/50 backdrop-blur rounded-lg text-slate-500 hover:text-indigo-500 shadow-sm"
+                    className="p-2 bg-white/80 dark:bg-black/50 backdrop-blur rounded-lg text-slate-500 hover:text-indigo-500 shadow-sm transition-colors"
                     title="Fullscreen"
                 >
                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M13.28 7.78l3.22-3.22v2.69a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-.75-.75h-4.5a.75.75 0 0 0 0 1.5h2.69l-3.22 3.22a.75.75 0 0 0 1.06 1.06zM2 17.25v-4.5a.75.75 0 0 1 1.5 0v2.69l3.22-3.22a.75.75 0 1 1 1.06 1.06l-3.22 3.22h2.69a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1-.75-.75z"/></svg>
