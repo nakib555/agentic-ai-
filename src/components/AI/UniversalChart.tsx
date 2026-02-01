@@ -23,31 +23,71 @@ interface EChartsConfig {
 const stripMarkdown = (code: string): string => {
     let clean = code.trim();
     // Remove wrapping ```language ... ``` blocks
+    // Check for start with ```
     if (clean.startsWith('```')) {
-        clean = clean.replace(/^```[a-z]*\n?/, '').replace(/```$/, '').trim();
+        // Remove first line (```json etc) and last line (```)
+        clean = clean.replace(/^```[a-zA-Z0-9]*\s*/, '').replace(/\s*```$/, '').trim();
     }
     return clean;
 };
 
+// Helper to find the JSON/JS Object substring within a larger string
+const extractJsonCandidate = (str: string): string => {
+    const firstBrace = str.indexOf('{');
+    const firstBracket = str.indexOf('[');
+    
+    let start = -1;
+    if (firstBrace !== -1 && firstBracket !== -1) {
+        start = Math.min(firstBrace, firstBracket);
+    } else if (firstBrace !== -1) {
+        start = firstBrace;
+    } else {
+        start = firstBracket;
+    }
+
+    if (start === -1) return str;
+
+    const lastBrace = str.lastIndexOf('}');
+    const lastBracket = str.lastIndexOf(']');
+    const end = Math.max(lastBrace, lastBracket);
+
+    if (end === -1 || end < start) return str;
+
+    return str.substring(start, end + 1);
+};
+
 // Robust parser that handles trailing commas, comments, and unquoted keys
 const looseJsonParse = (str: string) => {
+    // 1. Try standard JSON parse on original string
     try {
         return JSON.parse(str);
-    } catch (e) {
-        // Fallback for LLM quirks
+    } catch (e) { /* continue */ }
+    
+    // 2. Extract potential JSON part (removes "Here is the data:" prefixes)
+    const candidate = extractJsonCandidate(str);
+    
+    // 3. Try standard JSON parse on candidate
+    try {
+        return JSON.parse(candidate);
+    } catch (e) { /* continue */ }
+
+    // 4. Try JS Eval on candidate (Handles trailing commas, unquoted keys, comments)
+    // This is often the most successful method for LLM output.
+    try {
+         // eslint-disable-next-line no-new-func
+         return new Function(`return ${candidate}`)();
+    } catch (evalErr) {
+        // 5. Try simple regex fix for trailing commas as last resort
         try {
-             // Security/Sanity check: ensure it starts/ends with brackets
-            const trimmed = str.trim();
-            if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || 
-                (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
-                 // Evaluate as a JavaScript object literal to support trailing commas/comments
-                 // eslint-disable-next-line no-new-func
-                 return new Function(`return ${str}`)();
-            }
-        } catch (evalErr) {
-            // Ignore eval error and throw original JSON error if both fail
+            const fixed = candidate.replace(/,(\s*[\]}])/g, '$1');
+            return JSON.parse(fixed);
+        } catch (e) {
+             // ignore
         }
-        throw e;
+        
+        console.warn("UniversalChart: JSON Parse failed.", { original: str, candidate });
+        // Throw the original error or the eval error to give context
+        throw evalErr;
     }
 };
 
