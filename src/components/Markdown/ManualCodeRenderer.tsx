@@ -29,7 +29,8 @@ const processHighlights = (content: string): string => {
     // Split content by code blocks, inline code, display math, and inline math to protect them
     // Note: the regex `\$[^$\n]+\$` captures valid inline math (single line).
     // Using new RegExp to avoid parser issues with backticks in regex literals
-    const pattern = new RegExp("(`{3}[\\s\\S]*?`{3}|`[^`]+`|\\$\\$[\\s\\S]*?\\$\\$|\\$[^$\\n]+\\$)", "g");
+    // Added `|`{3}[\\s\\S]*` at the end to match unclosed code blocks during streaming.
+    const pattern = new RegExp("(`{3}[\\s\\S]*?`{3}|`[^`]+`|\\$\\$[\\s\\S]*?\\$\\$|\\$[^$\\n]+\\$|`{3}[\\s\\S]*)", "g");
     const parts = content.split(pattern);
     
     return parts.map(part => {

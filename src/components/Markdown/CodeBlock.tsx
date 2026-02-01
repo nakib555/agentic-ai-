@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -233,9 +234,8 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ language, children, isStre
                     fontFamily: "'Fira Code', monospace",
                     background: 'transparent',
                 }}
-                showLineNumbers={true}
+                showLineNumbers={false}
                 wrapLines={false}
-                lineNumberStyle={{ minWidth: '3em', paddingRight: '1em', opacity: 0.3 }}
                 fallbackLanguage="text"
             >
                 {codeContent}

@@ -120,7 +120,7 @@ export const getMarkdownComponents = (options: MarkdownOptions = {}) => ({
 
             return React.createElement(CodeBlock, { 
                 language: language || 'plaintext', 
-                isStreaming: false, 
+                isStreaming: options.isStreaming || false, 
                 onRunCode: options.onRunCode,
                 isDisabled: options.isRunDisabled,
                 children: codeContent
