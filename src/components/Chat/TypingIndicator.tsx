@@ -19,7 +19,7 @@ export const TypingIndicator = () => (
       role="status"
     >
       <span className="text-lg font-medium shimmer-text select-none">
-        Thinking
+        Thinking....
       </span>
     </motion.div>
   );
