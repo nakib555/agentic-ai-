@@ -71,13 +71,24 @@ const looseJsonParse = (str: string) => {
         return JSON.parse(candidate);
     } catch (e) { /* continue */ }
 
-    // 4. Try JS Eval on candidate (Handles trailing commas, unquoted keys, comments)
+    // 4. Pre-process for JS Eval (Handle Python-isms, double commas, and comments)
+    let jsFriendly = candidate
+        // Replace Python booleans/None if they look like values (e.g. : True)
+        .replace(/:\s*True\b/g, ': true')
+        .replace(/:\s*False\b/g, ': false')
+        .replace(/:\s*None\b/g, ': null')
+        // Fix double commas which cause syntax errors
+        .replace(/,,\s*/g, ',')
+        // Remove simple comments (//...) to prevent syntax errors in single-line eval
+        .replace(/\/\/.*/g, '');
+
+    // 5. Try JS Eval on candidate (Handles trailing commas, unquoted keys)
     // This is often the most successful method for LLM output.
     try {
          // eslint-disable-next-line no-new-func
-         return new Function(`return ${candidate}`)();
+         return new Function(`return ${jsFriendly}`)();
     } catch (evalErr) {
-        // 5. Try simple regex fix for trailing commas as last resort
+        // 6. Try simple regex fix for trailing commas as last resort for JSON.parse
         try {
             const fixed = candidate.replace(/,(\s*[\]}])/g, '$1');
             return JSON.parse(fixed);
@@ -85,7 +96,7 @@ const looseJsonParse = (str: string) => {
              // ignore
         }
         
-        console.warn("UniversalChart: JSON Parse failed.", { original: str, candidate });
+        console.warn("UniversalChart: JSON Parse failed.", { original: str, candidate, jsFriendly });
         // Throw the original error or the eval error to give context
         throw evalErr;
     }

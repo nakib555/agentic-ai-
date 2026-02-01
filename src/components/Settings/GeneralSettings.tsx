@@ -38,21 +38,21 @@ const PROVIDER_OPTIONS = [
     { id: 'ollama', label: 'Ollama', desc: 'Local or Hosted Instance' }
 ];
 
-// Zod Schema for API Key Form
-const apiKeySchema = z.object({
-  key: z.string().min(1, "API Key is required"),
+// Dynamic schema generator
+const createApiKeySchema = (optional: boolean) => z.object({
+  key: optional ? z.string() : z.string().min(1, "API Key is required"),
 });
 
-type ApiKeyFormData = z.infer<typeof apiKeySchema>;
+type ApiKeyFormData = { key: string };
 
-const ApiKeyForm = ({ label, value, placeholder, onSave, description }: { 
-    label: string, value: string, placeholder: string, onSave: (key: string) => Promise<void>, description?: string 
+const ApiKeyForm = ({ label, value, placeholder, onSave, description, optional = false }: { 
+    label: string, value: string, placeholder: string, onSave: (key: string) => Promise<void>, description?: string, optional?: boolean 
 }) => {
     const [showSuccess, setShowSuccess] = useState(false);
     const [isVisible, setIsVisible] = useState(false);
     
     const { register, handleSubmit, reset, formState: { errors, isSubmitting }, getValues } = useForm<ApiKeyFormData>({
-        resolver: zodResolver(apiKeySchema), 
+        resolver: zodResolver(createApiKeySchema(optional)), 
         defaultValues: { key: value }
     });
 
@@ -274,6 +274,7 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
                             placeholder="sk-..." 
                             onSave={(key) => onSaveApiKey(key, 'ollama')}
                             description="Only required if your Ollama instance is protected by authentication."
+                            optional={true}
                         />
                     </div>
                 )}

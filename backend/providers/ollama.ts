@@ -1,4 +1,5 @@
 
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -169,6 +170,10 @@ const OllamaProvider: AIProvider = {
 
             if (!response.ok) {
                 const errorText = await response.text();
+                // Check specifically for 401 to log diagnostic info
+                if (response.status === 401) {
+                    console.error(`[OllamaProvider] 401 Unauthorized for chat request. API Key used: ${!!apiKey}`);
+                }
                 throw new Error(`Ollama Error (${response.status}): ${errorText}`);
             }
             
