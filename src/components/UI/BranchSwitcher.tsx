@@ -1,9 +1,11 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
 
 import React from 'react';
+import { motion } from 'framer-motion';
 
 type BranchSwitcherProps = {
   count: number;
@@ -35,32 +37,38 @@ export const BranchSwitcher: React.FC<BranchSwitcherProps> = ({ count, activeInd
 
   return (
     <div 
-        className={`flex items-center select-none gap-1 font-mono text-xs font-medium bg-slate-100 dark:bg-white/5 rounded-md px-1 py-0.5 ${className}`}
+        className={`flex items-center gap-1.5 p-1 pr-1.5 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-slate-200 dark:border-white/10 rounded-full shadow-sm select-none ${className}`}
         onClick={(e) => e.stopPropagation()}
     >
-        <button
+        <motion.button
             onClick={handlePrev}
             disabled={activeIndex === 0}
-            className="p-1 hover:text-indigo-600 dark:hover:text-indigo-400 text-slate-500 dark:text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors rounded hover:bg-slate-200 dark:hover:bg-white/10"
+            whileTap={{ scale: 0.9 }}
+            className="w-6 h-6 flex items-center justify-center rounded-full bg-white dark:bg-white/10 border border-slate-100 dark:border-white/5 shadow-sm text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-100 dark:hover:border-indigo-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
             aria-label="Previous version"
             title="Previous version"
         >
-            &lt;
-        </button>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+            </svg>
+        </motion.button>
         
-        <span className="tabular-nums tracking-wide min-w-[24px] text-center text-slate-600 dark:text-slate-300">
-            {activeIndex + 1}/{count}
+        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 tabular-nums tracking-widest min-w-[24px] text-center">
+            {activeIndex + 1}<span className="text-slate-300 dark:text-slate-600 mx-0.5">/</span>{count}
         </span>
 
-        <button
+        <motion.button
             onClick={handleNext}
             disabled={activeIndex === count - 1}
-            className="p-1 hover:text-indigo-600 dark:hover:text-indigo-400 text-slate-500 dark:text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors rounded hover:bg-slate-200 dark:hover:bg-white/10"
+            whileTap={{ scale: 0.9 }}
+            className="w-6 h-6 flex items-center justify-center rounded-full bg-white dark:bg-white/10 border border-slate-100 dark:border-white/5 shadow-sm text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-100 dark:hover:border-indigo-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
             aria-label="Next version"
             title="Next version"
         >
-            &gt;
-        </button>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+            </svg>
+        </motion.button>
     </div>
   );
 };

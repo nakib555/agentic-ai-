@@ -296,6 +296,34 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         };
     }, []);
 
+    // Handle clicks/touches outside the chart to dismiss tooltip
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+            if (
+                activeEngine === 'echarts' && 
+                containerRef.current && 
+                !containerRef.current.contains(event.target as Node)
+            ) {
+                // Dispatch hideTip action to ECharts
+                if (echartsRef.current) {
+                    const instance = echartsRef.current.getEchartsInstance();
+                    instance.dispatchAction({ type: 'hideTip' });
+                    // Optional: Clear axis pointer highlight
+                    instance.dispatchAction({ type: 'updateAxisPointer', currTrigger: 'leave' });
+                }
+            }
+        };
+
+        // Capture event on window to detect clicks outside
+        window.addEventListener('mousedown', handleClickOutside);
+        window.addEventListener('touchstart', handleClickOutside);
+
+        return () => {
+            window.removeEventListener('mousedown', handleClickOutside);
+            window.removeEventListener('touchstart', handleClickOutside);
+        };
+    }, [activeEngine]);
+
     const toggleFullscreen = () => {
         if (!containerRef.current) return;
         if (!document.fullscreenElement) {
@@ -328,6 +356,14 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
             setError("Failed to fix chart code.");
         } finally {
             setIsFixing(false);
+        }
+    };
+
+    // Helper to hide tooltip on mouse leave for desktop
+    const handleMouseLeave = () => {
+        if (activeEngine === 'echarts' && echartsRef.current) {
+             const instance = echartsRef.current.getEchartsInstance();
+             instance.dispatchAction({ type: 'hideTip' });
         }
     };
 
@@ -409,6 +445,7 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         <div 
             className="my-6 w-full rounded-xl overflow-hidden relative z-0 border border-gray-200 dark:border-white/5 bg-white dark:bg-[#18181b] shadow-sm"
             ref={containerRef}
+            onMouseLeave={handleMouseLeave} // Hide tooltip when mouse leaves the component area
         >
             <div className="w-full relative">
                 <ReactECharts
