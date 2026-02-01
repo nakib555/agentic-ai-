@@ -58,7 +58,7 @@ const extractJsonCandidate = (str: string): string => {
 
 // Robust parser that handles trailing commas, comments, and unquoted keys
 const looseJsonParse = (str: string) => {
-    // 1. Try standard JSON parse on original string
+    // 1. Try standard JSON parse on original string first
     try {
         return JSON.parse(str);
     } catch (e) { /* continue */ }
@@ -66,39 +66,26 @@ const looseJsonParse = (str: string) => {
     // 2. Extract potential JSON part (removes "Here is the data:" prefixes)
     const candidate = extractJsonCandidate(str);
     
-    // 3. Try standard JSON parse on candidate
-    try {
-        return JSON.parse(candidate);
-    } catch (e) { /* continue */ }
-
-    // 4. Pre-process for JS Eval (Handle Python-isms and double commas)
-    // NOTE: We do NOT strip comments here aggressively via regex because it breaks URLs (https://).
-    // JS 'new Function' handles standard // and /* */ comments natively.
+    // 3. Pre-process for JS Eval to fix common LLM JSON errors
     let jsFriendly = candidate
         // Replace Python booleans/None if they look like values
         .replace(/:\s*True\b/g, ': true')
         .replace(/:\s*False\b/g, ': false')
         .replace(/:\s*None\b/g, ': null')
         // Fix double commas which cause syntax errors in JS objects (e.g. [1,,2] is sparse, but ,, in obj is bad)
-        .replace(/,,\s*/g, ',');
+        .replace(/,,\s*/g, ',')
+        // Fix: Remove keys that are missing values before a closing brace (e.g. "borderRadius": })
+        .replace(/"[\w\d_]+"\s*:\s*(?=\})/g, '')
+        // Fix: Remove trailing commas before closing braces or brackets (e.g. , } or , ])
+        .replace(/,\s*([\]}])/g, '$1');
 
-    // 5. Try JS Eval on candidate (Handles trailing commas, unquoted keys, comments)
-    // This is often the most successful method for LLM output.
+    // 4. Try JS Eval on candidate (Handles trailing commas, unquoted keys, comments natively in JS)
     try {
          // eslint-disable-next-line no-new-func
          return new Function(`return ${jsFriendly}`)();
     } catch (evalErr) {
-        // 6. Last resort: Try simple regex fix for trailing commas for JSON.parse if eval failed
-        // (Eval might fail on security constraints or very specific syntax weirdness)
-        try {
-            const fixed = candidate.replace(/,(\s*[\]}])/g, '$1');
-            return JSON.parse(fixed);
-        } catch (e) {
-             // ignore
-        }
-        
-        console.warn("UniversalChart: JSON Parse failed.", { original: str, candidate, jsFriendly, error: evalErr });
-        // Throw the original error or the eval error to give context
+        // 5. If JS Eval failed, it might be due to security or strict syntax issues.
+        // We throw here, but the calling effect catches it to set the error state.
         throw evalErr;
     }
 };
@@ -138,20 +125,29 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                 // Parse the JSON option object
                 const option = looseJsonParse(trimmedCode);
                 
-                setConfig({ option });
-                setError(null);
+                if (option && typeof option === 'object') {
+                    setConfig({ option });
+                    setError(null);
+                } else {
+                    throw new Error("Parsed content is not a valid object");
+                }
             } 
         } catch (e: any) {
-            console.error("ECharts parsing error:", e);
-            setError(`Failed to render chart: ${e.message}. Please check the data format.`);
+            // Only log actual errors to console if they persist, otherwise just update UI state.
+            // We suppress console spam for partial JSON during streaming.
+            const isSyntaxError = e instanceof SyntaxError;
+            if (!isSyntaxError) {
+                console.warn("ECharts parsing warning:", e.message);
+            }
+            setError(`Rendering...`); 
         }
     }, [content, code]);
 
     if (error) {
         return (
-            <div className="my-4 p-4 border border-red-200 bg-red-50 dark:bg-red-900/10 rounded-lg text-sm text-red-600 dark:text-red-400 font-mono overflow-auto">
-                <div className="font-bold mb-1">Visualization Error</div>
-                <div className="whitespace-pre-wrap">{error}</div>
+            <div className="my-6 p-4 border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 rounded-xl text-sm flex items-center gap-3">
+                 <div className="animate-spin w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
+                 <span className="text-slate-500 dark:text-slate-400 font-medium">Generating visualization...</span>
             </div>
         );
     }

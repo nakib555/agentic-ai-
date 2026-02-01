@@ -1,5 +1,4 @@
 
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -77,7 +76,11 @@ const OllamaProvider: AIProvider = {
 
             // If an API key is configured (e.g. for a protected proxy), include it
             if (apiKey) {
-                headers['Authorization'] = `Bearer ${apiKey}`;
+                if (apiKey.startsWith('Basic ') || apiKey.startsWith('Bearer ')) {
+                    headers['Authorization'] = apiKey;
+                } else {
+                    headers['Authorization'] = `Bearer ${apiKey}`;
+                }
             }
 
             const response = await fetchWithFallback(url, { 
@@ -153,7 +156,11 @@ const OllamaProvider: AIProvider = {
             };
             // We DO use the API key for chat/generation requests
             if (apiKey) {
-                headers['Authorization'] = `Bearer ${apiKey}`;
+                if (apiKey.startsWith('Basic ') || apiKey.startsWith('Bearer ')) {
+                    headers['Authorization'] = apiKey;
+                } else {
+                    headers['Authorization'] = `Bearer ${apiKey}`;
+                }
             }
 
             const response = await fetchWithFallback(endpoint, {
@@ -247,7 +254,11 @@ const OllamaProvider: AIProvider = {
             };
             // We DO use the API key for completion requests
             if (apiKey) {
-                headers['Authorization'] = `Bearer ${apiKey}`;
+                if (apiKey.startsWith('Basic ') || apiKey.startsWith('Bearer ')) {
+                    headers['Authorization'] = apiKey;
+                } else {
+                    headers['Authorization'] = `Bearer ${apiKey}`;
+                }
             }
 
              const resp = await fetchWithFallback(endpoint, {

@@ -20,7 +20,7 @@ Use for: All statistical graphs, line/bar/scatter plots, heatmaps, pie charts, r
     {
       "title": { "text": "Chart Title" },
       "tooltip": { "trigger": "axis" },
-      "xAxis": { "type": "category", "data": [...] },
+      "xAxis": { "type": "category", "data": ["A", "B"] },
       "yAxis": { "type": "value" },
       "series": [ ... ]
     }
@@ -28,10 +28,11 @@ Use for: All statistical graphs, line/bar/scatter plots, heatmaps, pie charts, r
 
 *   **Content**: A valid JSON object representing the ECharts \`option\` object.
 *   **Rules**:
-    *   **CRITICAL**: The content inside <echarts> tags MUST be valid JSON.
+    *   **CRITICAL**: The content inside <echarts> tags MUST be valid, parsable JSON.
+    *   **NO TRAILING COMMAS**: Do not leave a comma after the last property in an object or array.
+    *   **NO MISSING VALUES**: Ensure every key like "borderRadius": has a value.
     *   Keys must be double-quoted (e.g. "xAxis", not xAxis).
     *   Strings must be double-quoted.
-    *   No trailing commas.
     *   Do not wrap the JSON in backticks or markdown code fences inside the tag.
     *   Include \`tooltip\` configuration for interactivity.
     *   Use the default theme colors; do not hardcode specific hex colors unless strictly necessary for data meaning.

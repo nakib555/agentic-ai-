@@ -130,7 +130,7 @@ export const parseApiError = (error: any): MessageError => {
             code: 'INVALID_API_KEY',
             message: 'Ollama Authorization Failed',
             details: 'The Ollama server rejected the request (401 Unauthorized). If your Ollama instance requires authentication, please ensure the API Key is set correctly in Settings.',
-            suggestion: 'Your Ollama instance requires authentication. Please enter the correct API Key in General Settings. Also verify you are connecting to the correct Host URL.'
+            suggestion: 'Your Ollama instance requires authentication. Enter the key in Settings. If using Basic Auth, you can paste "Basic <token>" directly.'
         };
     }
 

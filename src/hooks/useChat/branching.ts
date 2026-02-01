@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -7,8 +8,14 @@ import { Message, ModelResponse } from '../../types';
 
 /**
  * Helper to deep clone messages to prevent mutation of the readonly source state.
+ * Uses structuredClone if available for better performance and type fidelity.
  */
-const deepClone = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
+const deepClone = <T>(obj: T): T => {
+    if (typeof structuredClone === 'function') {
+        return structuredClone(obj);
+    }
+    return JSON.parse(JSON.stringify(obj));
+};
 
 /**
  * Creates a new version branch for a user message.
@@ -41,6 +48,7 @@ export const createBranchForUserMessage = (
             createdAt: Date.now(),
             historyPayload: futureMessages
         }];
+        targetMessage.activeVersionIndex = 0;
     } else {
         // Save the future of the current branch into the current version
         if (targetMessage.versions[currentVersionIndex]) {
@@ -98,7 +106,9 @@ export const createBranchForModelResponse = (
 
     const currentResponseIndex = targetMessage.activeResponseIndex;
     
-    // Save state of current response specifically
+    // Save state of current response specifically.
+    // IMPORTANT: We explicitly assign the future messages to the payload of the CURRENT index
+    // before we switch to the new index. This "freezes" the timeline for the old response.
     if (targetMessage.responses[currentResponseIndex]) {
         targetMessage.responses[currentResponseIndex].historyPayload = futureMessages;
     }
@@ -144,11 +154,12 @@ export const navigateBranch = (
         
     const getActiveIndex = () => targetMessage.role === 'user'
         ? (targetMessage.activeVersionIndex ?? 0)
-        : targetMessage.activeResponseIndex;
+        : (targetMessage.activeResponseIndex ?? 0);
 
     const total = getCount();
     const currentIdx = getActiveIndex();
     
+    // If only 1 version exists, we can't navigate
     if (total < 2) return null;
 
     let newIdx = direction === 'next' ? currentIdx + 1 : currentIdx - 1;
