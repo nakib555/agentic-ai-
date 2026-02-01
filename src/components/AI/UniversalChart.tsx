@@ -254,9 +254,10 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
 
                     // Execute the script in a function wrapper
                     // We pass D3, container, and dimensions as context
+                    // Added newlines to prevent comments in script from commenting out suffix
                     const func = new Function(
                         'd3', 'container', 'containerWidth', 'containerHeight', 'Plotly', 
-                        `${preamble}${script}`
+                        `${preamble}\n${script}\n`
                     );
 
                     func(
@@ -269,7 +270,12 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                 }
             } catch (e: any) {
                 console.error("D3 Script Execution Error:", e);
-                setError(`Visualization script error: ${e.message}`);
+                let msg = e.message;
+                // Specific hint for common D3 transform error (translate variable vs string)
+                if (msg.includes("translate") && (e instanceof ReferenceError || e instanceof SyntaxError)) {
+                    msg += " (Hint: The AI likely forgot quotes around 'translate' in .attr('transform', ...))";
+                }
+                setError(`Visualization script error: ${msg}`);
             }
         };
 
@@ -376,6 +382,14 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
             <div className="my-4 p-4 border border-red-200 bg-red-50 dark:bg-red-900/10 rounded-lg text-sm text-red-600 dark:text-red-400 font-mono overflow-auto">
                 <div className="font-bold mb-1">Visualization Error</div>
                 <div className="whitespace-pre-wrap">{error}</div>
+                {config?.script && (
+                    <details className="mt-2">
+                        <summary className="cursor-pointer opacity-70 hover:opacity-100 font-semibold text-xs uppercase tracking-wide">View Debug Script</summary>
+                        <pre className="mt-2 p-3 bg-white/50 dark:bg-black/20 rounded-md text-xs border border-red-100 dark:border-red-900/20 overflow-x-auto custom-scrollbar">
+                            {config.script}
+                        </pre>
+                    </details>
+                )}
             </div>
         );
     }

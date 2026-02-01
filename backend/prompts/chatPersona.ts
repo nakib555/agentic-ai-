@@ -40,6 +40,7 @@ Use for: Custom diagrams, network graphs, trees, complex animations, or novel vi
 *   **Rules**:
     *   Always append to \`container\`. Never select "body".
     *   The system handles cleanup automatically.
+    *   **Transforms**: Use template literals for transforms: \`.attr("transform", \`translate(\${x}, \${y})\`)\`. Do NOT miss the quotes around translate.
 
 ## 3. Hybrid Mode (<hybrid>)
 Use for: Plotly charts with custom D3 annotations or overlays.
