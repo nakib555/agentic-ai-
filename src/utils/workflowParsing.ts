@@ -50,11 +50,42 @@ export const parseContentSegments = (text: string): RenderSegment[] => {
     let match;
 
     while ((match = completeComponentRegex.exec(text)) !== null) {
-        // 1. Handle Text Before Match
-        if (match.index > lastIndex) {
-            const textPart = text.substring(lastIndex, match.index);
-            if (textPart) segments.push({ type: 'text', content: textPart });
+        // Strict Markdown check: If <echarts> is inside a code block, treat as text.
+        // Group 2 captures the XML tag match.
+        if (match[2] && match[2].toLowerCase().startsWith('<echarts>')) {
+             const textUpToMatch = text.substring(0, match.index);
+             // Count occurrences of triple backticks to determine if we are inside a code block
+             const backtickCount = (textUpToMatch.match(/```/g) || []).length;
+             if (backtickCount % 2 !== 0) {
+                 continue; // Skip this match, treat as text. The loop continues to find the next match.
+             }
         }
+
+        // 1. Handle Text Before Match
+        let textPart = text.substring(lastIndex, match.index);
+        
+        // --- CLEANUP: Handle Markdown Code Blocks Wrapping Components ---
+        // Models often wrap components like <echarts> in ```xml ... ``` blocks despite instructions.
+        // We detect this pattern and strip the fences so the component renders visually.
+        const openingFenceRegex = /```\w*\s*$/;
+        const closingFenceRegex = /^\s*```/;
+        
+        if (openingFenceRegex.test(textPart)) {
+             // Check if the text immediately after the component is a closing fence
+             const textAfter = text.substring(completeComponentRegex.lastIndex);
+             if (closingFenceRegex.test(textAfter)) {
+                 // Strip opening fence from the preceding text
+                 textPart = textPart.replace(openingFenceRegex, '');
+                 
+                 // Skip closing fence by advancing the regex index
+                 const closingMatch = textAfter.match(closingFenceRegex);
+                 if (closingMatch) {
+                     completeComponentRegex.lastIndex += closingMatch[0].length;
+                 }
+             }
+        }
+
+        if (textPart) segments.push({ type: 'text', content: textPart });
 
         // 2. Handle the Complete Component Match
         const componentString = match[0];
@@ -102,19 +133,29 @@ export const parseContentSegments = (text: string): RenderSegment[] => {
         const openTagMatch = remainingText.match(openTagRegex);
         
         if (openTagMatch) {
-            const textBefore = remainingText.substring(0, openTagMatch.index);
-            const tagType = openTagMatch[2].toLowerCase();
+            // Check context for partial tag to prevent partials inside code blocks showing as loading
+            const absoluteIndex = lastIndex + openTagMatch.index!;
+            const textUpToOpen = text.substring(0, absoluteIndex);
+            const backtickCount = (textUpToOpen.match(/```/g) || []).length;
             
-            if (textBefore) {
-                 segments.push({ type: 'text', content: textBefore });
+            if (backtickCount % 2 !== 0) {
+                 // Inside code block. Ignore component detection.
+                 segments.push({ type: 'text', content: remainingText });
+            } else {
+                const textBefore = remainingText.substring(0, openTagMatch.index);
+                const tagType = openTagMatch[2].toLowerCase();
+                
+                if (textBefore) {
+                     segments.push({ type: 'text', content: textBefore });
+                }
+                
+                // Push the special loading placeholder
+                segments.push({
+                    type: 'component',
+                    componentType: 'LOADING_CHART',
+                    data: { type: tagType }
+                });
             }
-            
-            // Push the special loading placeholder
-            segments.push({
-                type: 'component',
-                componentType: 'LOADING_CHART',
-                data: { type: tagType }
-            });
         } else {
              let cleanedPart = remainingText;
 
