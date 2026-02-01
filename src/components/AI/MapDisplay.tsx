@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -70,7 +71,7 @@ export const MapDisplay = ({ latitude, longitude, zoom = 13, markerText }: MapDi
         center={position} 
         zoom={zoom} 
         style={{ height: '100%', width: '100%' }}
-        scrollWheelZoom={false} // Disable scroll zoom to prevent interfering with page scroll
+        scrollWheelZoom={true} 
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
