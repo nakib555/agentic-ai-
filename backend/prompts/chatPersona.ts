@@ -9,7 +9,8 @@ import { MATH_RENDERING_INSTRUCTIONS } from './math';
 const UNIVERSAL_CHART_LANGUAGE_DOCS = `
 # 📊 VISUALIZATION ENGINE: ECHARTS PROTOCOLS
 
-To visualize data, relationships, or concepts, use the <echarts> tag.
+To visualize data, relationships, or concepts, you **MUST** use the <echarts> tag.
+**DO NOT** use standard markdown code blocks (like \`\`\`json or \`\`\`echarts) for visualizations. The system only renders charts when wrapped in the specific XML tag.
 
 ## 🎨 AESTHETIC DIRECTIVE: BEAUTIFUL & MODERN DESIGN (MANDATORY)
 

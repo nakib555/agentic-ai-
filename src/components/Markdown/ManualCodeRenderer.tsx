@@ -19,6 +19,7 @@ type ManualCodeRendererProps = {
   isStreaming: boolean;
   onRunCode?: (language: string, code: string) => void;
   isRunDisabled?: boolean;
+  onFixCode?: (code: string) => Promise<string | undefined>;
 };
 
 // Robust function to protect code blocks AND math from highlight replacement.
@@ -63,14 +64,14 @@ const processHighlights = (content: string): string => {
     }).join('');
 };
 
-const ManualCodeRendererRaw: React.FC<ManualCodeRendererProps> = ({ text, onRunCode, isRunDisabled }) => {
+const ManualCodeRendererRaw: React.FC<ManualCodeRendererProps> = ({ text, onRunCode, isRunDisabled, isStreaming, onFixCode }) => {
     const processedText = useMemo(() => processHighlights(text), [text]);
     
     // We memoize the components object to prevent unnecessary re-renders of ReactMarkdown
     // created by getMarkdownComponents if the props haven't changed.
     const customComponents = useMemo(() => {
-        return getMarkdownComponents({ onRunCode, isRunDisabled });
-    }, [onRunCode, isRunDisabled]);
+        return getMarkdownComponents({ onRunCode, isRunDisabled, isStreaming, onFixCode });
+    }, [onRunCode, isRunDisabled, isStreaming, onFixCode]);
 
     return (
         <ReactMarkdown

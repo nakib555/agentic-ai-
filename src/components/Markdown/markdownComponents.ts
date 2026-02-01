@@ -45,6 +45,8 @@ const BlockquoteRouter = (props: any) => {
 type MarkdownOptions = {
     onRunCode?: (language: string, code: string) => void;
     isRunDisabled?: boolean;
+    isStreaming?: boolean;
+    onFixCode?: (code: string) => Promise<string | undefined>;
 };
 
 const findCheckboxInput = (children: React.ReactNode): React.ReactElement | null => {
@@ -109,7 +111,11 @@ export const getMarkdownComponents = (options: MarkdownOptions = {}) => ({
 
             // --- Custom Chart Renderer Hook ---
             if (language === 'echarts' || language === 'chart') {
-                return React.createElement(UniversalChart, { code: codeContent });
+                return React.createElement(UniversalChart, { 
+                    code: codeContent, 
+                    isStreaming: options.isStreaming,
+                    onFixCode: options.onFixCode
+                });
             }
 
             return React.createElement(CodeBlock, { 

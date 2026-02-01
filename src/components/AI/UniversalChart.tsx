@@ -14,6 +14,7 @@ type UniversalChartProps = {
     engine?: string;
     code?: string; // Raw content from XML tag
     onFixCode?: (code: string) => Promise<string | undefined>;
+    isStreaming?: boolean;
 };
 
 interface EChartsConfig {
@@ -102,23 +103,21 @@ const enforceResponsiveConfig = (option: any, isDark: boolean) => {
     const responsiveOption = { ...option };
 
     // 1. Enforce Grid Containment
-    // This ensures labels (axis text) are calculated as part of the chart size, preventing crop.
+    // We override AI-generated static margins with dynamic percentage-based ones.
+    // This allows the chart to fill the container while 'containLabel: true' prevents clipping.
     responsiveOption.grid = {
+        ...option.grid, // Keep specific settings like 'show: true' or borders
+        
         containLabel: true,
-        left: 0,  // Maximize width by removing arbitrary padding
-        right: 10, // Small buffer for max values
-        bottom: 0,
-        top: option.title ? 50 : 30, // Adjust top based on title presence
-        ...option.grid 
+        left: '2%',   // Small dynamic padding relative to container width
+        right: '4%',  // Slightly larger buffer for right-aligned labels/tooltips
+        bottom: '3%', // Minimal bottom spacing for axis labels
+        top: option.title ? 60 : 35, // Adjust top based on title
+        
+        // Force auto dimensions to override any fixed pixels the AI might have guessed
+        width: 'auto',
+        height: 'auto'
     };
-    
-    // CRITICAL FIX: Remove fixed width/height from grid if present to prevent shrinking
-    if (responsiveOption.grid) {
-        delete responsiveOption.grid.width;
-        delete responsiveOption.grid.height;
-        // Force containLabel to be true regardless of override
-        responsiveOption.grid.containLabel = true;
-    }
 
     // 2. Confine Tooltips
     // Prevents tooltips from causing horizontal scrollbars or getting cut off
@@ -177,10 +176,11 @@ const enforceResponsiveConfig = (option: any, isDark: boolean) => {
             bottom: 0,
             padding: [5, 10],
             textStyle: { color: isDark ? '#a1a1aa' : '#64748b' },
+            // Override potentially bad AI defaults
             ...responsiveOption.legend
         };
         
-        // If dataZoom is present, move legend to top or adjust bottom
+        // If dataZoom is present, move legend to top or adjust bottom to prevent overlap
         if (responsiveOption.dataZoom) {
             responsiveOption.legend.top = option.title ? 25 : 5;
             delete responsiveOption.legend.bottom;
@@ -214,7 +214,7 @@ const enforceResponsiveConfig = (option: any, isDark: boolean) => {
     return responsiveOption;
 };
 
-export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ content, code, onFixCode }) => {
+export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ content, code, onFixCode, isStreaming }) => {
     const [config, setConfig] = useState<EChartsConfig | null>(null);
     const [htmlContent, setHtmlContent] = useState<string | null>(null);
     const [activeEngine, setActiveEngine] = useState<ChartEngine>('echarts');
@@ -318,15 +318,15 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                 }
             } 
         } catch (e: any) {
-            // Only log actual errors to console if they persist, otherwise just update UI state.
-            // We suppress console spam for partial JSON during streaming.
-            const isSyntaxError = e instanceof SyntaxError;
-            if (!isSyntaxError) {
-                console.warn("Chart parsing warning:", e.message);
+            // Logic to handle streaming vs error state
+            if (isStreaming) {
+                 setError(`Rendering...`); 
+            } else {
+                 console.warn("Chart parsing error (Final):", e.message);
+                 setError(e.message || "Invalid Chart Configuration");
             }
-            setError(`Rendering...`); 
         }
-    }, [content, code, isFixing, localCodeOverride]);
+    }, [content, code, isFixing, localCodeOverride, isStreaming]);
 
     // Apply responsive fixes whenever config or theme changes
     const finalOption = useMemo(() => {

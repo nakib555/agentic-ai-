@@ -1,6 +1,4 @@
 
-
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -258,7 +256,7 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
                         case 'FILE': return <FileAttachment key={key} {...data} />;
                         case 'BROWSER': return <BrowserSessionDisplay key={key} {...data} />;
                         case 'CODE_OUTPUT': return <CodeExecutionResult key={key} {...data} />;
-                        case 'CHART': return <UniversalChart key={key} engine={data.engine} code={data.content} onFixCode={handleFixCode} />;
+                        case 'CHART': return <UniversalChart key={key} engine={data.engine} code={data.content} onFixCode={handleFixCode} isStreaming={msg.isThinking} />;
                         case 'LOADING_CHART': return <ChartLoadingPlaceholder key={key} type={data.type} />;
                         case 'ARTIFACT_CODE': return (
                             <Suspense fallback={<div className="h-64 w-full bg-gray-100 dark:bg-white/5 rounded-xl animate-pulse my-4" />}>
@@ -279,6 +277,7 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
                             text={segment.content!} 
                             components={MarkdownComponents} 
                             isStreaming={msg.isThinking ?? false} 
+                            onFixCode={handleFixCode}
                         />
                     );
                 }
