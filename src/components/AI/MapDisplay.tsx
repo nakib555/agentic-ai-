@@ -66,7 +66,7 @@ export const MapDisplay = ({ latitude, longitude, zoom = 13, markerText }: MapDi
   const position: [number, number] = [latitude, longitude];
 
   return (
-    <div className="my-6 rounded-xl overflow-hidden border border-gray-200 dark:border-white/10 shadow-lg relative z-0 h-[400px] w-full bg-slate-100 dark:bg-[#121212]">
+    <div className="my-6 rounded-xl overflow-hidden border border-gray-200 dark:border-white/10 relative z-0 h-[400px] w-full bg-slate-100 dark:bg-[#121212]">
       <MapContainer 
         center={position} 
         zoom={zoom} 
