@@ -63,6 +63,7 @@ const ChartLoadingPlaceholder: React.FC<{ type: string }> = ({ type }) => {
     let label = 'Chart';
     if (type === 'd3') label = 'Visualization';
     else if (type === 'hybrid') label = 'Interactive Chart';
+    else if (type === 'map') label = 'Map';
 
     return (
         <motion.div 

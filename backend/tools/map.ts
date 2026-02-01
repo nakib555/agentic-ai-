@@ -19,5 +19,5 @@ export const executeDisplayMap = (args: { latitude: number; longitude: number; z
       markerText
   };
 
-  return `[MAP_COMPONENT]${JSON.stringify(mapData)}[/MAP_COMPONENT]`;
+  return `<map>${JSON.stringify(mapData)}</map>`;
 };

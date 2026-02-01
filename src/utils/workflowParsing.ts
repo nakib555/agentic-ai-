@@ -27,7 +27,8 @@ const SQUARE_COMPONENT_TAGS = [
 ];
 
 const XML_COMPONENT_TAGS = [
-    'echarts'
+    'echarts',
+    'map'
 ];
 
 /**
@@ -50,9 +51,9 @@ export const parseContentSegments = (text: string): RenderSegment[] => {
     let match;
 
     while ((match = completeComponentRegex.exec(text)) !== null) {
-        // Strict Markdown check: If <echarts> is inside a code block, treat as text.
+        // Strict Markdown check: If <echarts> or <map> is inside a code block, treat as text.
         // Group 2 captures the XML tag match.
-        if (match[2] && match[2].toLowerCase().startsWith('<echarts>')) {
+        if (match[2]) {
              const textUpToMatch = text.substring(0, match.index);
              // Count occurrences of triple backticks to determine if we are inside a code block
              const backtickCount = (textUpToMatch.match(/```/g) || []).length;
@@ -108,14 +109,30 @@ export const parseContentSegments = (text: string): RenderSegment[] => {
             if (xmlMatch) {
                 const tagType = xmlMatch[1].toLowerCase();
                 const contentString = xmlMatch[2];
-                segments.push({
-                    type: 'component',
-                    componentType: 'CHART',
-                    data: {
-                        engine: 'echarts',
-                        content: contentString
-                    }
-                });
+                
+                if (tagType === 'map') {
+                     try {
+                        const json = JSON.parse(contentString);
+                        segments.push({
+                            type: 'component',
+                            componentType: 'MAP',
+                            data: json
+                        });
+                     } catch(e) {
+                         // Fallback for bad JSON inside map
+                         segments.push({ type: 'text', content: componentString });
+                     }
+                } else {
+                    // Default to Chart/ECharts
+                    segments.push({
+                        type: 'component',
+                        componentType: 'CHART',
+                        data: {
+                            engine: 'echarts',
+                            content: contentString
+                        }
+                    });
+                }
             } else {
                 segments.push({ type: 'text', content: componentString });
             }
