@@ -250,7 +250,7 @@ export const apiHandler = async (req: any, res: any) => {
     // Resolve the API key based on the active provider
     let chatApiKey = req.body.apiKey;
     
-    // If no key provided in body, fall back to stored settings
+    // If no key provided in body, fall back to stored settings or env vars
     if (!chatApiKey) {
         // Only use the standard helper if the provider matches what's on disk,
         // otherwise manually fetch the correct key for the requested provider.
@@ -261,9 +261,15 @@ export const apiHandler = async (req: any, res: any) => {
             // Try to fetch specific key from settings based on the *requested* provider name.
             try {
                 const settings: any = await readData(SETTINGS_FILE_PATH);
-                if (activeProviderName === 'openrouter') chatApiKey = settings.openRouterApiKey;
-                else if (activeProviderName === 'ollama') chatApiKey = settings.ollamaApiKey;
-                else chatApiKey = settings.apiKey || process.env.API_KEY || process.env.GEMINI_API_KEY;
+                if (activeProviderName === 'openrouter') {
+                    chatApiKey = settings.openRouterApiKey || process.env.OPENROUTER_API_KEY;
+                }
+                else if (activeProviderName === 'ollama') {
+                    chatApiKey = settings.ollamaApiKey || process.env.OLLAMA_API_KEY;
+                }
+                else {
+                    chatApiKey = settings.apiKey || process.env.API_KEY || process.env.GEMINI_API_KEY;
+                }
             } catch (e) {
                 // Fallback
                 chatApiKey = await getApiKey();

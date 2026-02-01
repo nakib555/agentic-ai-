@@ -63,9 +63,9 @@ export const updateSettings = async (req: any, res: any) => {
                 let activeKey = '';
 
                 if (activeProvider === 'openrouter') {
-                    activeKey = newSettings.openRouterApiKey;
+                    activeKey = newSettings.openRouterApiKey || process.env.OPENROUTER_API_KEY;
                 } else if (activeProvider === 'ollama') {
-                    activeKey = newSettings.ollamaApiKey;
+                    activeKey = newSettings.ollamaApiKey || process.env.OLLAMA_API_KEY;
                 } else {
                     activeKey = newSettings.apiKey;
                 }
@@ -115,10 +115,10 @@ export const getApiKey = async (): Promise<string | undefined> => {
     try {
         const settings = await ensureSettingsLoaded();
         if (settings.provider === 'openrouter') {
-            return settings.openRouterApiKey;
+            return settings.openRouterApiKey || process.env.OPENROUTER_API_KEY;
         }
         if (settings.provider === 'ollama') {
-            return settings.ollamaApiKey;
+            return settings.ollamaApiKey || process.env.OLLAMA_API_KEY;
         }
         // For Gemini
         return settings.apiKey || process.env.API_KEY || process.env.GEMINI_API_KEY;
