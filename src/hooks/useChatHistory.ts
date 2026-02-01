@@ -226,10 +226,15 @@ export const useChatHistory = () => {
       }
       
       try {
+          const body = JSON.stringify(update);
+          // keepalive has a 64KB limit. We use it for small updates to ensure saving persists 
+          // even if the tab is closed, but disable it for large payloads to prevent "Failed to fetch".
+          const useKeepalive = new Blob([body]).size < 60000;
+
           await fetchApi(`/api/chats/${chatId}`, {
               method: 'PUT',
-              body: JSON.stringify(update),
-              keepalive: true
+              body,
+              keepalive: useKeepalive
           });
       } catch (e) {
           console.error("Failed to save chat property", e);
