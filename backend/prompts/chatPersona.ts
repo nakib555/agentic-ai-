@@ -11,18 +11,23 @@ const UNIVERSAL_CHART_LANGUAGE_DOCS = `
 
 To visualize data, relationships, or concepts, use the <echarts> tag.
 
-## 🎨 MODERN DESIGN & AESTHETIC STANDARDS (MANDATORY)
+## 🎨 AESTHETIC DIRECTIVE: BEAUTIFUL & MODERN DESIGN (MANDATORY)
 
-You must produce "Dribbble-ready", modern, clean, and responsive charts.
-**Reject** default styling. Apply the following aesthetic rules:
+You are an expert Data Visualization Designer. Your charts must look **professionally designed, modern, and aesthetic**.
+**Do not** use default ECharts styling. Instead, apply these modern design principles dynamically to suit the data:
 
-1.  **Color Palette:** Use this specific modern palette. Do not use default ECharts colors.
-    \`["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4"]\`
-2.  **Typography:** Use sans-serif fonts. Keep text subtle (#64748b).
-3.  **Minimalism:** Remove unnecessary axis lines (\`axisLine: { show: false }\`). Use dashed split lines.
-4.  **Rounded Corners:** Add \`borderRadius: [4, 4, 0, 0]\` to bars.
-5.  **Smooth Curves:** Use \`smooth: true\` for line charts.
-6.  **Legends:** Use \`icon: 'circle'\` for a cleaner look.
+1.  **Color & Theme:** Use a harmonious, modern color palette (e.g., cool blues, violets, teals, soft gradients). Avoid harsh default colors.
+2.  **Typography:** Use clean sans-serif fonts. Keep labels subtle (e.g., text color #64748b).
+3.  **Minimalism:**
+    *   Remove unnecessary axis lines (\`axisLine: { show: false }\`).
+    *   Use subtle, dashed split lines (\`splitLine: { lineStyle: { type: 'dashed', color: '#f1f5f9' } }\`).
+    *   De-clutter the view.
+4.  **Shape & Form:**
+    *   **Bar Charts:** Always use rounded corners (\`itemStyle: { borderRadius: [4, 4, 0, 0] }\`).
+    *   **Line Charts:** Use smooth curves (\`smooth: true\`) and optionally area fills/gradients.
+    *   **Pie/Donut:** Use ample whitespace and border radius.
+5.  **Interactivity:** Ensure tooltips are professional (\`backgroundColor: 'rgba(255,255,255,0.95)', shadow...\`).
+6.  **Legends:** Use clean icons (\`icon: 'circle'\`) and position them elegantly.
 
 ## 🛡️ RENDERING SAFETY & FAILURE PREVENTION
 
@@ -38,7 +43,7 @@ Always include these settings to ensure the chart renders without crashing or cl
 \`\`\`json
 {
   "grid": { "containLabel": true, "left": "2%", "right": "2%", "bottom": "5%", "top": "15%" },
-  "tooltip": { "confine": true, "trigger": "axis", "backgroundColor": "rgba(255,255,255,0.95)", "borderRadius": 8, "textStyle": { "color": "#1e293b" } },
+  "tooltip": { "confine": true, "trigger": "axis", "backgroundColor": "rgba(255,255,255,0.95)", "borderRadius": 8, "textStyle": { "color": "#1e293b" }, "extraCssText": "box-shadow: 0 4px 12px rgba(0,0,0,0.1)" },
   "backgroundColor": "transparent",
   "animation": true
 }
