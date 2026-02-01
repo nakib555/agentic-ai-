@@ -71,24 +71,25 @@ const looseJsonParse = (str: string) => {
         return JSON.parse(candidate);
     } catch (e) { /* continue */ }
 
-    // 4. Pre-process for JS Eval (Handle Python-isms, double commas, and comments)
+    // 4. Pre-process for JS Eval (Handle Python-isms and double commas)
+    // NOTE: We do NOT strip comments here aggressively via regex because it breaks URLs (https://).
+    // JS 'new Function' handles standard // and /* */ comments natively.
     let jsFriendly = candidate
-        // Replace Python booleans/None if they look like values (e.g. : True)
+        // Replace Python booleans/None if they look like values
         .replace(/:\s*True\b/g, ': true')
         .replace(/:\s*False\b/g, ': false')
         .replace(/:\s*None\b/g, ': null')
-        // Fix double commas which cause syntax errors
-        .replace(/,,\s*/g, ',')
-        // Remove simple comments (//...) to prevent syntax errors in single-line eval
-        .replace(/\/\/.*/g, '');
+        // Fix double commas which cause syntax errors in JS objects (e.g. [1,,2] is sparse, but ,, in obj is bad)
+        .replace(/,,\s*/g, ',');
 
-    // 5. Try JS Eval on candidate (Handles trailing commas, unquoted keys)
+    // 5. Try JS Eval on candidate (Handles trailing commas, unquoted keys, comments)
     // This is often the most successful method for LLM output.
     try {
          // eslint-disable-next-line no-new-func
          return new Function(`return ${jsFriendly}`)();
     } catch (evalErr) {
-        // 6. Try simple regex fix for trailing commas as last resort for JSON.parse
+        // 6. Last resort: Try simple regex fix for trailing commas for JSON.parse if eval failed
+        // (Eval might fail on security constraints or very specific syntax weirdness)
         try {
             const fixed = candidate.replace(/,(\s*[\]}])/g, '$1');
             return JSON.parse(fixed);
@@ -96,7 +97,7 @@ const looseJsonParse = (str: string) => {
              // ignore
         }
         
-        console.warn("UniversalChart: JSON Parse failed.", { original: str, candidate, jsFriendly });
+        console.warn("UniversalChart: JSON Parse failed.", { original: str, candidate, jsFriendly, error: evalErr });
         // Throw the original error or the eval error to give context
         throw evalErr;
     }
