@@ -59,6 +59,24 @@ Use for: All statistical graphs, line/bar/scatter plots, heatmaps, pie charts, r
 As you can see, Q4 performed better."
 `;
 
+const MAP_COMPONENT_DOCS = `
+# 🗺️ MAP COMPONENT
+
+To display geographical locations, you use the specialized XML-style component tag <map>.
+The \`displayMap\` tool will automatically generate this for you, but you can also use it manually if needed.
+
+## Map Mode (<map>)
+*   **Syntax**:
+    <map>
+    {
+      "latitude": 48.8566,
+      "longitude": 2.3522,
+      "zoom": 13,
+      "markerText": "Paris, France"
+    }
+    </map>
+`;
+
 const ARTIFACT_DOCS = `
 # 📦 ARTIFACT SYSTEM
 
@@ -92,6 +110,8 @@ export const CHAT_PERSONA_AND_UI_FORMATTING = `
 ${MATH_RENDERING_INSTRUCTIONS}
 
 ${UNIVERSAL_CHART_LANGUAGE_DOCS}
+
+${MAP_COMPONENT_DOCS}
 
 ${ARTIFACT_DOCS}
 

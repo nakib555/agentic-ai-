@@ -60,7 +60,7 @@ When providing substantial code or data, use the Artifact syntax to display it c
 You can render special UI components using these tags:
 - **[IMAGE_COMPONENT]**
 - **[VIDEO_COMPONENT]**
-- **[MAP_COMPONENT]**
+- **<map>** (for maps)
 - **[BROWSER_COMPONENT]**
 - **[FILE_ATTACHMENT_COMPONENT]**
 

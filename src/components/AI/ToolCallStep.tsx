@@ -50,6 +50,17 @@ const ToolResultDisplay: React.FC<ToolResultDisplayProps> = ({ result, sendMessa
         }
     }
 
+    // Check for Map component
+    const mapMatch = result.match(/<map>(.*?)<\/map>/s);
+    if (mapMatch && mapMatch[1]) {
+        try {
+            const mapData = JSON.parse(mapMatch[1]);
+            return <MapDisplay {...mapData} />;
+        } catch (e) {
+            return <ErrorDisplay error={{ message: 'Failed to render map component.', details: `Invalid JSON: ${e}` }} />;
+        }
+    }
+
     const browserMatch = result.match(/\[BROWSER_COMPONENT\](\{.*?\})\[\/BROWSER_COMPONENT\]/s);
     if (browserMatch && browserMatch[1]) {
         try {

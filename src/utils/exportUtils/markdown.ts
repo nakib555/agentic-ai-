@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -40,6 +41,10 @@ const getChatAsMarkdown = (chat: ChatSession): string => {
                 const placeholder = type.toLowerCase().replace('_', ' ');
                 return `\n*[${placeholder} presented]*\n`;
             });
+
+            // Handle XML components in export
+            answer = answer.replace(/<map>.*?<\/map>/gs, '\n*[Map displayed]*\n');
+            answer = answer.replace(/<echarts>.*?<\/echarts>/gs, '\n*[Chart displayed]*\n');
 
             if (answer) markdownContent += `${answer}\n\n`;
             if (activeResponse.error) markdownContent += `**Error:** ${activeResponse.error.message}\n\n`;
