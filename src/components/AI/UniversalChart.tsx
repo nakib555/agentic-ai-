@@ -221,6 +221,10 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
     const [error, setError] = useState<string | null>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isFixing, setIsFixing] = useState(false);
+    
+    // New local state to handle optimistic updates during "Fix Chart"
+    const [localCodeOverride, setLocalCodeOverride] = useState<string | null>(null);
+    
     const containerRef = useRef<HTMLDivElement>(null);
     const echartsRef = useRef<any>(null); // Ref for ECharts instance
     
@@ -248,10 +252,12 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
     // Effect to parse configuration
     useEffect(() => {
         try {
-            const rawContent = code || content;
+            // Prefer local override (optimistic fix) over props
+            const rawContent = localCodeOverride || code || content;
+
             if (rawContent) {
-                // If we are actively fixing, ignore updates until complete (handled by parent prop change)
-                if (isFixing) return;
+                // If we are actively fixing via API, wait. But if we have a localOverride, use it immediately.
+                if (isFixing && !localCodeOverride) return;
 
                 const trimmedCode = stripMarkdown(rawContent);
 
@@ -320,7 +326,7 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
             }
             setError(`Rendering...`); 
         }
-    }, [content, code, isFixing]);
+    }, [content, code, isFixing, localCodeOverride]);
 
     // Apply responsive fixes whenever config or theme changes
     const finalOption = useMemo(() => {
@@ -383,8 +389,9 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
             const fixedCode = await onFixCode(raw);
             
             if (fixedCode) {
-                // If fix successful, the prop update (via parent) will trigger useEffect
-                // We just unset isFixing in the effect when props change, or here if prop update is fast
+                // Optimistic update: Render the new code immediately while the parent handles persistence
+                setLocalCodeOverride(fixedCode);
+                setError(null); 
             } else {
                 setError("Fix failed. Please try again.");
             }
@@ -399,31 +406,31 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
     if (error) {
         const isRendering = error === 'Rendering...' || error === 'Fixing chart...';
         return (
-            <div className="my-6 p-4 border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 rounded-xl text-sm flex flex-col sm:flex-row items-center justify-between gap-3 min-h-[80px]">
-                 <div className="flex items-center gap-3">
+            <div className="my-4 px-3 py-2 border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 rounded-lg text-xs flex items-center justify-between gap-3 w-full animate-in fade-in duration-300">
+                 <div className="flex items-center gap-2 overflow-hidden">
                      {isRendering ? (
-                         <div className="animate-spin w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
+                         <div className="animate-spin w-3 h-3 border-2 border-indigo-500 border-t-transparent rounded-full flex-shrink-0"></div>
                      ) : (
-                         <div className="w-4 h-4 text-red-500">
+                         <div className="w-3 h-3 text-red-500 flex-shrink-0">
                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                          </div>
                      )}
-                     <span className="text-slate-500 dark:text-slate-400 font-medium">
-                        {isRendering ? (isFixing ? "Fixing Graph..." : "Rendering...") : "Failed to load chart"}
+                     <span className="text-slate-500 dark:text-slate-400 font-medium truncate">
+                        {isRendering ? (isFixing ? "Fixing Graph..." : "Rendering...") : "Chart Error"}
                      </span>
                  </div>
                  
-                 {onFixCode && !isFixing && (
+                 {onFixCode && !isFixing && !isRendering && (
                      <button
                         onClick={handleFix}
                         disabled={isFixing}
-                        className="px-3 py-1.5 bg-white dark:bg-white/10 hover:bg-slate-50 dark:hover:bg-white/20 border border-slate-200 dark:border-white/10 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-sm transition-all flex items-center gap-2"
+                        className="px-2 py-1 bg-white dark:bg-white/10 hover:bg-slate-50 dark:hover:bg-white/20 border border-slate-200 dark:border-white/10 rounded font-semibold text-slate-700 dark:text-slate-200 shadow-sm transition-all flex items-center gap-1.5 whitespace-nowrap"
                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-indigo-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 text-indigo-500">
                            <path d="m5.433 13.917 1.262-3.155A4 4 0 0 1 7.58 9.42l6.92-6.918a2.121 2.121 0 0 1 3 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 0 1-.65-.65Z" />
                            <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0 0 10 3H4.75A2.75 2.75 0 0 0 2 5.75v9.5A2.75 2.75 0 0 0 4.75 18h9.5A2.75 2.75 0 0 0 17 15.25V10a.75.75 0 0 0-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5Z" />
                         </svg>
-                        Fix Chart
+                        Fix
                      </button>
                  )}
             </div>

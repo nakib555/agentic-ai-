@@ -1,5 +1,6 @@
 
 
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -113,51 +114,35 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
           const { fixedCode } = await response.json();
           
           if (fixedCode) {
-              // Replace the bad code block in the message text with the fixed one.
-              // We use simple string replacement. If code appears multiple times, this might be tricky,
-              // but usually unique enough.
               const cleanFixed = fixedCode.trim();
-              
-              // Try to find the exact block to replace in the raw text
               const currentText = activeResponse?.text || '';
               
-              // We need to match loose spacing or formatting differences
-              // For simplicity, we just look for the known bad block. 
-              // In reality, 'badCode' passed here is usually stripped. 
-              // We might need to find where it sits in the text.
+              // More robust replacement strategy:
+              // The badCode passed here is the INNER content (without tags).
+              // We need to find where this inner content lives in the full message.
               
-              // Strategy: Replace the entire chart block match
-              // The universal chart logic strips fences, so we should look for 
-              // fences + code OR just the code if fences missing.
-              
-              // Simplest approach: Replace the *exact string* if found.
-              // If not found (due to formatting stripping), we might fail.
-              // Ideally UniversalChart passes us the *exact raw string* it extracted.
-              
-              // Re-construct likely original shape
-              const probableOriginal = `<echarts>${badCode}</echarts>`;
-              const probableFixed = `<echarts>${cleanFixed}</echarts>`;
-              
-              let newText = currentText;
-              
-              // Try replacing pure tag content first (if caller stripped tags)
+              // 1. Try exact match of inner content
               if (currentText.includes(badCode)) {
-                  newText = currentText.replace(badCode, cleanFixed);
-              } 
-              // Try replacing with tags re-added (if badCode was just inner content)
-              else {
-                  // RegEx replacement for the block
-                  // This is aggressive but likely what we want if exact string match fails
-                  // We look for the <echarts> block that contains a significant chunk of the bad code
-                  const snippet = badCode.substring(0, 20); 
-                  const regex = new RegExp(`<echarts>[\\s\\S]*?${snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*?<\\/echarts>`, 'i');
-                  newText = currentText.replace(regex, probableFixed);
-              }
-
-              if (newText !== currentText) {
+                  const newText = currentText.replace(badCode, cleanFixed);
                   onEditMessage(id, newText);
                   return cleanFixed;
               }
+              
+              // 2. Try match with relaxed whitespace/newlines
+              // Escape badCode for regex, but allow whitespace differences
+              const escapedBadCode = badCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*');
+              const looseRegex = new RegExp(escapedBadCode, 'i');
+              
+              if (looseRegex.test(currentText)) {
+                  const newText = currentText.replace(looseRegex, cleanFixed);
+                  onEditMessage(id, newText);
+                  return cleanFixed;
+              }
+              
+              // 3. Fallback: Search for component tags wrapping a similar looking string
+              // This is harder, but usually exact match works if UniversalChart extracts correctly.
+              // If we fail to replace, we return the fixed code anyway so the component can use it locally.
+              return cleanFixed;
           }
       } catch (e) {
           console.error("Failed to fix code:", e);
