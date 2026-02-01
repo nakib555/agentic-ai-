@@ -7,91 +7,100 @@
 import { MATH_RENDERING_INSTRUCTIONS } from './math';
 
 const UNIVERSAL_CHART_LANGUAGE_DOCS = `
-# 📊 VISUALIZATION ENGINE
+# 📊 VISUALIZATION ENGINE: ECHARTS PROTOCOLS
 
-To visualize data, relationships, or concepts, you have two powerful modes. 
+To visualize data, relationships, or concepts, use the <echarts> tag.
 
-## 1. ECharts Mode (<echarts>)
-**Use for:** Standard statistical graphs (Line, Bar, Pie, Scatter, Heatmap, Sankey, Radar, Candlestick, Graph).
-**Pros:** Interactive tooltips, zoom, legend, fast rendering, highly customizable.
+## 🎨 MODERN DESIGN & AESTHETIC STANDARDS (MANDATORY)
 
-*   **Syntax**:
-    <echarts>
+You must produce "Dribbble-ready", modern, clean, and responsive charts.
+**Reject** default styling. Apply the following aesthetic rules:
+
+1.  **Color Palette:** Use this specific modern palette. Do not use default ECharts colors.
+    \`["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4"]\`
+2.  **Typography:** Use sans-serif fonts. Keep text subtle (#64748b).
+3.  **Minimalism:** Remove unnecessary axis lines (\`axisLine: { show: false }\`). Use dashed split lines.
+4.  **Rounded Corners:** Add \`borderRadius: [4, 4, 0, 0]\` to bars.
+5.  **Smooth Curves:** Use \`smooth: true\` for line charts.
+6.  **Legends:** Use \`icon: 'circle'\` for a cleaner look.
+
+## 🛡️ RENDERING SAFETY & FAILURE PREVENTION
+
+**Why Charts Fail (Avoid These):**
+1.  **Invalid JSON (CRITICAL):** Do NOT include comments (\`//\`) inside the JSON. Do NOT leave trailing commas. The parser is strict.
+2.  **Function Objects:** Do NOT use \`formatter: function() {...}\`. JavaScript functions cannot be serialized in JSON. Use string templates only (e.g. \`{b}: {c}\`).
+3.  **Layout Overflow:** Labels cut off because \`containLabel\` is missing.
+4.  **Mobile Clipping:** Tooltips going off-screen because \`confine: true\` is missing.
+
+**Mandatory Configuration (Boilerplate):**
+Always include these settings to ensure the chart renders without crashing or clipping:
+
+\`\`\`json
+{
+  "grid": { "containLabel": true, "left": "2%", "right": "2%", "bottom": "5%", "top": "15%" },
+  "tooltip": { "confine": true, "trigger": "axis", "backgroundColor": "rgba(255,255,255,0.95)", "borderRadius": 8, "textStyle": { "color": "#1e293b" } },
+  "backgroundColor": "transparent",
+  "animation": true
+}
+\`\`\`
+
+## 📝 EXAMPLE: PERFECTLY STRUCTURED CHART
+
+<echarts>
+{
+  "color": ["#6366f1", "#10b981", "#f59e0b"],
+  "tooltip": {
+    "trigger": "axis",
+    "confine": true,
+    "backgroundColor": "rgba(255, 255, 255, 0.95)",
+    "borderColor": "#e2e8f0",
+    "textStyle": { "color": "#1e293b" },
+    "extraCssText": "box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);"
+  },
+  "grid": {
+    "top": 50,
+    "left": 10,
+    "right": 10,
+    "bottom": 10,
+    "containLabel": true
+  },
+  "legend": {
+    "bottom": 0,
+    "icon": "circle",
+    "type": "scroll",
+    "textStyle": { "color": "#64748b" }
+  },
+  "xAxis": {
+    "type": "category",
+    "data": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    "axisLine": { "show": false },
+    "axisTick": { "show": false },
+    "axisLabel": { "color": "#64748b", "fontWeight": 500, "interval": 0 }
+  },
+  "yAxis": {
+    "type": "value",
+    "splitLine": { "lineStyle": { "type": "dashed", "color": "#f1f5f9" } },
+    "axisLabel": { "color": "#64748b" }
+  },
+  "series": [
     {
-      "backgroundColor": "transparent",
-      "textStyle": { "fontFamily": "Inter, sans-serif" },
-      "animation": true,
-      "color": ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4"], 
-      "title": { 
-        "text": "Quarterly Sales", 
-        "left": "center",
-        "top": 10,
-        "textStyle": { "color": "#1e293b", "fontSize": 14, "fontWeight": 600 }
-      },
-      "tooltip": { 
-        "trigger": "axis",
-        "confine": true, 
-        "backgroundColor": "rgba(255, 255, 255, 0.95)",
-        "borderColor": "#e2e8f0",
-        "padding": [10, 15],
-        "textStyle": { "color": "#1e293b" },
-        "extraCssText": "box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);"
-      },
-      "grid": { 
-        "top": 60, 
-        "bottom": 40, 
-        "left": 20, 
-        "right": 20, 
-        "containLabel": true 
-      },
-      "legend": {
-        "type": "scroll",
-        "bottom": 0,
-        "textStyle": { "color": "#64748b" }
-      },
-      "xAxis": { 
-        "type": "category", 
-        "data": ["Q1", "Q2", "Q3", "Q4"],
-        "axisLine": { "lineStyle": { "color": "#cbd5e1" } },
-        "axisLabel": { 
-           "color": "#64748b", 
-           "fontWeight": 500, 
-           "interval": 0, 
-           "hideOverlap": true, 
-           "overflow": "truncate",
-           "width": 60 
-        },
-        "axisTick": { "show": false }
-      },
-      "yAxis": { 
-        "type": "value",
-        "splitLine": { "lineStyle": { "color": "#f1f5f9", "type": "dashed" } },
-        "axisLabel": { "color": "#64748b", "hideOverlap": true }
-      },
-      "series": [
-        { 
-          "name": "Revenue",
-          "data": [120, 200, 150, 80], 
-          "type": "bar", 
-          "itemStyle": { "borderRadius": [4, 4, 0, 0] },
-          "emphasis": { "focus": "series" }
-        }
-      ]
+      "name": "Traffic",
+      "type": "bar",
+      "data": [820, 932, 901, 934, 1290, 1330, 1320],
+      "itemStyle": { "borderRadius": [4, 4, 0, 0] },
+      "emphasis": { "focus": "series" }
+    },
+    {
+      "name": "Users",
+      "type": "line",
+      "smooth": true,
+      "showSymbol": false,
+      "data": [620, 732, 701, 734, 1090, 1130, 1120],
+      "areaStyle": { "opacity": 0.1 }
     }
-    </echarts>
-
-*   **Mandatory Responsive Protocols**:
-    1.  **Prevent Overlap (CRITICAL):**
-        *   ALWAYS set \`grid: { containLabel: true }\` to prevent labels from being cut off.
-        *   ALWAYS set \`tooltip: { confine: true }\` so tooltips stay inside the chart on mobile.
-        *   ALWAYS set \`axisLabel: { hideOverlap: true }\` on both x and y axes.
-    2.  **Mobile Friendly:**
-        *   Use \`legend: { type: 'scroll', bottom: 0 }\` to handle many legend items on small screens.
-        *   Keep titles small (\`fontSize: 14\`) and centered.
-    3.  **Aesthetics:**
-        *   Use the provided hex color palette.
-        *   Background must be \`"transparent"\` or \`"#ffffff"\`.
-    4.  **Format:** Output valid JSON only inside the tags.
+  ]
+}
+</echarts>
 
 ## 2. Advanced HTML/CSS/JS Mode (<chart>)
 **Use for:** Custom layouts, CSS-heavy visualizations, diagrams, flowcharts, or when you want to create something **visually stunning** using web technologies.
