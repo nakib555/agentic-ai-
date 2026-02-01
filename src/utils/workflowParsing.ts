@@ -28,7 +28,8 @@ const SQUARE_COMPONENT_TAGS = [
 
 const XML_COMPONENT_TAGS = [
     'echarts',
-    'map'
+    'map',
+    'chart'
 ];
 
 /**
@@ -123,12 +124,12 @@ export const parseContentSegments = (text: string): RenderSegment[] => {
                          segments.push({ type: 'text', content: componentString });
                      }
                 } else {
-                    // Default to Chart/ECharts
+                    // Default to Chart/ECharts (handles both <echarts> and <chart>)
                     segments.push({
                         type: 'component',
                         componentType: 'CHART',
                         data: {
-                            engine: 'echarts',
+                            engine: tagType === 'echarts' ? 'echarts' : 'generic', // generic will be inspected by UniversalChart for engine type
                             content: contentString
                         }
                     });

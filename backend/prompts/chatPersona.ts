@@ -7,13 +7,13 @@
 import { MATH_RENDERING_INSTRUCTIONS } from './math';
 
 const UNIVERSAL_CHART_LANGUAGE_DOCS = `
-# 📊 VISUALIZATION ENGINE (ECHARTS)
+# 📊 VISUALIZATION ENGINE
 
-To visualize data, relationships, or concepts, you **MUST** use the specialized XML-style component tag for Apache ECharts.
+To visualize data, relationships, or concepts, you MUST use the specialized XML-style component tags.
 **DO NOT** use standard markdown code blocks (e.g. \`\`\`json) for charts. The UI will not render them.
 
-## ECharts Mode (<echarts>)
-Use for: All statistical graphs, line/bar/scatter plots, heatmaps, pie charts, radar charts, and complex data visualizations.
+## 1. ECharts Mode (<echarts>)
+Use for: Statistical graphs, complex data plots, heatmaps, pie charts, etc.
 
 *   **Syntax**:
     <echarts>
@@ -26,37 +26,27 @@ Use for: All statistical graphs, line/bar/scatter plots, heatmaps, pie charts, r
     }
     </echarts>
 
-*   **Content**: A valid JSON object representing the ECharts \`option\` object.
 *   **Rules**:
-    *   **CRITICAL**: The content inside <echarts> tags MUST be valid, parsable JSON.
-    *   **NO TRAILING COMMAS**: Do not leave a comma after the last property in an object or array.
-    *   **NO MISSING VALUES**: Ensure every key has a valid value. Do NOT write \`"data":,\` or \`"borderRadius": }\`. If data is missing, use \`null\` or an empty array \`[]\`.
-    *   Keys must be double-quoted (e.g. "xAxis", not xAxis).
-    *   Strings must be double-quoted.
-    *   Do not wrap the JSON in backticks or markdown code fences inside the tag.
-    *   Include \`tooltip\` configuration for interactivity.
-    *   Use the default theme colors; do not hardcode specific hex colors unless strictly necessary for data meaning.
+    *   Content must be valid JSON.
+    *   Do not wrap in backticks.
+    *   Use double quotes for keys and strings.
 
----
+## 2. Custom HTML/CSS Mode (<chart>)
+Use for: Custom diagrams, CSS-only visualizations, flowcharts, or unique layouts not possible with ECharts.
 
-**Example Response Structure:**
-"Here is the sales data you requested:
+*   **Syntax**:
+    <chart>
+    {
+      "engine": "html",
+      "code": "<style>.bar { background: linear-gradient(to right, #4f46e5, #ec4899); height: 20px; border-radius: 4px; }</style><div class='bar' style='width: 75%'></div>"
+    }
+    </chart>
 
-<echarts>
-{
-  "title": { "text": "Quarterly Sales" },
-  "tooltip": {},
-  "xAxis": { "data": ["Q1", "Q2", "Q3", "Q4"] },
-  "yAxis": {},
-  "series": [{
-    "name": "Sales",
-    "type": "bar",
-    "data": [100, 150, 120, 200]
-  }]
-}
-</echarts>
-
-As you can see, Q4 performed better."
+*   **Rules**:
+    *   The "code" property contains the raw HTML/CSS string.
+    *   You can use <style> tags inside the code string.
+    *   Use specific class names to avoid conflicts (e.g., \`.my-custom-graph\`).
+    *   Ensure the design fits within a standard card width (approx 600px).
 `;
 
 const MAP_COMPONENT_DOCS = `

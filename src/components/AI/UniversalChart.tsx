@@ -7,7 +7,7 @@
 import React, { useEffect, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
 
-export type ChartEngine = 'echarts';
+export type ChartEngine = 'echarts' | 'html';
 
 type UniversalChartProps = {
     content?: string; // Legacy support for markdown parsing or raw code
@@ -93,6 +93,8 @@ const looseJsonParse = (str: string) => {
 
 export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ content, code }) => {
     const [config, setConfig] = useState<EChartsConfig | null>(null);
+    const [htmlContent, setHtmlContent] = useState<string | null>(null);
+    const [activeEngine, setActiveEngine] = useState<ChartEngine>('echarts');
     const [error, setError] = useState<string | null>(null);
     
     // Theme state
@@ -124,10 +126,18 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                 const trimmedCode = stripMarkdown(rawContent);
                 
                 // Parse the JSON option object
-                const option = looseJsonParse(trimmedCode);
+                const parsed = looseJsonParse(trimmedCode);
                 
-                if (option && typeof option === 'object') {
-                    setConfig({ option });
+                if (parsed && typeof parsed === 'object') {
+                    // Check if explicit engine is defined
+                    if (parsed.engine === 'html' && parsed.code) {
+                        setActiveEngine('html');
+                        setHtmlContent(parsed.code);
+                    } else {
+                        // Default to ECharts
+                        setActiveEngine('echarts');
+                        setConfig({ option: parsed });
+                    }
                     setError(null);
                 } else {
                     throw new Error("Parsed content is not a valid object");
@@ -138,7 +148,7 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
             // We suppress console spam for partial JSON during streaming.
             const isSyntaxError = e instanceof SyntaxError;
             if (!isSyntaxError) {
-                console.warn("ECharts parsing warning:", e.message);
+                console.warn("Chart parsing warning:", e.message);
             }
             setError(`Rendering...`); 
         }
@@ -153,6 +163,30 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         );
     }
 
+    if (activeEngine === 'html') {
+        if (!htmlContent) return <div className="h-64 bg-gray-100 dark:bg-white/5 rounded-lg animate-pulse my-6" />;
+        return (
+            <div className="my-6 border border-gray-200 dark:border-white/10 rounded-2xl overflow-hidden bg-white dark:bg-[#121212] shadow-sm relative z-0 group transition-colors duration-300">
+                <div className="px-4 py-2 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/5 backdrop-blur-sm">
+                    <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.6)]"></span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                            Custom Visual
+                        </span>
+                    </div>
+                </div>
+                <div className="p-6 bg-white dark:bg-[#121212] overflow-x-auto">
+                    {/* Render HTML content safely. Ensure the AI scopes CSS or uses standard classes. */}
+                    <div 
+                        className="prose dark:prose-invert max-w-none w-full"
+                        dangerouslySetInnerHTML={{ __html: htmlContent }} 
+                    />
+                </div>
+            </div>
+        );
+    }
+
+    // Default ECharts Render
     if (!config) {
         return <div className="h-64 bg-gray-100 dark:bg-white/5 rounded-lg animate-pulse my-6" />;
     }
