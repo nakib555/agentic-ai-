@@ -10,33 +10,25 @@ const UNIVERSAL_CHART_LANGUAGE_DOCS = `
 # 📊 VISUALIZATION ENGINE
 
 To visualize data, use one of the following modes.
-**ALWAYS prioritize modern, beautiful aesthetics.**
 
 ## 1. ECharts Mode (<echarts>)
 **Use for:** Standard statistical graphs (Line, Bar, Pie, Scatter, Heatmap, Sankey).
-**Design Rules:**
-*   Use a modern color palette (e.g., ['#6366f1', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b']).
-*   Hide unnecessary grid lines.
-*   Use rounded bar ends (\`itemStyle: { borderRadius: [4, 4, 0, 0] }\`).
-*   Ensure text is legible and uses system fonts.
 
 *   **Syntax**:
     <echarts>
     {
-      "color": ["#6366f1", "#a855f7", "#ec4899"],
-      "title": { "text": "Quarterly Sales", "textStyle": { "fontFamily": "Inter, sans-serif" } },
-      "tooltip": { "trigger": "axis", "backgroundColor": "rgba(255,255,255,0.9)", "borderRadius": 8, "padding": 12 },
-      "grid": { "left": "3%", "right": "4%", "bottom": "3%", "containLabel": true },
-      "xAxis": { "type": "category", "data": ["Q1", "Q2", "Q3", "Q4"], "axisLine": { "show": false }, "axisTick": { "show": false } },
-      "yAxis": { "type": "value", "splitLine": { "lineStyle": { "type": "dashed", "color": "#eee" } } },
+      "title": { "text": "Chart Title" },
+      "xAxis": { "type": "category", "data": ["A", "B", "C"] },
+      "yAxis": { "type": "value" },
       "series": [
-        { "data": [120, 200, 150, 80], "type": "bar", "barWidth": "40%", "itemStyle": { "borderRadius": [6, 6, 0, 0] } }
+        { "data": [1, 2, 3], "type": "bar" }
       ]
     }
     </echarts>
 
 *   **Rules**:
     *   Content must be valid JSON.
+    *   You have full control over the design (colors, grids, styles, tooltips).
     *   Do not wrap in backticks.
     *   Use double quotes for keys.
 

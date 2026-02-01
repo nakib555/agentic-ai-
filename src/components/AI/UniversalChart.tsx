@@ -270,26 +270,13 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
     }
 
     return (
-        <div className="my-6 border border-gray-200 dark:border-white/10 rounded-2xl overflow-hidden bg-white dark:bg-[#121212] shadow-sm relative z-0 group transition-colors duration-300">
-            {/* Header */}
-            <div className="px-4 py-2 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/5 backdrop-blur-sm">
-                <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]"></span>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                        Apache ECharts
-                    </span>
-                </div>
-            </div>
-            
-            {/* Chart Canvas */}
-            <div className="p-4 bg-white dark:bg-[#121212]">
-                <ReactECharts
-                    option={config.option}
-                    theme={isDark ? 'dark' : undefined}
-                    style={{ height: config.height || 400, width: '100%' }}
-                    opts={{ renderer: 'svg' }} // Use SVG for sharper text rendering
-                />
-            </div>
+        <div className="w-full my-6">
+            <ReactECharts
+                option={config.option}
+                theme={isDark ? 'dark' : undefined}
+                style={{ height: config.height || 400, width: '100%', background: 'transparent' }}
+                opts={{ renderer: 'svg' }} // Use SVG for sharper text rendering
+            />
         </div>
     );
 });
