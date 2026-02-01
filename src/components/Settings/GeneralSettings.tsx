@@ -175,7 +175,10 @@ const OllamaHostForm = ({ value, onSave }: { value: string, onSave: (host: strin
                     )}
                 </Button>
              </div>
-             <p className="text-[11px] text-slate-500 px-1">Ensure your Ollama server allows CORS.</p>
+             <p className="text-[11px] text-slate-500 px-1">
+                Ensure your Ollama server allows CORS. 
+                <a href="https://ollama.com" target="_blank" rel="noopener noreferrer" className="ml-1 underline hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Get Ollama</a>
+             </p>
         </div>
     );
 };
@@ -264,7 +267,7 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
                 {provider === 'ollama' && (
                      <div className="space-y-6 pt-2 animate-in fade-in slide-in-from-top-2 duration-300 w-full">
                         <OllamaHostForm 
-                            value={ollamaHost || 'http://localhost:11434'}
+                            value={ollamaHost || ''}
                             onSave={onSaveOllamaHost || (async () => {})}
                         />
                         
