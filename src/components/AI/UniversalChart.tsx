@@ -266,25 +266,13 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
     }
 
     return (
-        <div className="my-6 border border-gray-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-sm relative z-0 group transition-colors duration-300">
-            {/* Header */}
-            <div className="px-4 py-2 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/5 backdrop-blur-sm">
-                <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]"></span>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                        Apache ECharts
-                    </span>
-                </div>
-            </div>
-            
-            {/* Chart Canvas - Remove wrapper styling to allow full chart control */}
+        <div className="my-6 w-full rounded-xl overflow-hidden relative z-0">
+            {/* Chart Canvas - Full Control */}
+            {/* We removed external borders/headers to allow the chart config to control the entire visual area including background */}
             <div className="w-full h-full">
                 <ReactECharts
                     option={config.option}
-                    // Only apply 'dark' theme if no explicit backgroundColor is set in the options, 
-                    // or if the user explicitly didn't provide a background.
-                    // However, we generally prefer the user/AI to define the look.
-                    // Passing 'undefined' allows the AI's option object to take full precedence.
+                    // Only apply 'dark' theme if no explicit backgroundColor is set in the options
                     theme={isDark && !config.option.backgroundColor ? 'dark' : undefined}
                     style={{ height: config.height || 400, width: '100%' }}
                     opts={{ renderer: 'svg' }}

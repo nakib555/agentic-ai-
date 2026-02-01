@@ -10,35 +10,39 @@ const UNIVERSAL_CHART_LANGUAGE_DOCS = `
 # 📊 VISUALIZATION ENGINE
 
 To visualize data, relationships, or concepts, you have two powerful modes. 
-Choose the mode that best fits the data complexity and visual requirements.
 
 ## 1. ECharts Mode (<echarts>)
-**Use for:** Standard statistical graphs (Line, Bar, Pie, Scatter, Heatmap, Sankey, Radar, Candlestick).
+**Use for:** Standard statistical graphs (Line, Bar, Pie, Scatter, Heatmap, Sankey, Radar, Candlestick, Graph).
 **Pros:** Interactive tooltips, zoom, legend, fast rendering, highly customizable.
 
 *   **Syntax**:
     <echarts>
     {
-      "backgroundColor": "transparent",
-      "textStyle": { "fontFamily": "Inter, system-ui, sans-serif" },
+      "backgroundColor": "#ffffff", 
+      "textStyle": { "fontFamily": "Inter, sans-serif" },
+      "animation": true,
       "color": ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"], 
       "title": { 
         "text": "Quarterly Sales", 
         "left": "center",
-        "textStyle": { "color": "#334155", "fontSize": 16, "fontWeight": 600 }
+        "top": 20,
+        "textStyle": { "color": "#1e293b", "fontSize": 16, "fontWeight": 600 }
       },
       "tooltip": { 
         "trigger": "axis",
-        "backgroundColor": "rgba(255, 255, 255, 0.9)",
+        "backgroundColor": "rgba(255, 255, 255, 0.95)",
         "borderColor": "#e2e8f0",
-        "textStyle": { "color": "#1e293b" }
+        "padding": [10, 15],
+        "textStyle": { "color": "#1e293b" },
+        "extraCssText": "box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);"
       },
-      "grid": { "top": 50, "bottom": 30, "left": 20, "right": 20, "containLabel": true },
+      "grid": { "top": 80, "bottom": 30, "left": 40, "right": 40, "containLabel": true },
       "xAxis": { 
         "type": "category", 
         "data": ["Q1", "Q2", "Q3", "Q4"],
         "axisLine": { "lineStyle": { "color": "#cbd5e1" } },
-        "axisLabel": { "color": "#64748b" }
+        "axisLabel": { "color": "#64748b", "fontWeight": 500 },
+        "axisTick": { "show": false }
       },
       "yAxis": { 
         "type": "value",
@@ -49,53 +53,41 @@ Choose the mode that best fits the data complexity and visual requirements.
         { 
           "data": [120, 200, 150, 80], 
           "type": "bar", 
-          "itemStyle": { "borderRadius": [4, 4, 0, 0] },
-          "smooth": true
+          "itemStyle": { "borderRadius": [6, 6, 0, 0] },
+          "barWidth": "40%",
+          "emphasis": { "focus": "series" }
         }
       ]
     }
     </echarts>
 
 *   **Design Protocols for ECharts**:
-    1.  **Full Control:** You have full control over the \`option\` object. Define colors, fonts, and spacing explicitly inside the JSON.
-    2.  **Modern Aesthetic:** ALWAYS apply a beautiful, modern design.
-        *   Use a refined color palette (e.g., Indigo, Emerald, Amber) instead of default primary colors.
-        *   Remove clutter: Use dashed or subtle splitLines.
-        *   Typography: Use sans-serif fonts.
-        *   Responsiveness: Always set \`grid: { containLabel: true }\` to prevent clipping.
-    3.  **Format:** Content must be valid JSON. Do not wrap in backticks.
+    1.  **Modern Aesthetic:** ALWAYS apply a polished, modern design.
+        *   **Palette:** Use refined hex colors (e.g., Indigo \`#6366f1\`, Emerald \`#10b981\`) instead of default primary colors.
+        *   **Minimalism:** Remove clutter. Hide \`axisTick\`. Use dashed or subtle \`splitLines\`.
+        *   **Typography:** Use sans-serif fonts. Ensure labels are legible (\`#64748b\`).
+        *   **Containers:** ALWAYS set \`grid: { containLabel: true }\`.
+    2.  **Full Control (Self-Contained):**
+        *   You have full control over the \`option\` object.
+        *   **Background:** YOU MUST define the \`backgroundColor\` property inside the JSON (e.g., \`"backgroundColor": "#ffffff"\` or \`"transparent"\`). The container has no padding or styling; the chart controls its own canvas.
+        *   **Padding:** Use the \`grid\` property to manage internal padding.
+    3.  **Format:** Content must be valid JSON. Do not wrap in backticks. Do not use Markdown code blocks.
 
 ## 2. Advanced HTML/CSS/JS Mode (<chart>)
 **Use for:** Custom layouts, CSS-heavy visualizations, diagrams, flowcharts, or when you want to create something **visually stunning** using web technologies.
 **Capabilities:** You can use Tailwind CSS via CDN, CSS Gradients, Flexbox/Grid, and SVGs.
 
-*   **Format A: Raw HTML (Direct Injection)**
-    <chart>
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <script src="https://cdn.tailwindcss.com"></script>
-    </head>
-    <body class="p-4 bg-transparent">
-      <div class="bg-blue-500 text-white p-4 rounded-xl shadow-lg">Hello World</div>
-    </body>
-    </html>
-    </chart>
-
-*   **Format B: Structured JSON (Recommended for Style Separation)**
-    This format separates structure (HTML) from presentation (CSS) and logic (JS) for cleaner generation.
-    
+*   **Format:** Structured JSON (Recommended)
     <chart>
     {
       "engine": "html",
-      "css": ".card { background: linear-gradient(135deg, #6366f1, #a855f7); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); font-family: sans-serif; text-align: center; } .value { font-size: 2rem; font-weight: bold; }",
-      "code": "<div class='card'><h2>Total Revenue</h2><div class='value'>$1,250,000</div></div>"
+      "css": ".card { background: linear-gradient(135deg, #6366f1, #a855f7); color: white; padding: 20px; border-radius: 12px; font-family: sans-serif; text-align: center; }",
+      "code": "<div class='card'><h2>Total Revenue</h2></div>"
     }
     </chart>
 
 *   **Rules**:
-    *   For Raw HTML: Write code directly inside the tag.
-    *   For JSON: Must be valid JSON. Keys: "engine": "html", "code" (HTML), "css" (optional styles), "javascript" (optional logic).
+    *   Must be valid JSON. Keys: "engine": "html", "code" (HTML), "css" (optional styles), "javascript" (optional logic).
     *   **Sandbox:** Runs in a secure iframe.
 `;
 
