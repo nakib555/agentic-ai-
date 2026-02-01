@@ -29,7 +29,8 @@ const SQUARE_COMPONENT_TAGS = [
 const XML_COMPONENT_TAGS = [
     'plotly',
     'd3',
-    'hybrid'
+    'hybrid',
+    'chart.js' // Added to prevent flicker for potential hallucinations or future support
 ];
 
 /**
@@ -40,7 +41,7 @@ export const parseContentSegments = (text: string): RenderSegment[] => {
     if (!text) return [];
 
     const squarePattern = SQUARE_COMPONENT_TAGS.join('|');
-    const xmlPattern = XML_COMPONENT_TAGS.join('|');
+    const xmlPattern = XML_COMPONENT_TAGS.map(t => t.replace('.', '\\.')).join('|');
     
     // Regex to capture COMPLETE component tags and their content
     // Group 1: Square Brackets -> \[(TAGS)\][\s\S]*?\[\/\1\]
@@ -86,7 +87,7 @@ export const parseContentSegments = (text: string): RenderSegment[] => {
                     type: 'component',
                     componentType: 'CHART',
                     data: {
-                        engine: tagType === 'hybrid' ? 'hybrid' : tagType,
+                        engine: tagType === 'hybrid' ? 'hybrid' : (tagType === 'd3' ? 'd3' : 'plotly'),
                         content: contentString
                     }
                 });
@@ -126,13 +127,19 @@ export const parseContentSegments = (text: string): RenderSegment[] => {
             // NOTE: We intentionally swallow the content after the opening tag 
             // while it is streaming to prevent raw code/json from flickering on screen.
         } else {
-             // Handle partial square bracket tags to avoid glitching
-             // e.g. "[IMAGE_CO" at the end of stream
-             const incompleteSquareRegex = new RegExp(`\\[(?:${squarePattern})`, 'i');
+             // Handle partial tags to avoid glitching
+             let cleanedPart = remainingText;
+
+             // 1. Partial XML Tag at end: matches < followed by potential tag characters
+             // e.g. "<d", "<plo", "<chart."
+             const partialXmlRegex = /(<[a-z0-9\._-]*)$/i;
              
-             // If the text ends with an incomplete tag start, strip it to prevent raw bracket display
-             const incompleteTagRegex = new RegExp(`\\[(?:${squarePattern})\\]?$`, 'i');
-             const cleanedPart = remainingText.replace(incompleteTagRegex, '');
+             // 2. Partial Square Tag at end: matches [ followed by potential tag characters
+             // e.g. "[IMA", "[VIDEO_"
+             const partialSquareRegex = /(\[[a-z0-9_]*)$/i;
+
+             cleanedPart = cleanedPart.replace(partialXmlRegex, '');
+             cleanedPart = cleanedPart.replace(partialSquareRegex, '');
              
              if (cleanedPart) {
                 segments.push({ type: 'text', content: cleanedPart });
