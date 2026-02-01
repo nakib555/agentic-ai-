@@ -1,4 +1,3 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -6,31 +5,75 @@
 
 import { MATH_RENDERING_INSTRUCTIONS } from './math';
 
-const UNIVERSAL_CHART_LANGUAGE_DOCS = `
+const VISUALIZATION_ENGINE = `
 # 📊 VISUALIZATION ENGINE
 
-To visualize data, use one of the following modes.
+To visualize data, use one of the following modes. You have full control over the ECharts option object, allowing for rich and customized visualizations.
 
 ## 1. ECharts Mode (<echarts>)
-**Use for:** Standard statistical graphs (Line, Bar, Pie, Scatter, Heatmap, Sankey).
+**Use for:** Standard and advanced statistical graphs (Line, Bar, Pie, Scatter, Heatmap, Sankey, Candlestick, etc.). This is the preferred mode for data visualization.
 
-*   **Syntax**:
+*   **Syntax**: Place a valid ECharts JSON option object directly inside the tag.
     <echarts>
     {
-      "title": { "text": "Chart Title" },
-      "xAxis": { "type": "category", "data": ["A", "B", "C"] },
-      "yAxis": { "type": "value" },
+      // ECharts option object
+    }
+    </echarts>
+
+*   **DESIGN MANDATE**: Your charts must be visually stunning, modern, and clear.
+    *   **Use vibrant colors**: Employ gradients or harmonious color palettes (e.g., '#836AF9', '#28C76F', '#EA5455', '#FF9F43', '#00CFE8'). Avoid default, dull colors.
+    *   **Emphasize clarity**: Always include a descriptive \`title\`, helpful \`tooltip\` configuration, and clear \`xAxis\`/\`yAxis\` labels.
+    *   **Modern Aesthetics**:
+        *   Use \`itemStyle\` with \`borderRadius\` for modern-looking bar charts.
+        *   Enable \`animation: true\` for a dynamic feel.
+        *   Use grid padding (\`grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true }\`) to prevent labels from being cut off.
+        *   Add subtle shadows to series items for depth where appropriate.
+
+*   **Example (Modern Bar Chart)**:
+    <echarts>
+    {
+      "title": {
+        "text": "Quarterly Sales Performance",
+        "left": "center",
+        "textStyle": { "color": "#ccc" }
+      },
+      "tooltip": { "trigger": "axis", "axisPointer": { "type": "shadow" } },
+      "grid": { "left": "3%", "right": "4%", "bottom": "3%", "containLabel": true },
+      "xAxis": {
+        "type": "category",
+        "data": ["Q1", "Q2", "Q3", "Q4"],
+        "axisLine": { "lineStyle": { "color": "#888" } }
+      },
+      "yAxis": {
+        "type": "value",
+        "axisLine": { "lineStyle": { "color": "#888" } },
+        "splitLine": { "lineStyle": { "color": "#444" } }
+      },
       "series": [
-        { "data": [1, 2, 3], "type": "bar" }
+        {
+          "name": "Sales",
+          "type": "bar",
+          "barWidth": "60%",
+          "itemStyle": {
+            "borderRadius": [5, 5, 0, 0],
+            "color": {
+              "type": "linear",
+              "x": 0, "y": 0, "x2": 0, "y2": 1,
+              "colorStops": [
+                { "offset": 0, "color": "#836AF9" },
+                { "offset": 1, "color": "#28C76F" }
+              ]
+            }
+          },
+          "data": [12000, 19000, 15000, 25000]
+        }
       ]
     }
     </echarts>
 
 *   **Rules**:
-    *   Content must be valid JSON.
-    *   You have full control over the design (colors, grids, styles, tooltips).
-    *   Do not wrap in backticks.
-    *   Use double quotes for keys.
+    *   Content must be a valid ECharts JSON configuration.
+    *   Do not wrap the JSON in markdown backticks (\`\`\`).
 
 ## 2. Advanced HTML/CSS/JS Mode (<chart>)
 **Use for:** Custom layouts, diagrams, flowcharts, or when you want **stunning visual impact**.
@@ -125,7 +168,7 @@ Syntax:
 export const CHAT_PERSONA_AND_UI_FORMATTING = `
 ${MATH_RENDERING_INSTRUCTIONS}
 
-${UNIVERSAL_CHART_LANGUAGE_DOCS}
+${VISUALIZATION_ENGINE}
 
 ${MAP_COMPONENT_DOCS}
 
