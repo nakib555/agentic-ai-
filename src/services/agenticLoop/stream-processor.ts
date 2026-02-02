@@ -35,9 +35,9 @@ export const processBackendStream = async (response: Response, callbacks: Stream
     // Fine-grained refinement: We use a tight interval but flush immediately 
     // upon detecting structural markers (newlines, code blocks, UI components).
     // This ensures layout shifts happen instantly while bulk text is smoothed out.
-    // Adjusted to 10ms to ensure near real-time streaming feel.
-    const FLUSH_INTERVAL_MS = 10; 
-    const MAX_BUFFER_SIZE = 5; 
+    // Adjusted to 50ms to reduce React Render Cycle pressure (20fps updates for data is sufficient since typewriter handles visuals).
+    const FLUSH_INTERVAL_MS = 50; 
+    const MAX_BUFFER_SIZE = 50; // Buffer more chars before forcing flush
     // Increased timeout to 2 minutes to handle "Thinking" models which may pause for long periods
     const WATCHDOG_TIMEOUT_MS = 120000;
 

@@ -23,9 +23,10 @@ export const useTypewriter = (targetText: string, isThinking: boolean) => {
   const timerRef = useRef<number | null>(null);
   const prevIsThinking = useRef(isThinking);
 
-  // Fixed tick rate for consistent UI performance (12ms = ~80fps target)
-  // This provides a much smoother and faster feel than the previous 30ms
-  const TICK_RATE = 12;
+  // Fixed tick rate for consistent UI performance
+  // 25ms = 40fps. This is the sweet spot between smoothness and CPU load.
+  // Previous 12ms (80fps) caused layout thrashing on heavy Markdown pages.
+  const TICK_RATE = 25;
 
   const loop = useCallback(() => {
       const targetLen = targetTextRef.current.length;
@@ -37,18 +38,19 @@ export const useTypewriter = (targetText: string, isThinking: boolean) => {
       }
 
       // --- ADAPTIVE SPEED CALCULATION ---
+      // We calculate how many characters to add this frame to keep up with the stream.
+      // Values adjusted for 25ms tick rate to maintain similar Words-Per-Minute throughput.
       const remainingChars = targetLen - currentLength.current;
       let charsToAdd = 1;
 
-      // Acceleration: The further behind we are, the faster we type.
-      // Tuned for a snappy "Star Trek" computer feel
-      if (remainingChars > 1500) charsToAdd = 150;    // Massive catch-up
-      else if (remainingChars > 800) charsToAdd = 80; // Very Fast
-      else if (remainingChars > 400) charsToAdd = 40; // Fast
-      else if (remainingChars > 150) charsToAdd = 20; // Moderate Fast
-      else if (remainingChars > 50) charsToAdd = 8;   // Cruising speed
-      else if (remainingChars > 20) charsToAdd = 4;   // Decent pace
-      else charsToAdd = 2; // Base speed (min 2 chars per 12ms = ~160 chars/sec base)
+      // Acceleration logic:
+      if (remainingChars > 1500) charsToAdd = 300;    // Massive catch-up
+      else if (remainingChars > 800) charsToAdd = 150; // Very Fast
+      else if (remainingChars > 400) charsToAdd = 75; // Fast
+      else if (remainingChars > 150) charsToAdd = 35; // Moderate Fast
+      else if (remainingChars > 50) charsToAdd = 15;   // Cruising speed
+      else if (remainingChars > 20) charsToAdd = 8;   // Decent pace
+      else charsToAdd = 3; // Base speed
 
       currentLength.current += charsToAdd;
       
