@@ -13,7 +13,6 @@ const UNIVERSAL_CHART_LANGUAGE_DOCS = `
 **DO NOT** use this tag for general UI, maps, or simple text tables.
 
 To visualize numerical or categorical data, you **MUST** use the <echarts> tag.
-Your goal is to create charts that look professional on a 4K monitor and perfect on a generic mobile phone.
 
 **SYNTAX:**
 \`\`\`xml
@@ -25,53 +24,89 @@ Your goal is to create charts that look professional on a 4K monitor and perfect
 </echarts>
 \`\`\`
 
-## 📱 THE RESPONSIVE MANDATE (MANDATORY)
+## 🎨 STRICT AESTHETIC & ANIMATION MANDATE
 
-You **MUST** use the \`baseOption\` + \`media\` structure for EVERY chart.
+You **MUST** apply the following style rules to **EVERY** chart to ensure a premium, modern look.
 
-### 1. The Golden Grid Rule
-Always set \`containLabel: true\`. This prevents labels from being cut off.
-\`\`\`json
-"grid": { "containLabel": true, "left": "2%", "right": "4%", "bottom": "5%" }
-\`\`\`
+### 1. 🎬 Motion & Animation
+Every chart must feel alive. Use these specific animation settings:
+*   \`animation: true\`
+*   \`animationDuration: 2000\`
+*   \`animationEasing: 'cubicOut'\`
+*   For Bar/Line charts, use \`animationDelay: (idx) => idx * 50\` (staggered entry).
 
-### 2. Desktop vs. Mobile Layouts
-- **Desktop (baseOption):** Legend on the right or top. Complex axis labels allowed.
-- **Mobile (media query):** Legend **MUST** move to the bottom (scrollable). Axis labels must be concise.
+### 2. ✨ Modern Styling Primitives
+*   **Bar Charts:** Always use rounded top corners: \`itemStyle: { borderRadius: [6, 6, 0, 0] }\`.
+*   **Line Charts:** Always use smooth curves: \`smooth: true\`, \`lineStyle: { width: 3 }\`, \`symbolSize: 8\`. Add \`areaStyle: { opacity: 0.1 }\` for depth.
+*   **Pie/Donut:** Use \`borderRadius: 8\` on itemStyle for separated slices.
+*   **Grid/Axes:** Use subtle, dashed split lines: \`splitLine: { lineStyle: { type: 'dashed', opacity: 0.15 } }\`. Hide axis ticks (\`axisTick: { show: false }\`).
 
-### 3. Required Structure Example
-Use this exact pattern for robust responsiveness:
+### 3. 🌈 Color Palette
+Use this specific vibrant palette in order:
+\`["#6366f1", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#06b6d4", "#f43f5e"]\`
+*   **Background:** ALWAYS \`backgroundColor: 'transparent'\` (to support Dark Mode).
+*   **Text:** Use \`#71717a\` (Zinc 500) for axis labels to look good in both light/dark modes.
 
+## 📱 THE RESPONSIVE MANDATE (REQUIRED)
+
+You **MUST** use the \`baseOption\` + \`media\` structure.
+
+### Desktop (baseOption)
+*   **Legend:** Right or Top. \`type: 'scroll'\`.
+*   **Grid:** \`containLabel: true\`, \`right: 5%\`, \`bottom: 10%\`.
+
+### Mobile (media query)
+*   **Rule:** \`{ "query": { "maxWidth": 650 }, "option": { ... } }\`
+*   **Legend:** Move to **bottom**. \`bottom: 0\`, \`orient: 'horizontal'\`, \`left: 'center'\`.
+*   **Grid:** Increase bottom padding (\`bottom: 50\`) to accommodate the legend.
+*   **Y-Axis:** Move name to end (\`nameLocation: 'end'\`).
+
+### Example Structure
 \`\`\`json
 {
   "baseOption": {
-    "title": { "text": "Sales Analysis", "left": "center" },
-    "tooltip": { "trigger": "axis", "confine": true },
-    "legend": { "type": "scroll", "top": "middle", "right": 0, "orient": "vertical" },
-    "grid": { "containLabel": true, "right": 120 }, // Space for side legend
-    "dataset": { "source": [...] },
-    "xAxis": { "type": "category" },
-    "yAxis": { "type": "value" },
-    "series": [{ "type": "bar" }]
+    "color": ["#6366f1", "#10b981", "#f59e0b", "#ec4899"],
+    "tooltip": { 
+      "trigger": "axis", 
+      "backgroundColor": "rgba(255,255,255,0.9)", 
+      "borderRadius": 8,
+      "padding": 12,
+      "textStyle": { "color": "#1e293b" },
+      "extraCssText": "box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); border: none;"
+    },
+    "grid": { "containLabel": true, "left": "2%", "right": "4%", "bottom": "5%" },
+    "xAxis": { 
+      "type": "category", 
+      "boundaryGap": false, 
+      "axisLine": { "show": false },
+      "axisTick": { "show": false },
+      "axisLabel": { "color": "#71717a" }
+    },
+    "yAxis": { 
+      "type": "value", 
+      "splitLine": { "lineStyle": { "type": "dashed", "opacity": 0.15 } },
+      "axisLabel": { "color": "#71717a" }
+    },
+    "series": [{ 
+      "type": "line", 
+      "smooth": true, 
+      "symbolSize": 8,
+      "lineStyle": { "width": 4, "shadowColor": "rgba(99,102,241,0.3)", "shadowBlur": 10 },
+      "animationDuration": 2000,
+      "animationEasing": "cubicOut"
+    }]
   },
   "media": [
     {
-      "query": { "maxWidth": 600 }, // Mobile Rule
+      "query": { "maxWidth": 600 },
       "option": {
-        "legend": { "right": "auto", "top": "auto", "bottom": 0, "orient": "horizontal", "left": "center" },
-        "grid": { "right": 10, "bottom": 40, "top": 60 }, // Move grid up/down to fit legend
-        "yAxis": { "nameLocation": "end", "nameGap": 10 },
-        "title": { "textStyle": { "fontSize": 14 } }
+        "legend": { "bottom": 0, "left": "center", "orient": "horizontal" },
+        "grid": { "bottom": 40 }
       }
     }
   ]
 }
 \`\`\`
-
-## 🎨 AESTHETIC DIRECTIVE
-1.  **Colors:** Use: \`["#6366f1", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#06b6d4"]\`.
-2.  **Dark Mode:** Do not set a background color. Allow transparency.
-3.  **Interactivity:** Always enable \`tooltip: { trigger: 'axis', confine: true }\`.
 
 Output **ONLY** valid JSON inside the tags. No markdown code blocks around the XML.
 `;
