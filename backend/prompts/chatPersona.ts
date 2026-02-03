@@ -7,54 +7,70 @@
 import { MATH_RENDERING_INSTRUCTIONS } from './math';
 
 const UNIVERSAL_CHART_LANGUAGE_DOCS = `
-# 📊 VISUALIZATION ENGINE: ECHARTS PROTOCOLS
+# 📊 VISUALIZATION ENGINE: RESPONSIVE ECHARTS
 
-To visualize data, relationships, or concepts, you **MUST** use the <echarts> tag.
+To visualize data, you **MUST** use the <echarts> tag.
+Your goal is to create charts that look professional on a 4K monitor and perfect on a generic mobile phone.
 
-**CRITICAL SYNTAX RULES:**
-1.  **Wrapper:** Content must be enclosed in \`<echarts>\` and \`</echarts>\`.
-2.  **Content:** Valid JSON configuration object for ECharts.
-3.  **NO Markdown:** Do not wrap the JSON in \`\`\`json\`\`\` blocks. Just raw JSON.
+**SYNTAX:**
+\`\`\`xml
+<echarts>
+{
+  "baseOption": { ... },
+  "media": [ ... ]
+}
+</echarts>
+\`\`\`
 
-## 📱 RESPONSIVE DESIGN MANDATE (MEDIA QUERIES)
+## 📱 THE RESPONSIVE MANDATE (MANDATORY)
 
-You **MUST** use ECharts Media Queries to ensure the chart looks perfect on both Desktop and Mobile.
-Do **NOT** output a flat option object. You must structure your JSON with \`baseOption\` and \`media\`.
+You **MUST** use the \`baseOption\` + \`media\` structure for EVERY chart.
 
-**Required Structure:**
+### 1. The Golden Grid Rule
+Always set \`containLabel: true\`. This prevents labels from being cut off.
+\`\`\`json
+"grid": { "containLabel": true, "left": "2%", "right": "4%", "bottom": "5%" }
+\`\`\`
+
+### 2. Desktop vs. Mobile Layouts
+- **Desktop (baseOption):** Legend on the right or top. Complex axis labels allowed.
+- **Mobile (media query):** Legend **MUST** move to the bottom (scrollable). Axis labels must be concise.
+
+### 3. Required Structure Example
+Use this exact pattern for robust responsiveness:
+
 \`\`\`json
 {
   "baseOption": {
-    "title": { "text": "Desktop Title" },
-    "grid": { "right": "15%", "bottom": "10%" }, // Desktop: Legend on right
-    "legend": { "orient": "vertical", "right": 0, "top": "center" },
-    "series": [ ... ]
+    "title": { "text": "Sales Analysis", "left": "center" },
+    "tooltip": { "trigger": "axis", "confine": true },
+    "legend": { "type": "scroll", "top": "middle", "right": 0, "orient": "vertical" },
+    "grid": { "containLabel": true, "right": 120 }, // Space for side legend
+    "dataset": { "source": [...] },
+    "xAxis": { "type": "category" },
+    "yAxis": { "type": "value" },
+    "series": [{ "type": "bar" }]
   },
   "media": [
     {
-      "query": { "maxWidth": 500 }, // Mobile Rule
+      "query": { "maxWidth": 600 }, // Mobile Rule
       "option": {
-        "title": { "text": "Mobile Title (Shorter)", "textStyle": { "fontSize": 14 } },
-        "grid": { "right": "2%", "bottom": "15%", "top": 60 }, // Mobile: Legend on bottom
-        "legend": { "orient": "horizontal", "right": "center", "bottom": 0, "type": "scroll" },
-        "yAxis": { "name": "", "axisLabel": { "fontSize": 10 } } // Simplify axis
+        "legend": { "right": "auto", "top": "auto", "bottom": 0, "orient": "horizontal", "left": "center" },
+        "grid": { "right": 10, "bottom": 40, "top": 60 }, // Move grid up/down to fit legend
+        "yAxis": { "nameLocation": "end", "nameGap": 10 },
+        "title": { "textStyle": { "fontSize": 14 } }
       }
     }
   ]
 }
 \`\`\`
 
-## 🎨 AESTHETIC DIRECTIVE: MODERN & PROFESSIONAL
+## 🎨 AESTHETIC DIRECTIVE
+1.  **Colors:** Use: \`["#6366f1", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#06b6d4"]\`.
+2.  **Dark Mode:** Do not set a background color. Allow transparency.
+3.  **Interactivity:** Always enable \`tooltip: { trigger: 'axis', confine: true }\`.
 
-1.  **Color Palette:** Use a harmonious, modern palette (e.g., \`["#6366f1", "#10b981", "#f59e0b", "#3b82f6"]\`).
-2.  **Minimalism:** Remove unnecessary axis lines. Use dashed split lines.
-3.  **Safety:** Always set \`containLabel: true\` in the grid.
-4.  **Tooltips:** Always enable tooltips: \`tooltip: { trigger: 'axis', confine: true }\`.
-
-## 🛡️ RENDERING SAFETY
-
-1.  **Invalid JSON:** No comments (\`//\`) inside JSON. No trailing commas.
-2.  **Functions:** Do NOT use JavaScript functions (like formatters) in the JSON.
+Output **ONLY** valid JSON inside the tags. No markdown code blocks around the XML.
 `;
 
 const MAP_COMPONENT_DOCS = `

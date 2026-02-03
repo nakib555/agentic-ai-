@@ -65,152 +65,146 @@ const looseJsonParse = (str: string) => {
 };
 
 /**
- * Enforces responsive layouts on ECharts options.
- * Now intelligently handles both flat options and `baseOption`/`media` structures.
+ * SMART LAYOUT ENGINE
+ * Intelligently restructures chart options to ensure responsiveness without overlapping.
+ * It transforms flat options into ECharts Media Query structure if not already present.
  */
-const enforceResponsiveConfig = (option: any, isDark: boolean) => {
+const smartLayoutAdapter = (option: any, isDark: boolean, containerWidth: number) => {
     if (!option) return option;
-    
-    const isResponsiveStructure = !!option.baseOption;
-    
-    // If it's a responsive structure, we apply safety settings to the baseOption.
-    // If it's a flat structure, we apply to the root.
-    const target = isResponsiveStructure ? { ...option.baseOption } : { ...option };
 
-    // --- SAFETY DEFAULTS (Applied to both modes) ---
-    
-    // 1. Background
-    if (!target.backgroundColor) {
-        target.backgroundColor = 'transparent';
+    const isMobile = containerWidth < 650;
+    const isTiny = containerWidth < 380;
+
+    // --- 1. Standardization: Convert Flat to BaseOption/Media ---
+    let rootOption = option;
+    let existingMedia = [];
+
+    if (option.baseOption) {
+        rootOption = JSON.parse(JSON.stringify(option.baseOption)); // Deep clone to avoid mutation
+        existingMedia = option.media || [];
+    } else {
+        rootOption = JSON.parse(JSON.stringify(option));
     }
 
-    // 2. Tooltip Confinement (Prevents overflow)
-    target.tooltip = {
-        confine: true,
-        appendToBody: true,
-        trigger: 'item', // Default to item for safety with diverse charts
-        backgroundColor: isDark ? 'rgba(24, 24, 27, 0.9)' : 'rgba(255, 255, 255, 0.9)',
-        borderColor: isDark ? '#3f3f46' : '#e2e8f0',
-        textStyle: { color: isDark ? '#f4f4f5' : '#1e293b' },
-        padding: [10, 15],
-        extraCssText: 'box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); border-radius: 8px; backdrop-filter: blur(8px); z-index: 50;',
-        ...target.tooltip
+    // --- 2. Theming & Styling (Applied to Base) ---
+    const textColor = isDark ? '#f4f4f5' : '#1e293b';
+    const subTextColor = isDark ? '#a1a1aa' : '#64748b';
+    const lineColor = isDark ? '#52525b' : '#e2e8f0';
+    const splitLineColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
+    const tooltipBg = isDark ? 'rgba(24, 24, 27, 0.95)' : 'rgba(255, 255, 255, 0.95)';
+    const tooltipBorder = isDark ? '#3f3f46' : '#e2e8f0';
+
+    // Apply Colors
+    const applyAxisStyles = (axis: any) => {
+        if (!axis) return axis;
+        const axes = Array.isArray(axis) ? axis : [axis];
+        return axes.map((a: any) => ({
+            ...a,
+            nameTextStyle: { color: subTextColor, ...a.nameTextStyle },
+            axisLabel: { color: subTextColor, ...a.axisLabel },
+            axisLine: { lineStyle: { color: lineColor }, ...a.axisLine },
+            splitLine: { lineStyle: { color: splitLineColor }, ...a.splitLine }
+        }));
+    };
+    
+    if (rootOption.xAxis) rootOption.xAxis = applyAxisStyles(rootOption.xAxis);
+    if (rootOption.yAxis) rootOption.yAxis = applyAxisStyles(rootOption.yAxis);
+    
+    if (rootOption.legend) {
+        rootOption.legend.textStyle = { color: textColor, ...rootOption.legend.textStyle };
+        rootOption.legend.pageTextStyle = { color: textColor };
+        rootOption.legend.type = 'scroll'; // Always scrollable for safety
+    }
+    
+    if (rootOption.title) {
+        const titles = Array.isArray(rootOption.title) ? rootOption.title : [rootOption.title];
+        rootOption.title = titles.map((t: any) => ({
+            ...t,
+            textStyle: { color: textColor, ...t.textStyle },
+            subtextStyle: { color: subTextColor, ...t.subtextStyle }
+        }));
+    }
+
+    rootOption.tooltip = {
+        trigger: 'axis',
+        confine: true, // Critical: keeps tooltip inside chart
+        backgroundColor: tooltipBg,
+        borderColor: tooltipBorder,
+        textStyle: { color: textColor },
+        ...rootOption.tooltip
     };
 
-    // 3. Grid Safety (Only apply if NOT using media queries, otherwise trust the AI's layout)
-    if (!isResponsiveStructure) {
-        // Only apply grid defaults if grid is relevant (pie charts don't usually use grid, but bar/line do)
-        // However, adding a safe grid usually doesn't hurt.
-        if (!target.grid) target.grid = {};
-        
-        target.grid = {
-            containLabel: true,
-            left: '2%',
-            right: '2%',
-            bottom: '10%',
-            top: 60,
-            ...target.grid
-        };
-        
-        // Responsive Legend for flat structure
-        if (target.legend) {
-            target.legend = {
-                type: 'scroll',
+    // --- 3. Default Layout (Desktop) ---
+    // Ensure grid prevents overlap
+    if (rootOption.grid) {
+        const grids = Array.isArray(rootOption.grid) ? rootOption.grid : [rootOption.grid];
+        rootOption.grid = grids.map((g: any) => ({
+            containLabel: true, // The most important ECharts property for layout
+            left: g.left || '5%',
+            right: g.right || '5%',
+            bottom: g.bottom || '10%',
+            top: g.top || 60,
+            ...g
+        }));
+    } else {
+        // Inject grid if missing
+        rootOption.grid = { containLabel: true, left: '5%', right: '5%', bottom: '10%', top: 60 };
+    }
+
+    // --- 4. Dynamic Media Query Generation ---
+    // Even if the AI didn't write a media query, we inject a robust mobile layout.
+    
+    const mobileOverride = {
+        option: {
+            legend: {
+                orient: 'horizontal',
                 bottom: 0,
                 left: 'center',
                 top: 'auto',
-                padding: [5, 10],
-                itemGap: 15,
-                textStyle: { color: isDark ? '#a1a1aa' : '#64748b' },
-                ...target.legend
-            };
-        }
-    } else {
-        // Even in responsive mode, ensure containLabel is true on base
-        if (target.grid) {
-             target.grid = { containLabel: true, ...target.grid };
-        }
-    }
-
-    // 4. Styling Adjustments (Colors, Fonts) - Applied safely
-    const fixAxis = (axis: any): any => {
-        if (!axis) return axis;
-        if (Array.isArray(axis)) return axis.map(fixAxis);
-        return {
-            ...axis,
-            axisLabel: {
-                color: isDark ? '#a1a1aa' : '#64748b',
-                ...axis.axisLabel
+                right: 'auto',
+                padding: [5, 20],
+                itemGap: 15
             },
-            splitLine: {
-                lineStyle: {
-                    color: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'
-                },
-                ...axis.splitLine
+            grid: {
+                bottom: 50, // Space for bottom legend
+                top: 60,    // Space for title
+                left: isTiny ? 2 : 10,
+                right: isTiny ? 2 : 10,
+                containLabel: true
             },
-            axisLine: {
-                lineStyle: { color: isDark ? '#52525b' : '#cbd5e1' },
-                ...axis.axisLine
+            title: {
+                left: 'center',
+                textStyle: { fontSize: 14 }
+            },
+            xAxis: {
+                axisLabel: {
+                    rotate: 45, // Rotate labels to fit
+                    fontSize: 10,
+                    overflow: 'truncate',
+                    width: 60
+                }
+            },
+            yAxis: {
+                nameLocation: 'end',
+                nameGap: 10,
+                axisLabel: { fontSize: 10 }
             }
-        };
+        }
     };
 
-    if (target.xAxis) target.xAxis = fixAxis(target.xAxis);
-    if (target.yAxis) target.yAxis = fixAxis(target.yAxis);
-    
-    if (target.title) {
-         // Handle array title
-         const titleList = Array.isArray(target.title) ? target.title : [target.title];
-         target.title = titleList.map((t: any) => ({
-             ...t,
-             textStyle: {
-                color: isDark ? '#f4f4f5' : '#1e293b',
-                fontWeight: 600,
-                fontSize: 14,
-                ...t.textStyle
-             }
-         }));
-    }
+    // Merge our generated media query with any existing ones (ours takes priority for layout safety)
+    const finalMedia = [
+        ...existingMedia,
+        {
+            query: { maxWidth: 650 }, // Trigger for mobile layout
+            option: mobileOverride.option
+        }
+    ];
 
-    // 5. Pie Chart Specifics (Prevent Overlap)
-    if (target.series) {
-        const seriesList = Array.isArray(target.series) ? target.series : [target.series];
-        target.series = seriesList.map((s: any) => {
-            if (s.type === 'pie') {
-                return {
-                    avoidLabelOverlap: true,
-                    itemStyle: {
-                        borderColor: isDark ? '#18181b' : '#ffffff',
-                        borderWidth: 2,
-                        ...s.itemStyle
-                    },
-                    label: {
-                        show: true,
-                        color: isDark ? '#e4e4e7' : '#334155',
-                        ...s.label
-                    },
-                    labelLine: {
-                        lineStyle: {
-                            color: isDark ? '#52525b' : '#cbd5e1'
-                        },
-                        ...s.labelLine
-                    },
-                    ...s
-                };
-            }
-            return s;
-        });
-    }
-
-    // Reassemble
-    if (isResponsiveStructure) {
-        return {
-            ...option,
-            baseOption: target
-        };
-    }
-    
-    return target;
+    return {
+        baseOption: rootOption,
+        media: finalMedia
+    };
 };
 
 export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ content, code, onFixCode, isStreaming }) => {
@@ -222,7 +216,8 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
     const [isFixing, setIsFixing] = useState(false);
     const [localCodeOverride, setLocalCodeOverride] = useState<string | null>(null);
     
-    // Resizable state
+    // Container size state
+    const [containerWidth, setContainerWidth] = useState<number>(800);
     const [containerHeight, setContainerHeight] = useState<number>(500);
 
     const containerRef = useRef<HTMLDivElement>(null);
@@ -246,6 +241,26 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         });
         observer.observe(document.documentElement, { attributes: true });
         return () => observer.disconnect();
+    }, []);
+
+    // Resize Observer for Container Width
+    useEffect(() => {
+        if (!containerRef.current) return;
+        const resizeObserver = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                if (entry.contentRect) {
+                    setContainerWidth(entry.contentRect.width);
+                    // Also resize echarts instance if it exists
+                    if (echartsRef.current) {
+                        try {
+                            echartsRef.current.getEchartsInstance().resize();
+                        } catch(e) {}
+                    }
+                }
+            }
+        });
+        resizeObserver.observe(containerRef.current);
+        return () => resizeObserver.disconnect();
     }, []);
 
     // Parse configuration
@@ -321,30 +336,12 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         }
     }, [content, code, isFixing, localCodeOverride, isStreaming]);
 
-    // Compute final options with responsive overrides
+    // Compute final options using Smart Layout Adapter
     const finalOption = useMemo(() => {
         if (!config?.option) return null;
-        return enforceResponsiveConfig(config.option, isDark);
-    }, [config, isDark]);
-
-    // Force resize on mount, window resize, and CONTAINER RESIZE
-    useEffect(() => {
-        const handleResize = () => {
-            if (echartsRef.current) {
-                echartsRef.current.getEchartsInstance().resize();
-            }
-        };
-        window.addEventListener('resize', handleResize);
-        
-        // This observer watches the container div for size changes (including our drag resize)
-        const resizeObserver = new ResizeObserver(() => handleResize());
-        if (containerRef.current) resizeObserver.observe(containerRef.current);
-
-        return () => {
-            window.removeEventListener('resize', handleResize);
-            resizeObserver.disconnect();
-        };
-    }, []);
+        // Pass current width to trigger layout recalc on resize
+        return smartLayoutAdapter(config.option, isDark, containerWidth);
+    }, [config, isDark, containerWidth]);
 
     // Handle clicks/touches outside the chart to dismiss tooltip
     useEffect(() => {
@@ -355,9 +352,11 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                 !containerRef.current.contains(event.target as Node)
             ) {
                 if (echartsRef.current) {
-                    const instance = echartsRef.current.getEchartsInstance();
-                    instance.dispatchAction({ type: 'hideTip' });
-                    instance.dispatchAction({ type: 'updateAxisPointer', currTrigger: 'leave' });
+                    try {
+                        const instance = echartsRef.current.getEchartsInstance();
+                        instance.dispatchAction({ type: 'hideTip' });
+                        instance.dispatchAction({ type: 'updateAxisPointer', currTrigger: 'leave' });
+                    } catch(e) {}
                 }
             }
         };
@@ -408,8 +407,10 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
 
     const handleMouseLeave = () => {
         if (activeEngine === 'echarts' && echartsRef.current) {
-             const instance = echartsRef.current.getEchartsInstance();
-             instance.dispatchAction({ type: 'hideTip' });
+             try {
+                 const instance = echartsRef.current.getEchartsInstance();
+                 instance.dispatchAction({ type: 'hideTip' });
+             } catch (e) {}
         }
     };
 
@@ -429,6 +430,10 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
             window.removeEventListener('mousemove', doDrag);
             window.removeEventListener('mouseup', stopDrag);
             document.body.style.cursor = 'default';
+            // Force ECharts resize after drag
+            if (echartsRef.current) {
+                echartsRef.current.getEchartsInstance().resize();
+            }
         };
         
         document.body.style.cursor = 'ns-resize';
@@ -530,7 +535,7 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                 <ReactECharts
                     ref={echartsRef}
                     option={finalOption}
-                    theme={isDark && !finalOption.baseOption?.backgroundColor && !finalOption.backgroundColor ? 'dark' : undefined}
+                    theme={isDark ? 'dark' : undefined}
                     style={{ height: containerHeight, width: '100%', minHeight: '300px' }}
                     opts={{ renderer: 'svg' }}
                 />
