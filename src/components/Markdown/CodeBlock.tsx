@@ -83,6 +83,16 @@ const RUNNABLE_LANGUAGES = new Set([
     'haskell', 'julia', 'kotlin', 'lisp', 'nasm', 'nim', 'ocaml', 'octave', 'pascal', 'powershell', 'r', 'scala', 'zig'
 ]);
 
+// Static style objects to prevent re-renders in SyntaxHighlighter
+const CUSTOM_STYLE = {
+    margin: 0,
+    padding: '1.5rem',
+    fontSize: '13px',
+    lineHeight: '1.5',
+    fontFamily: "'Fira Code', monospace",
+    background: 'transparent',
+};
+
 type CodeBlockProps = {
     language?: string;
     children: React.ReactNode;
@@ -226,14 +236,7 @@ const CodeBlockRaw: React.FC<CodeBlockProps> = ({ language, children, isStreamin
             <SyntaxHighlighter
                 language={highlighterLang}
                 style={syntaxStyle}
-                customStyle={{ 
-                    margin: 0, 
-                    padding: '1.5rem', 
-                    fontSize: '13px', 
-                    lineHeight: '1.5',
-                    fontFamily: "'Fira Code', monospace",
-                    background: 'transparent',
-                }}
+                customStyle={CUSTOM_STYLE}
                 showLineNumbers={false}
                 wrapLines={false}
                 fallbackLanguage="text"

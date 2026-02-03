@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -14,6 +15,14 @@ type FilePreviewModalProps = {
   file: File;
   isOpen: boolean;
   onClose: () => void;
+};
+
+// Static styles
+const CUSTOM_STYLE = { 
+    margin: 0, 
+    padding: '1.5rem', 
+    height: '100%', 
+    background: 'transparent' 
 };
 
 export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ file, isOpen, onClose }) => {
@@ -133,7 +142,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ file, isOpen
                         <SyntaxHighlighter
                             language={language}
                             style={syntaxStyle}
-                            customStyle={{ margin: 0, padding: '1.5rem', height: '100%', background: 'transparent' }}
+                            customStyle={CUSTOM_STYLE}
                             wrapLongLines={true}
                         >
                             {content}

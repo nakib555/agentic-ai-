@@ -19,6 +19,20 @@ type FilePreviewSidebarProps = {
     file: ProcessedFile | null;
 };
 
+// Static styles
+const CUSTOM_STYLE = { 
+    margin: 0, 
+    padding: '1.5rem', 
+    minHeight: '100%', 
+    fontSize: '13px', 
+    fontFamily: "'Fira Code', monospace",
+    background: 'transparent',
+};
+
+const CODE_TAG_PROPS = { 
+    style: { fontFamily: "inherit" } 
+};
+
 export const FilePreviewSidebar: React.FC<FilePreviewSidebarProps> = ({ 
     isOpen, 
     onClose, 
@@ -310,15 +324,8 @@ export const FilePreviewSidebar: React.FC<FilePreviewSidebarProps> = ({
                                         <SyntaxHighlighter
                                             language={language}
                                             style={syntaxStyle}
-                                            customStyle={{ 
-                                                margin: 0, 
-                                                padding: '1.5rem', 
-                                                minHeight: '100%', 
-                                                fontSize: '13px', 
-                                                fontFamily: "'Fira Code', monospace",
-                                                background: 'transparent',
-                                            }}
-                                            codeTagProps={{ style: { fontFamily: "inherit" } }}
+                                            customStyle={CUSTOM_STYLE}
+                                            codeTagProps={CODE_TAG_PROPS}
                                             wrapLongLines={true}
                                         >
                                             {content}

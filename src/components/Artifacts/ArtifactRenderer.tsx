@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -25,6 +26,19 @@ const RefreshIcon = () => (
         <path d="M3 3v5h5"></path>
     </svg>
 );
+
+// Static styles to avoid re-renders
+const CUSTOM_STYLE = {
+    margin: 0,
+    padding: '1rem',
+    fontSize: '13px',
+    lineHeight: '1.5',
+    background: 'transparent',
+};
+
+const CODE_TAG_PROPS = {
+    style: { fontFamily: "'Fira Code', monospace" }
+};
 
 export const ArtifactRenderer: React.FC<ArtifactRendererProps> = ({ type, content, language = 'html', title }) => {
     const [activeTab, setActiveTab] = useState<'preview' | 'source'>('preview');
@@ -179,16 +193,8 @@ export const ArtifactRenderer: React.FC<ArtifactRendererProps> = ({ type, conten
                         <SyntaxHighlighter
                             language={highlightLang}
                             style={syntaxStyle}
-                            customStyle={{ 
-                                margin: 0, 
-                                padding: '1rem', 
-                                fontSize: '13px', 
-                                lineHeight: '1.5',
-                                background: 'transparent',
-                            }}
-                            codeTagProps={{
-                                style: { fontFamily: "'Fira Code', monospace" }
-                            }}
+                            customStyle={CUSTOM_STYLE}
+                            codeTagProps={CODE_TAG_PROPS}
                             showLineNumbers
                         >
                             {content}

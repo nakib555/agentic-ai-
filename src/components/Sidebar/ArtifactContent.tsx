@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -46,6 +47,23 @@ const RefreshIcon = () => (
         <path d="M3 3v5h5"></path>
     </svg>
 );
+
+// Static styles
+const CUSTOM_STYLE = { 
+    margin: 0, 
+    padding: '1.5rem', 
+    minHeight: '100%', 
+    fontSize: '13px', 
+    lineHeight: '1.5',
+    fontFamily: "'Fira Code', monospace",
+    background: 'transparent',
+};
+
+const LINE_NUMBER_STYLE = { 
+    minWidth: '3em', 
+    paddingRight: '1em', 
+    opacity: 0.3 
+};
 
 type ArtifactContentProps = {
     content: string;
@@ -184,18 +202,10 @@ export const ArtifactContent: React.FC<ArtifactContentProps> = React.memo(({ con
                         <SyntaxHighlighter
                             language={language}
                             style={syntaxStyle}
-                            customStyle={{ 
-                                margin: 0, 
-                                padding: '1.5rem', 
-                                minHeight: '100%', 
-                                fontSize: '13px', 
-                                lineHeight: '1.5',
-                                fontFamily: "'Fira Code', monospace",
-                                background: 'transparent',
-                            }}
+                            customStyle={CUSTOM_STYLE}
                             showLineNumbers={true}
                             wrapLines={false} 
-                            lineNumberStyle={{ minWidth: '3em', paddingRight: '1em', opacity: 0.3 }}
+                            lineNumberStyle={LINE_NUMBER_STYLE}
                             fallbackLanguage="text"
                         >
                             {content || ''}
