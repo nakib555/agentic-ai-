@@ -62,7 +62,7 @@ const MapController = ({
 // Loading / Status UI Component
 const GeocodeStatus = ({ state, locationName }: { state: SearchState, locationName: string }) => {
     return (
-        <div className="h-[400px] w-full bg-slate-50 dark:bg-[#18181b] rounded-xl border border-gray-200 dark:border-white/10 flex flex-col items-center justify-center relative overflow-hidden">
+        <div className="h-[250px] md:h-[350px] w-full bg-slate-50 dark:bg-[#18181b] rounded-xl border border-gray-200 dark:border-white/10 flex flex-col items-center justify-center relative overflow-hidden">
             <AnimatePresence mode="wait">
                 {state === 'searching' && (
                     <motion.div
@@ -187,7 +187,7 @@ export const MapDisplay = ({ location, latitude, longitude, zoom = 13, markerTex
 
 
   if (!isClient) {
-      return <div className="h-[400px] w-full bg-slate-100 dark:bg-white/5 rounded-xl animate-pulse my-6" />;
+      return <div className="h-[250px] md:h-[350px] w-full bg-slate-100 dark:bg-white/5 rounded-xl animate-pulse my-6" />;
   }
 
   // Render Status Screens (Searching, Found, Error)
@@ -208,7 +208,7 @@ export const MapDisplay = ({ location, latitude, longitude, zoom = 13, markerTex
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="my-6 rounded-xl overflow-hidden border border-gray-200 dark:border-white/10 relative z-0 h-[400px] w-full bg-slate-100 dark:bg-[#121212] shadow-sm"
+        className="my-6 rounded-xl overflow-hidden border border-gray-200 dark:border-white/10 relative z-0 h-[250px] md:h-[350px] w-full bg-slate-100 dark:bg-[#121212] shadow-sm"
     >
       <MapContainer 
         center={renderPosition} 

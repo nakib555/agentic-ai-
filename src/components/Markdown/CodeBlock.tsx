@@ -91,7 +91,7 @@ type CodeBlockProps = {
     isDisabled?: boolean;
 };
 
-export const CodeBlock: React.FC<CodeBlockProps> = ({ language, children, isStreaming, onRunCode, isDisabled }) => {
+const CodeBlockRaw: React.FC<CodeBlockProps> = ({ language, children, isStreaming, onRunCode, isDisabled }) => {
     const [isCopied, setIsCopied] = useState(false);
     const [isRunning, setIsRunning] = useState(false);
     const [runOutput, setRunOutput] = useState<string | null>(null);
@@ -299,3 +299,5 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ language, children, isStre
       </div>
     );
 };
+
+export const CodeBlock = React.memo(CodeBlockRaw);
