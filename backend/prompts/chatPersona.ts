@@ -9,7 +9,10 @@ import { MATH_RENDERING_INSTRUCTIONS } from './math';
 const UNIVERSAL_CHART_LANGUAGE_DOCS = `
 # 📊 VISUALIZATION ENGINE: RESPONSIVE ECHARTS
 
-To visualize data, you **MUST** use the <echarts> tag.
+**PURPOSE:** The <echarts> tag is EXCLUSIVELY for generating interactive data visualizations (charts, graphs, plots).
+**DO NOT** use this tag for general UI, maps, or simple text tables.
+
+To visualize numerical or categorical data, you **MUST** use the <echarts> tag.
 Your goal is to create charts that look professional on a 4K monitor and perfect on a generic mobile phone.
 
 **SYNTAX:**
