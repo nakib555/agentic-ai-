@@ -6,6 +6,7 @@
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
+import * as echarts from 'echarts';
 
 export type ChartEngine = 'echarts' | 'html';
 
@@ -13,7 +14,7 @@ type UniversalChartProps = {
     content?: string; // Legacy support for markdown parsing or raw code
     engine?: string;
     code?: string; // Raw content from XML tag
-    onFixCode?: (code: string) => Promise<string | undefined>;
+    onFixCode?: (code: string, error?: string) => Promise<string | undefined>;
     isStreaming?: boolean;
 };
 
@@ -55,10 +56,11 @@ const looseJsonParse = (str: string) => {
         .replace(/"[\w\d_]+"\s*:\s*(?=[,}\]])/g, '') // Remove empty keys
         .replace(/,\s*([\]}])/g, '$1'); // Remove trailing commas
 
-    // 4. Try JS Eval on candidate
+    // 4. Try JS Eval on candidate with echarts context
     try {
          // eslint-disable-next-line no-new-func
-         return new Function(`return ${jsFriendly}`)();
+         const func = new Function('echarts', `return ${jsFriendly}`);
+         return func(echarts);
     } catch (evalErr) {
         throw evalErr;
     }
@@ -247,6 +249,14 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         return () => observer.disconnect();
     }, []);
 
+    // Reset override when streaming starts (new generation)
+    useEffect(() => {
+        if (isStreaming) {
+            setLocalCodeOverride(null);
+            setError(null);
+        }
+    }, [isStreaming]);
+
     // Parse configuration
     useEffect(() => {
         try {
@@ -392,10 +402,13 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
     const handleFix = async () => {
         if (!onFixCode) return;
         setIsFixing(true);
+        // Grab the actual error message if meaningful
+        const currentError = error && !error.includes('Rendering') && !error.includes('Fixing') ? error : undefined;
+        
         setError('Fixing chart...'); 
         try {
             const raw = code || content || '';
-            const fixedCode = await onFixCode(raw);
+            const fixedCode = await onFixCode(raw, currentError);
             if (fixedCode) {
                 setLocalCodeOverride(fixedCode);
                 setError(null); 
@@ -458,8 +471,8 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                          </div>
                      )}
-                     <span className="text-slate-500 dark:text-slate-400 font-medium truncate">
-                        {isRendering ? (isFixing ? "Fixing Graph..." : "Rendering...") : "Chart Error"}
+                     <span className="text-slate-500 dark:text-slate-400 font-medium truncate" title={error}>
+                        {isRendering ? (isFixing ? "Fixing Graph..." : "Rendering...") : (error.length > 50 ? error.substring(0, 47) + '...' : error)}
                      </span>
                  </div>
                  

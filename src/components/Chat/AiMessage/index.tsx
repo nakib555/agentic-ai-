@@ -92,7 +92,7 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
   const typedFinalAnswer = useTypewriter(finalAnswerText, msg.isThinking ?? false);
   
   // Handler for Fixing Code Snippets (Charts, etc)
-  const handleFixCode = async (badCode: string, context?: string) => {
+  const handleFixCode = async (badCode: string, errorMsg?: string) => {
       if (!onEditMessage) return;
       
       try {
@@ -102,7 +102,8 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 
                   code: badCode,
-                  context: context || userQuery, // Pass original query as context
+                  error: errorMsg,
+                  context: userQuery, // Pass original query as context
                   model: 'gemini-2.5-flash' // Fast model for quick fixes
               })
           });

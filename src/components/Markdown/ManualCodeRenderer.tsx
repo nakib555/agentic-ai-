@@ -19,7 +19,7 @@ type ManualCodeRendererProps = {
   isStreaming: boolean;
   onRunCode?: (language: string, code: string) => void;
   isRunDisabled?: boolean;
-  onFixCode?: (code: string) => Promise<string | undefined>;
+  onFixCode?: (code: string, error?: string) => Promise<string | undefined>;
 };
 
 // Robust function to protect code blocks AND math from highlight replacement.

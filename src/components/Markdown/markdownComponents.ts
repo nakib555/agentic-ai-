@@ -46,7 +46,7 @@ type MarkdownOptions = {
     onRunCode?: (language: string, code: string) => void;
     isRunDisabled?: boolean;
     isStreaming?: boolean;
-    onFixCode?: (code: string) => Promise<string | undefined>;
+    onFixCode?: (code: string, error?: string) => Promise<string | undefined>;
 };
 
 const findCheckboxInput = (children: React.ReactNode): React.ReactElement | null => {
