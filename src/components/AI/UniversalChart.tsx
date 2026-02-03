@@ -69,11 +69,8 @@ const looseJsonParse = (str: string) => {
  * Intelligently restructures chart options to ensure responsiveness without overlapping.
  * It transforms flat options into ECharts Media Query structure if not already present.
  */
-const smartLayoutAdapter = (option: any, isDark: boolean, containerWidth: number) => {
+const smartLayoutAdapter = (option: any, isDark: boolean) => {
     if (!option) return option;
-
-    const isMobile = containerWidth < 650;
-    const isTiny = containerWidth < 380;
 
     // --- 1. Standardization: Convert Flat to BaseOption/Media ---
     let rootOption = option;
@@ -94,7 +91,7 @@ const smartLayoutAdapter = (option: any, isDark: boolean, containerWidth: number
     const tooltipBg = isDark ? 'rgba(24, 24, 27, 0.95)' : 'rgba(255, 255, 255, 0.95)';
     const tooltipBorder = isDark ? '#3f3f46' : '#e2e8f0';
 
-    // Apply Colors
+    // Apply Colors Helper
     const applyAxisStyles = (axis: any) => {
         if (!axis) return axis;
         const axes = Array.isArray(axis) ? axis : [axis];
@@ -110,39 +107,44 @@ const smartLayoutAdapter = (option: any, isDark: boolean, containerWidth: number
     if (rootOption.xAxis) rootOption.xAxis = applyAxisStyles(rootOption.xAxis);
     if (rootOption.yAxis) rootOption.yAxis = applyAxisStyles(rootOption.yAxis);
     
+    // Ensure Legend handles overflow
     if (rootOption.legend) {
         rootOption.legend.textStyle = { color: textColor, ...rootOption.legend.textStyle };
         rootOption.legend.pageTextStyle = { color: textColor };
         rootOption.legend.type = 'scroll'; // Always scrollable for safety
+        
+        // Default desktop legend position if not set
+        if (!rootOption.legend.top && !rootOption.legend.bottom) rootOption.legend.top = '5%';
+        if (!rootOption.legend.left && !rootOption.legend.right) rootOption.legend.right = '5%';
     }
     
     if (rootOption.title) {
         const titles = Array.isArray(rootOption.title) ? rootOption.title : [rootOption.title];
         rootOption.title = titles.map((t: any) => ({
             ...t,
-            textStyle: { color: textColor, ...t.textStyle },
+            textStyle: { color: textColor, fontSize: 16, ...t.textStyle },
             subtextStyle: { color: subTextColor, ...t.subtextStyle }
         }));
     }
 
+    // Force tooltip to stay inside chart
     rootOption.tooltip = {
         trigger: 'axis',
-        confine: true, // Critical: keeps tooltip inside chart
+        confine: true, // Critical: keeps tooltip inside chart container
         backgroundColor: tooltipBg,
         borderColor: tooltipBorder,
         textStyle: { color: textColor },
         ...rootOption.tooltip
     };
 
-    // --- 3. Default Layout (Desktop) ---
-    // Ensure grid prevents overlap
+    // --- 3. Enforce Non-Overlapping Grid (Desktop Default) ---
     if (rootOption.grid) {
         const grids = Array.isArray(rootOption.grid) ? rootOption.grid : [rootOption.grid];
         rootOption.grid = grids.map((g: any) => ({
-            containLabel: true, // The most important ECharts property for layout
+            containLabel: true, // The most important ECharts property for layout safety
             left: g.left || '5%',
             right: g.right || '5%',
-            bottom: g.bottom || '10%',
+            bottom: g.bottom || '10%', // Base spacing
             top: g.top || 60,
             ...g
         }));
@@ -151,54 +153,57 @@ const smartLayoutAdapter = (option: any, isDark: boolean, containerWidth: number
         rootOption.grid = { containLabel: true, left: '5%', right: '5%', bottom: '10%', top: 60 };
     }
 
-    // --- 4. Dynamic Media Query Generation ---
-    // Even if the AI didn't write a media query, we inject a robust mobile layout.
-    
-    const mobileOverride = {
+    // --- 4. Dynamic Media Query Generation (Mobile Optimization) ---
+    // We inject a high-priority media query for screens < 650px
+    const mobileQuery = {
+        query: { maxWidth: 650 }, 
         option: {
             legend: {
                 orient: 'horizontal',
-                bottom: 0,
-                left: 'center',
-                top: 'auto',
-                right: 'auto',
-                padding: [5, 20],
-                itemGap: 15
+                bottom: 0,        // Move to bottom on mobile
+                left: 'center',   // Center align
+                top: 'auto',      // Clear top
+                right: 'auto',    // Clear right
+                padding: [5, 10],
+                itemGap: 10,
+                type: 'scroll'    // Ensure scrolling if too many items
             },
             grid: {
-                bottom: 50, // Space for bottom legend
-                top: 60,    // Space for title
-                left: isTiny ? 2 : 10,
-                right: isTiny ? 2 : 10,
-                containLabel: true
+                bottom: 50, // Increase bottom padding to fit the legend we moved there
+                top: 50,    
+                left: 10,   // Minimal safe margins
+                right: 10,
+                containLabel: true // Strict containment
             },
             title: {
-                left: 'center',
+                left: 'center', // Center title on mobile
+                top: 10,
                 textStyle: { fontSize: 14 }
             },
             xAxis: {
                 axisLabel: {
-                    rotate: 45, // Rotate labels to fit
+                    rotate: 45, // Rotate labels to fit on narrow screens
                     fontSize: 10,
-                    overflow: 'truncate',
-                    width: 60
+                    hideOverlap: true, // Automatically hide every Nth label if they collide
+                    interval: 'auto'
                 }
             },
             yAxis: {
                 nameLocation: 'end',
                 nameGap: 10,
                 axisLabel: { fontSize: 10 }
+            },
+            toolbox: {
+                show: false // Hide complex tools on mobile
             }
         }
     };
 
-    // Merge our generated media query with any existing ones (ours takes priority for layout safety)
+    // Merge our generated media query with any existing ones
+    // We prepend ours or append depending on specificity, but here appending works as a specific override
     const finalMedia = [
         ...existingMedia,
-        {
-            query: { maxWidth: 650 }, // Trigger for mobile layout
-            option: mobileOverride.option
-        }
+        mobileQuery
     ];
 
     return {
@@ -217,7 +222,6 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
     const [localCodeOverride, setLocalCodeOverride] = useState<string | null>(null);
     
     // Container size state
-    const [containerWidth, setContainerWidth] = useState<number>(800);
     const [containerHeight, setContainerHeight] = useState<number>(500);
 
     const containerRef = useRef<HTMLDivElement>(null);
@@ -241,26 +245,6 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         });
         observer.observe(document.documentElement, { attributes: true });
         return () => observer.disconnect();
-    }, []);
-
-    // Resize Observer for Container Width
-    useEffect(() => {
-        if (!containerRef.current) return;
-        const resizeObserver = new ResizeObserver((entries) => {
-            for (const entry of entries) {
-                if (entry.contentRect) {
-                    setContainerWidth(entry.contentRect.width);
-                    // Also resize echarts instance if it exists
-                    if (echartsRef.current) {
-                        try {
-                            echartsRef.current.getEchartsInstance().resize();
-                        } catch(e) {}
-                    }
-                }
-            }
-        });
-        resizeObserver.observe(containerRef.current);
-        return () => resizeObserver.disconnect();
     }, []);
 
     // Parse configuration
@@ -339,9 +323,9 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
     // Compute final options using Smart Layout Adapter
     const finalOption = useMemo(() => {
         if (!config?.option) return null;
-        // Pass current width to trigger layout recalc on resize
-        return smartLayoutAdapter(config.option, isDark, containerWidth);
-    }, [config, isDark, containerWidth]);
+        // Pass current theme to adapter
+        return smartLayoutAdapter(config.option, isDark);
+    }, [config, isDark]);
 
     // Handle clicks/touches outside the chart to dismiss tooltip
     useEffect(() => {
