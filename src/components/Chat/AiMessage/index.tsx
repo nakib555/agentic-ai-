@@ -207,7 +207,8 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
   const isStoppedByUser = activeResponse?.error?.code === 'STOPPED_BY_USER';
   
   // Only show toolbar when generation AND typing effect are fully complete.
-  const isTypingComplete = typedFinalAnswer.length === finalAnswerText.length;
+  // We use >= to be robust against potential length mismatches (e.g. carriage returns)
+  const isTypingComplete = typedFinalAnswer.length >= (finalAnswerText?.length || 0);
   const showToolbar = logic.thinkingIsComplete && isTypingComplete && (logic.hasFinalAnswer || !!activeResponse?.error || isStoppedByUser);
 
   if (logic.isInitialWait) return <TypingIndicator />;
