@@ -268,6 +268,26 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                 `;
 
                 if (trimmedCode.trim().startsWith('<')) {
+                     // Check for known chart tags first to prevent mistaking them for HTML if passed raw
+                     const xmlMatch = trimmedCode.match(/^<(echarts|chart)>([\s\S]*?)<\/\1>$/i);
+                     if (xmlMatch) {
+                         const contentString = xmlMatch[2];
+                         const parsed = looseJsonParse(contentString);
+                         if (parsed && typeof parsed === 'object') {
+                             setActiveEngine('echarts');
+                             setConfig({ option: parsed });
+                             
+                             // Set Initial Height based on config or heuristics
+                             if (parsed.height && typeof parsed.height === 'number') {
+                                 setContainerHeight(parsed.height);
+                             } else {
+                                 setContainerHeight(500);
+                             }
+                             setError(null);
+                             return;
+                         }
+                     }
+
                      setActiveEngine('html');
                      const cleanHtml = trimmedCode.includes('<head>') 
                         ? trimmedCode.replace('<head>', `<head>${baseResetStyle}`)

@@ -112,18 +112,24 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
           const { fixedCode } = await response.json();
           
           if (fixedCode) {
-              const cleanFixed = fixedCode.trim();
-              const currentText = activeResponse?.text || '';
+              let cleanFixed = fixedCode.trim();
+
+              // Remove markdown fences if present (backend might include them despite instructions)
+              if (cleanFixed.startsWith('```')) {
+                  cleanFixed = cleanFixed.replace(/^```[a-zA-Z0-9]*\s*/, '').replace(/\s*```$/, '').trim();
+              }
               
-              // More robust replacement strategy:
-              // The badCode passed here is the INNER content (without tags).
-              // We need to find where this inner content lives in the full message.
+              // Extract inner content from XML tags if present to prevent nested tagging
+              const tagMatch = cleanFixed.match(/^<(\w+)>([\s\S]*?)<\/\1>$/i);
+              const contentToInject = tagMatch ? tagMatch[2] : cleanFixed;
+
+              const currentText = activeResponse?.text || '';
               
               // 1. Try exact match of inner content
               if (currentText.includes(badCode)) {
-                  const newText = currentText.replace(badCode, cleanFixed);
+                  const newText = currentText.replace(badCode, contentToInject);
                   onEditMessage(id, newText);
-                  return cleanFixed;
+                  return contentToInject;
               }
               
               // 2. Try match with relaxed whitespace/newlines
@@ -132,15 +138,13 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
               const looseRegex = new RegExp(escapedBadCode, 'i');
               
               if (looseRegex.test(currentText)) {
-                  const newText = currentText.replace(looseRegex, cleanFixed);
+                  const newText = currentText.replace(looseRegex, contentToInject);
                   onEditMessage(id, newText);
-                  return cleanFixed;
+                  return contentToInject;
               }
               
-              // 3. Fallback: Search for component tags wrapping a similar looking string
-              // This is harder, but usually exact match works if UniversalChart extracts correctly.
-              // If we fail to replace, we return the fixed code anyway so the component can use it locally.
-              return cleanFixed;
+              // 3. Fallback: Return fix for local component use even if we couldn't update history
+              return contentToInject;
           }
       } catch (e) {
           console.error("Failed to fix code:", e);
