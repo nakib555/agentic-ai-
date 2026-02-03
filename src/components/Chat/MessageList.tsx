@@ -31,6 +31,8 @@ type MessageListProps = {
   ttsVoice: string;
   ttsModel: string;
   currentChatId: string | null;
+  activeModel: string;
+  provider?: string;
   onShowSources: (sources: Source[]) => void;
   messageFormRef: React.RefObject<MessageFormHandle>;
   onRegenerate: (messageId: string) => void;
@@ -78,7 +80,7 @@ const MessageWrapper = React.memo(({
 });
 
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({ 
-    messages, sendMessage, isLoading, isHistoryLoading, ttsVoice, ttsModel, currentChatId, 
+    messages, sendMessage, isLoading, isHistoryLoading, ttsVoice, ttsModel, currentChatId, activeModel, provider,
     onShowSources, messageFormRef, onRegenerate, onSetActiveResponseIndex,
     onEditMessage, onNavigateBranch
 }, ref) => {
@@ -139,12 +141,12 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({
 
   // Memoize the context props object.
   const contextProps = useMemo(() => ({
-      sendMessage, isLoading, isHistoryLoading, ttsVoice, ttsModel, currentChatId,
+      sendMessage, isLoading, isHistoryLoading, ttsVoice, ttsModel, currentChatId, activeModel, provider,
       onShowSources, messageFormRef,
       onRegenerate, onSetActiveResponseIndex, onEditMessage,
       onNavigateBranch
   }), [
-      sendMessage, isLoading, isHistoryLoading, ttsVoice, ttsModel, currentChatId,
+      sendMessage, isLoading, isHistoryLoading, ttsVoice, ttsModel, currentChatId, activeModel, provider,
       onShowSources, messageFormRef,
       onRegenerate, onSetActiveResponseIndex, onEditMessage,
       onNavigateBranch

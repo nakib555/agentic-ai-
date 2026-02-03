@@ -24,6 +24,7 @@ type ChatAreaProps = {
   setTtsVoice: (voice: string) => void;
   currentChatId: string | null;
   activeModel: string;
+  provider?: string;
   onShowSources: (sources: Source[]) => void;
   messageListRef: React.RefObject<MessageListHandle>;
   onRegenerate: (messageId: string) => void;
@@ -119,7 +120,7 @@ const ConfigWarning = ({ hasApiKey, backendStatus, backendError, onRetry }: { ha
 
 export const ChatArea = ({ 
     messages, isLoading, isHistoryLoading, isAppLoading, sendMessage, onCancel, 
-    ttsVoice, ttsModel, setTtsVoice, currentChatId, activeModel,
+    ttsVoice, ttsModel, setTtsVoice, currentChatId, activeModel, provider,
     onShowSources,
     messageListRef, onRegenerate, onSetActiveResponseIndex,
     backendStatus, backendError, onRetryConnection, hasApiKey,
@@ -202,6 +203,8 @@ export const ChatArea = ({
           ttsVoice={ttsVoice}
           ttsModel={ttsModel} 
           currentChatId={currentChatId} 
+          activeModel={activeModel}
+          provider={provider}
           onShowSources={onShowSources}
           messageFormRef={messageFormRef}
           onRegenerate={onRegenerate}

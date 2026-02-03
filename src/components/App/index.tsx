@@ -160,7 +160,8 @@ export const App = () => {
                 ttsModel={logic.ttsModel}
                 setTtsVoice={logic.setTtsVoice}
                 currentChatId={logic.currentChatId}
-                activeModel={logic.activeModel} 
+                activeModel={logic.activeModel}
+                provider={logic.provider}
                 onShowSources={logic.handleShowSources}
                 onRegenerate={logic.regenerateResponse}
                 onSetActiveResponseIndex={logic.setActiveResponseIndex}

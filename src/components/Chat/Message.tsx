@@ -18,6 +18,8 @@ const MessageComponentRaw: React.FC<{
     ttsVoice: string; 
     ttsModel: string;
     currentChatId: string | null;
+    activeModel: string;
+    provider?: string;
     onShowSources: (sources: Source[]) => void;
     messageFormRef: React.RefObject<MessageFormHandle>;
     onRegenerate: (messageId: string) => void;
@@ -26,7 +28,7 @@ const MessageComponentRaw: React.FC<{
     onEditMessage?: (messageId: string, newText: string) => void;
     onNavigateBranch?: (messageId: string, direction: 'next' | 'prev') => void;
 }> = ({ 
-    msg, isLoading, isLast, sendMessage, ttsVoice, ttsModel, currentChatId, 
+    msg, isLoading, isLast, sendMessage, ttsVoice, ttsModel, currentChatId, activeModel, provider,
     onShowSources, messageFormRef,
     onRegenerate, onSetActiveResponseIndex, userQuery,
     onEditMessage, onNavigateBranch
@@ -51,6 +53,8 @@ const MessageComponentRaw: React.FC<{
                 ttsVoice={ttsVoice}
                 ttsModel={ttsModel} 
                 currentChatId={currentChatId} 
+                activeModel={activeModel}
+                provider={provider}
                 onShowSources={onShowSources}
                 messageFormRef={messageFormRef}
                 onRegenerate={onRegenerate}
@@ -96,6 +100,9 @@ export const MessageComponent = memo(MessageComponentRaw, (prevProps, nextProps)
     
     // Check isLast change (needed for suggestions visibility)
     if (prevProps.isLast !== nextProps.isLast) return false;
+    
+    // Check model/provider changes
+    if (prevProps.activeModel !== nextProps.activeModel || prevProps.provider !== nextProps.provider) return false;
 
     // CRITICAL OPTIMIZATION: 
     // If the message itself hasn't changed, ignore `isLoading` changes UNLESS this is the last message.

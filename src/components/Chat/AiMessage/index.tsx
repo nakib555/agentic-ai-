@@ -45,6 +45,8 @@ type AiMessageProps = {
     ttsVoice: string; 
     ttsModel: string;
     currentChatId: string | null;
+    activeModel: string;
+    provider?: string;
     onShowSources: (sources: Source[]) => void;
     messageFormRef: React.RefObject<MessageFormHandle>;
     onRegenerate: (messageId: string) => void;
@@ -81,7 +83,7 @@ const ChartLoadingPlaceholder: React.FC<{ type: string }> = ({ type }) => {
 };
 
 const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
-  const { msg, isLoading, sendMessage, ttsVoice, ttsModel, currentChatId, 
+  const { msg, isLoading, sendMessage, ttsVoice, ttsModel, currentChatId, activeModel, provider,
           onShowSources, messageFormRef, onRegenerate,
           onNavigateBranch, isLast = false, onEditMessage, userQuery } = props;
   const { id } = msg;
@@ -96,7 +98,7 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
       if (!onEditMessage) return;
       
       try {
-          // Call backend to fix
+          // Call backend to fix using the currently selected model and provider
           const response = await fetchFromApi('/api/handler?task=fix_code', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -104,7 +106,8 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
                   code: badCode,
                   error: errorMsg,
                   context: userQuery, // Pass original query as context
-                  model: 'gemini-2.5-flash' // Fast model for quick fixes
+                  model: activeModel || 'gemini-2.5-flash', // Use active model or fallback
+                  provider: provider // Pass the active provider
               })
           });
 
