@@ -21,7 +21,6 @@
     <!-- Performance Optimizations -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net">
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
@@ -29,89 +28,82 @@
     <!-- Application Styles -->
     <link rel="stylesheet" href="/styles/main.css">
 
-    <!-- Leaflet for maps (CSS only, JS via importmap) -->
+    <!-- Leaflet for maps (CSS only) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
 
     <!-- KaTeX CSS for Math Rendering -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
 
-    <!-- Tailwind CSS CDN Fallback (Only active if local build fails/CDN required) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      // Fallback Tailwind config if CDN is used
-      tailwind = { config: { darkMode: 'class', theme: { extend: { colors: { 'page': 'var(--bg-page)', 'content-primary': 'var(--text-primary)' } } } } };
-    </script>
 <link rel="stylesheet" href="/index.css">
 <script type="importmap">
 {
   "imports": {
-    "react/": "https://esm.sh/react@18.3.1/",
-    "react": "https://esm.sh/react@18.3.1",
-    "react-dom": "https://esm.sh/react-dom@18.3.1",
-    "react-dom/": "https://esm.sh/react-dom@18.3.1/",
+    "react-dom": "https://esm.sh/react-dom@^19.2.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "jszip": "https://esm.sh/jszip@^3.10.1",
+    "leaflet/": "https://esm.sh/leaflet@^1.9.4/",
+    "leaflet": "https://esm.sh/leaflet@^1.9.4",
+    "react-leaflet": "https://esm.sh/react-leaflet@^5.0.0",
+    "framer-motion": "https://esm.sh/framer-motion@^12.31.0",
+    "dotenv/": "https://esm.sh/dotenv@^17.2.3/",
     "path": "https://esm.sh/path@^0.12.7",
-    "url": "https://esm.sh/url@^0.11.4",
-    "react-markdown": "https://esm.sh/react-markdown@^9.0.1",
-    "tailwindcss": "https://esm.sh/tailwindcss@^3.4.1",
-    "framer-motion": "https://esm.sh/framer-motion@11.0.8",
-    "@google/genai": "https://esm.sh/@google/genai@^1.37.0",
-    "express": "https://esm.sh/express@^4.19.2",
-    "vite": "https://esm.sh/vite@^5.2.0",
+    "react-markdown": "https://esm.sh/react-markdown@^10.1.0",
+    "vite": "https://esm.sh/vite@^7.3.1",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.3",
+    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.39.0",
+    "express": "https://esm.sh/express@^5.2.1",
+    "uuid": "https://esm.sh/uuid@^13.0.0",
     "fs": "https://esm.sh/fs@^0.0.1-security",
     "fs/": "https://esm.sh/fs@^0.0.1-security/",
-    "cors": "https://esm.sh/cors@^2.8.5",
-    "eslint-plugin-react-hooks": "https://esm.sh/eslint-plugin-react-hooks@^4.6.0",
+    "@hookform/resolvers/": "https://esm.sh/@hookform/resolvers@^5.2.2/",
+    "react-dropzone": "https://esm.sh/react-dropzone@^14.4.0",
     "child_process": "https://esm.sh/child_process@^1.0.2",
-    "remark-math": "https://esm.sh/remark-math@^6.0.0",
+    "zod": "https://esm.sh/zod@^4.3.6",
+    "tailwindcss": "https://esm.sh/tailwindcss@^4.1.18",
     "html2canvas": "https://esm.sh/html2canvas@^1.4.1",
-    "katex/": "https://esm.sh/katex@^0.16.9/",
-    "dotenv/": "https://esm.sh/dotenv@^16.4.5/",
-    "buffer": "https://esm.sh/buffer@^6.0.3",
-    "@tanstack/react-query": "https://esm.sh/@tanstack/react-query@^5.28.0",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^4.2.1",
-    "jszip": "https://esm.sh/jszip@^3.10.1",
-    "remark-gfm": "https://esm.sh/remark-gfm@^4.0.0",
-    "rehype-katex": "https://esm.sh/rehype-katex@^7.0.0",
-    "rehype-raw": "https://esm.sh/rehype-raw@^7.0.0",
-    "react-syntax-highlighter/": "https://esm.sh/react-syntax-highlighter@^15.5.0/",
-    "react-syntax-highlighter": "https://esm.sh/react-syntax-highlighter@^15.5.0",
-    "esbuild": "https://esm.sh/esbuild@^0.20.2",
-    "playwright": "https://esm.sh/playwright@^1.42.1",
-    "react-virtuoso": "https://esm.sh/react-virtuoso@^4.7.1",
-    "cpx": "https://esm.sh/cpx@^1.5.0",
-    "eslint-plugin-react-compiler": "https://esm.sh/eslint-plugin-react-compiler@latest",
-    "@million/lint": "https://esm.sh/@million/lint@latest",
-    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
-    "clsx": "https://esm.sh/clsx@^2.1.1",
     "tailwind-merge": "https://esm.sh/tailwind-merge@^3.4.0",
     "@radix-ui/react-tooltip": "https://esm.sh/@radix-ui/react-tooltip@^1.2.8",
-    "zod": "https://esm.sh/zod@^4.3.6",
-    "zustand/": "https://esm.sh/zustand@^5.0.10/",
-    "zustand": "https://esm.sh/zustand@^5.0.10",
+    "cors": "https://esm.sh/cors@^2.8.6",
+    "buffer": "https://esm.sh/buffer@^6.0.3",
+    "rehype-katex": "https://esm.sh/rehype-katex@^7.0.1",
+    "eslint-plugin-react-hooks": "https://esm.sh/eslint-plugin-react-hooks@^7.0.1",
+    "url": "https://esm.sh/url@^0.11.4",
     "react-hook-form": "https://esm.sh/react-hook-form@^7.71.1",
-    "sonner": "https://esm.sh/sonner@^2.0.7",
-    "@radix-ui/react-select": "https://esm.sh/@radix-ui/react-select@^2.2.6",
-    "@hookform/resolvers/": "https://esm.sh/@hookform/resolvers@^5.2.2/",
-    "react-dropzone": "https://esm.sh/react-dropzone@^14.3.8",
-    "@radix-ui/react-slot": "https://esm.sh/@radix-ui/react-slot@^1.2.4",
-    "class-variance-authority": "https://esm.sh/class-variance-authority@^0.7.1",
-    "@radix-ui/react-dialog": "https://esm.sh/@radix-ui/react-dialog@^1.1.15",
-    "react-resizable-panels": "https://esm.sh/react-resizable-panels@^4.5.4",
-    "uuid": "https://esm.sh/uuid@^13.0.0",
+    "remark-math": "https://esm.sh/remark-math@^6.0.0",
     "date-fns": "https://esm.sh/date-fns@^4.1.0",
-    "shiki": "https://esm.sh/shiki@^3.21.0",
-    "react-error-boundary": "https://esm.sh/react-error-boundary@^6.1.0",
-    "use-debounce": "https://esm.sh/use-debounce@^10.1.0",
-    "ai/": "https://esm.sh/ai@^6.0.62/",
-    "idb-keyval": "https://esm.sh/idb-keyval@^6.2.2",
-    "echarts": "https://esm.sh/echarts@^5.5.0",
-    "echarts-for-react": "https://esm.sh/echarts-for-react@^3.0.2",
-    "leaflet": "https://esm.sh/leaflet@1.9.4",
-    "react-leaflet": "https://esm.sh/react-leaflet@4.2.1",
-    "leaflet/": "https://esm.sh/leaflet@^1.9.4/",
+    "react-syntax-highlighter/": "https://esm.sh/react-syntax-highlighter@^16.1.0/",
+    "react-syntax-highlighter": "https://esm.sh/react-syntax-highlighter@^16.1.0",
+    "echarts": "https://esm.sh/echarts@^6.0.0",
+    "class-variance-authority": "https://esm.sh/class-variance-authority@^0.7.1",
+    "katex/": "https://esm.sh/katex@^0.16.28/",
     "leaflet-control-geocoder": "https://esm.sh/leaflet-control-geocoder@^3.3.1",
-    "leaflet-control-geocoder/": "https://esm.sh/leaflet-control-geocoder@^3.3.1/"
+    "leaflet-control-geocoder/": "https://esm.sh/leaflet-control-geocoder@^3.3.1/",
+    "react-resizable-panels": "https://esm.sh/react-resizable-panels@^4.5.9",
+    "@radix-ui/react-slot": "https://esm.sh/@radix-ui/react-slot@^1.2.4",
+    "@tanstack/react-query": "https://esm.sh/@tanstack/react-query@^5.90.20",
+    "clsx": "https://esm.sh/clsx@^2.1.1",
+    "sonner": "https://esm.sh/sonner@^2.0.7",
+    "remark-gfm": "https://esm.sh/remark-gfm@^4.0.1",
+    "@radix-ui/react-select": "https://esm.sh/@radix-ui/react-select@^2.2.6",
+    "echarts-for-react": "https://esm.sh/echarts-for-react@^3.0.6",
+    "zustand/": "https://esm.sh/zustand@^5.0.11/",
+    "zustand": "https://esm.sh/zustand@^5.0.11",
+    "@radix-ui/react-dialog": "https://esm.sh/@radix-ui/react-dialog@^1.1.15",
+    "rehype-raw": "https://esm.sh/rehype-raw@^7.0.0",
+    "cpx": "https://esm.sh/cpx@^1.5.0",
+    "eslint-plugin-react-compiler": "https://esm.sh/eslint-plugin-react-compiler@^19.1.0-rc.2",
+    "playwright": "https://esm.sh/playwright@^1.58.1",
+    "use-debounce": "https://esm.sh/use-debounce@^10.1.0",
+    "idb-keyval": "https://esm.sh/idb-keyval@^6.2.2",
+    "react-virtuoso": "https://esm.sh/react-virtuoso@^4.18.1",
+    "ai/": "https://esm.sh/ai@^6.0.69/",
+    "react-error-boundary": "https://esm.sh/react-error-boundary@^6.1.0",
+    "esbuild": "https://esm.sh/esbuild@^0.27.2",
+    "@million/lint": "https://esm.sh/@million/lint@^1.0.14"
   }
 }
 </script>
