@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -35,7 +36,7 @@ const CheckIcon = () => (
     </svg>
 );
 
-export const ModelSelector: React.FC<ModelSelectorProps> = ({
+export const ModelSelector: React.FC<ModelSelectorProps> = React.memo(({
   models,
   selectedModel,
   onModelChange,
@@ -235,7 +236,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                     maxWidth: coords.maxWidth,
                     top: coords.top,
                     bottom: coords.bottom,
-                    zIndex: 2000, // Elevated Z-Index to match other dropdowns
+                    zIndex: 2000, 
                 }}
                 className="bg-white dark:bg-[#1a1a1a] border border-gray-200/50 dark:border-white/10 rounded-xl shadow-2xl overflow-hidden ring-1 ring-black/5"
             >
@@ -290,4 +291,4 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       )}
     </div>
   );
-};
+});

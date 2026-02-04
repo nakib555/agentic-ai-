@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -26,7 +27,7 @@ type SelectDropdownProps = {
     placeholder?: string;
 };
 
-export const SelectDropdown: React.FC<SelectDropdownProps> = ({ 
+export const SelectDropdown: React.FC<SelectDropdownProps> = React.memo(({ 
     label, 
     icon, 
     startIcon,
@@ -83,4 +84,4 @@ export const SelectDropdown: React.FC<SelectDropdownProps> = ({
             </Select>
         </div>
     );
-};
+});

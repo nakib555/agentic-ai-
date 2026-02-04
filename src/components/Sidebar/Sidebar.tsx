@@ -35,7 +35,7 @@ type SidebarProps = {
     isDesktop: boolean;
 };
 
-export const Sidebar: React.FC<SidebarProps> = ({ 
+export const Sidebar: React.FC<SidebarProps> = React.memo(({ 
     isOpen, setIsOpen, isCollapsed, setIsCollapsed, 
     history, isHistoryLoading, currentChatId, onNewChat, isNewChatDisabled, onLoadChat,
     onDeleteChat, onUpdateChatTitle, onSettingsClick,
@@ -43,8 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
     const dragControls = useDragControls();
 
-    // Keyboard shortcut (Ctrl/Cmd + K) handling is now mainly in App logic 
-    // or ChatHeader logic if needed, but keeping a listener here for Mobile overlay is fine.
+    // Keyboard shortcut (Ctrl/Cmd + K) handling
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
             if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
@@ -151,4 +150,4 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </motion.div>
         </aside>
     );
-};
+});

@@ -7,6 +7,7 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
 import * as echarts from 'echarts';
+import { ErrorBoundary } from '../ErrorBoundary';
 
 export type ChartEngine = 'echarts' | 'html';
 
@@ -72,17 +73,35 @@ const looseJsonParse = (str: string) => {
  * It transforms flat options into ECharts Media Query structure if not already present.
  */
 const smartLayoutAdapter = (option: any, isDark: boolean) => {
-    if (!option) return option;
+    if (!option || typeof option !== 'object') return {};
 
     // --- 1. Standardization: Convert Flat to BaseOption/Media ---
     let rootOption = option;
     let existingMedia = [];
 
-    if (option.baseOption) {
-        rootOption = JSON.parse(JSON.stringify(option.baseOption)); // Deep clone to avoid mutation
-        existingMedia = option.media || [];
-    } else {
-        rootOption = JSON.parse(JSON.stringify(option));
+    // Deep clone to safely mutate and remove holes/nulls
+    try {
+        if (option.baseOption) {
+            rootOption = JSON.parse(JSON.stringify(option.baseOption)); 
+            existingMedia = option.media || [];
+        } else {
+            rootOption = JSON.parse(JSON.stringify(option));
+        }
+    } catch (e) {
+        // Fallback for circular structures (unlikely from JSON)
+        return {};
+    }
+
+    // --- CRITICAL FIX: Sanitize Series ---
+    // Removes null/undefined entries that cause ECharts to crash with "cannot read property type of undefined"
+    // This commonly happens if the LLM outputs sparse arrays or trailing commas interpreted as holes
+    if (rootOption.series) {
+        if (Array.isArray(rootOption.series)) {
+            rootOption.series = rootOption.series.filter((s: any) => s && typeof s === 'object');
+        } else if (typeof rootOption.series !== 'object') {
+            // Reset if invalid type
+            rootOption.series = [];
+        }
     }
 
     // --- 2. Theming & Styling (Applied to Base) ---
@@ -97,7 +116,8 @@ const smartLayoutAdapter = (option: any, isDark: boolean) => {
     const applyAxisStyles = (axis: any) => {
         if (!axis) return axis;
         const axes = Array.isArray(axis) ? axis : [axis];
-        return axes.map((a: any) => ({
+        // Filter out null axes just in case
+        return axes.filter((a: any) => a && typeof a === 'object').map((a: any) => ({
             ...a,
             nameTextStyle: { color: subTextColor, ...a.nameTextStyle },
             axisLabel: { color: subTextColor, ...a.axisLabel },
@@ -122,7 +142,7 @@ const smartLayoutAdapter = (option: any, isDark: boolean) => {
     
     if (rootOption.title) {
         const titles = Array.isArray(rootOption.title) ? rootOption.title : [rootOption.title];
-        rootOption.title = titles.map((t: any) => ({
+        rootOption.title = titles.filter((t: any) => t).map((t: any) => ({
             ...t,
             textStyle: { color: textColor, fontSize: 16, ...t.textStyle },
             subtextStyle: { color: subTextColor, ...t.subtextStyle }
@@ -142,7 +162,7 @@ const smartLayoutAdapter = (option: any, isDark: boolean) => {
     // --- 3. Enforce Non-Overlapping Grid (Desktop Default) ---
     if (rootOption.grid) {
         const grids = Array.isArray(rootOption.grid) ? rootOption.grid : [rootOption.grid];
-        rootOption.grid = grids.map((g: any) => ({
+        rootOption.grid = grids.filter((g: any) => g).map((g: any) => ({
             containLabel: true, // The most important ECharts property for layout safety
             left: g.left || '5%',
             right: g.right || '5%',
@@ -549,13 +569,30 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
             style={{ transition: 'none' }} // Disable transitions during resize for perf
         >
             <div className="w-full relative flex-1">
-                <ReactECharts
-                    ref={echartsRef}
-                    option={finalOption}
-                    theme={isDark ? 'dark' : undefined}
-                    style={{ height: containerHeight, width: '100%', minHeight: '300px' }}
-                    opts={{ renderer: 'svg' }}
-                />
+                <ErrorBoundary fallback={
+                    <div className="flex items-center justify-center h-full p-4 text-sm text-red-500 bg-red-50/50 rounded-lg border border-red-100 min-h-[300px]">
+                        <div className="text-center">
+                            <p className="font-bold mb-1">Failed to render chart</p>
+                            <p className="text-xs">The data configuration may be malformed.</p>
+                            {onFixCode && (
+                                <button
+                                    onClick={handleFix}
+                                    className="mt-3 px-3 py-1.5 bg-white border border-red-200 rounded text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
+                                >
+                                    Attempt Auto-Fix
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                }>
+                    <ReactECharts
+                        ref={echartsRef}
+                        option={finalOption}
+                        theme={isDark ? 'dark' : undefined}
+                        style={{ height: containerHeight, width: '100%', minHeight: '300px' }}
+                        opts={{ renderer: 'svg' }}
+                    />
+                </ErrorBoundary>
             </div>
 
             {/* Controls Overlay */}

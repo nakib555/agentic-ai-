@@ -4,9 +4,16 @@
  */
 
 import { CHAT_PERSONA_AND_UI_FORMATTING } from './chatPersona';
+import { FORMATTING_PROTOCOL } from './formattingProtocol';
 
 // =================================================================================================
 // MASTER PROMPT: CORE DIRECTIVES FOR THE AI
 // =================================================================================================
 
-export const systemInstruction = CHAT_PERSONA_AND_UI_FORMATTING;
+export const systemInstruction = `
+${FORMATTING_PROTOCOL}
+
+================================================================================
+
+${CHAT_PERSONA_AND_UI_FORMATTING}
+`;

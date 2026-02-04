@@ -157,10 +157,6 @@ const ModelSettings: React.FC<ModelSettingsProps> = ({
             const id = m.id.toLowerCase();
             if (id.includes('embedding') || id.includes('embed')) return false;
 
-            // We relax other string-based filters because backend providers (especially OpenRouter/Ollama)
-            // might have chat models with "image" or "vision" in the name (e.g. Llama 3.2 Vision).
-            // We rely on the backend to send us the correct 'chatModels' list.
-            
             return true;
         });
     }, [models, imageModels, videoModels, ttsModels]);
@@ -222,7 +218,6 @@ const ModelSettings: React.FC<ModelSettingsProps> = ({
                     >
                         <div className="w-full sm:w-[320px]">
                             <SelectDropdown 
-                                key={`model-select-${filteredReasoningModels.length}-${provider}-${filteredReasoningModels[0]?.id || 'empty'}`}
                                 options={formatModels(filteredReasoningModels)} 
                                 value={selectedModel} 
                                 onChange={onModelChange} 
@@ -262,7 +257,6 @@ const ModelSettings: React.FC<ModelSettingsProps> = ({
                     <SettingItem label="Image Generation">
                         <div className="w-full sm:w-[320px]">
                             <SelectDropdown 
-                                key={`image-select-${imageModels.length}`}
                                 options={formatModels(imageModels)} 
                                 value={imageModel} 
                                 onChange={onImageModelChange} 
@@ -277,7 +271,6 @@ const ModelSettings: React.FC<ModelSettingsProps> = ({
                     <SettingItem label="Video Generation">
                         <div className="w-full sm:w-[320px]">
                             <SelectDropdown 
-                                key={`video-select-${videoModels.length}`}
                                 options={formatModels(videoModels)} 
                                 value={videoModel} 
                                 onChange={onVideoModelChange} 
@@ -292,7 +285,6 @@ const ModelSettings: React.FC<ModelSettingsProps> = ({
                     <SettingItem label="Speech Synthesis (TTS)">
                         <div className="w-full sm:w-[320px]">
                             <SelectDropdown 
-                                key={`tts-select-${ttsModels.length}`}
                                 options={formatModels(ttsModels)} 
                                 value={ttsModel} 
                                 onChange={onTtsModelChange} 
