@@ -114,8 +114,7 @@ export default defineConfig(({ mode }) => {
         rollupOptions: {
           output: {
             manualChunks: {
-              'vendor-react': ['react', 'react-dom', 'framer-motion'],
-              'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-select', '@radix-ui/react-slot', '@radix-ui/react-tooltip', 'lucide-react', 'clsx', 'tailwind-merge'],
+              'vendor-core': ['react', 'react-dom', 'framer-motion', '@radix-ui/react-dialog', '@radix-ui/react-select', '@radix-ui/react-slot', '@radix-ui/react-tooltip', 'lucide-react', 'clsx', 'tailwind-merge', 'sonner'],
               'syntax-highlighter': ['react-syntax-highlighter'],
               'markdown': ['react-markdown', 'rehype-katex', 'rehype-raw', 'remark-gfm', 'remark-math'],
               'gemini': ['@google/genai'],
