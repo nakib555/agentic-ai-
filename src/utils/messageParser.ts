@@ -11,7 +11,7 @@ type ParseResult = {
 
 /**
  * Parses the raw text from a model's message into distinct "thinking" and "final answer" parts.
- * Updated to be more robust for mixed-mode content and prevent hiding valid text.
+ * This function uses the `isThinking` and `hasError` flags to provide context and prevent UI flickering.
  * @param text The raw text content from the message.
  * @param isThinking A boolean indicating if the model is still processing.
  * @param hasError A boolean indicating if an error occurred.
@@ -21,8 +21,8 @@ export const parseMessageText = (text: string, isThinking: boolean, hasError: bo
   const finalAnswerMarker = '[STEP] Final Answer:';
   const finalAnswerIndex = text.lastIndexOf(finalAnswerMarker);
 
-  // 1. Explicit Final Answer Split (Highest Priority)
-  // If the model explicitly marks the final answer, we always respect it.
+  // Rule 1: Highest priority. If the final answer marker exists, we can definitively split the text.
+  // This is true whether the stream is still technically "thinking" or not.
   if (finalAnswerIndex !== -1) {
     const thinkingText = text.substring(0, finalAnswerIndex);
     let rawFinalAnswer = text.substring(finalAnswerIndex + finalAnswerMarker.length);
@@ -35,22 +35,17 @@ export const parseMessageText = (text: string, isThinking: boolean, hasError: bo
     return { thinkingText, finalAnswerText };
   }
 
-  // 2. Implicit Classification
-  // If no final answer marker is found, we decide based on the *structure* of the text.
-  // We strictly identify "Agent Mode" content by checking if it STARTS with a step marker.
-  // This prevents chatty models that mention "[STEP]" in conversation from being hidden.
-
-  const trimmed = text.trimStart();
-  const isAgentStructure = trimmed.startsWith('[STEP]') || trimmed.startsWith('[BRIEFING]');
-
-  if (isAgentStructure) {
-      // It looks like an internal thought trace or agent log. 
-      // Hide it from the main bubble (it will be rendered by the Workflow UI).
-      return { thinkingText: text, finalAnswerText: '' };
+  // Rule 2: Active Thinking / Streaming
+  // If the model is still generating, and we haven't seen a final answer marker yet,
+  // we assume everything so far is part of the thought process/agent log.
+  // This keeps the main chat bubble clean while the "Thinking..." accordion or sidebar updates.
+  if (isThinking) {
+    return { thinkingText: text, finalAnswerText: '' };
   }
 
-  // 3. Default Fallback
-  // It's a direct response (Chat Mode), or a mixed response that didn't follow strict protocol.
-  // Show it as the final answer to ensure visibility.
+  // Rule 3: Generation Stopped (Finished or Error) WITHOUT Final Answer Marker
+  // This handles cases where the model crashed, was interrupted, or just didn't follow protocol.
+  // We fallback to showing the entire text as the final answer to ensure the user sees *something*
+  // rather than an empty bubble. The sidebar will be empty in this case, but visibility is priority.
   return { thinkingText: '', finalAnswerText: text.trim() };
 };

@@ -213,7 +213,10 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
   // Only show toolbar when generation AND typing effect are fully complete.
   // We use >= to be robust against potential length mismatches (e.g. carriage returns)
   const isTypingComplete = typedFinalAnswer.length >= (finalAnswerText?.length || 0);
-  const showToolbar = logic.thinkingIsComplete && isTypingComplete && (logic.hasFinalAnswer || !!activeResponse?.error || isStoppedByUser);
+  
+  const shouldRenderContent = logic.hasFinalAnswer || activeResponse?.error || logic.isWaitingForFinalAnswer || isStoppedByUser || (!msg.isThinking && !finalAnswerText && logic.hasThinkingText);
+  
+  const showToolbar = logic.thinkingIsComplete && isTypingComplete && shouldRenderContent;
 
   if (logic.isInitialWait) return <TypingIndicator />;
 
@@ -236,7 +239,7 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
           </div>
       )}
 
-      {(logic.hasFinalAnswer || activeResponse?.error || logic.isWaitingForFinalAnswer || isStoppedByUser) && (
+      {shouldRenderContent && (
         <motion.div
           initial={{ opacity: 0, y: 5 }}
           animate={{ opacity: 1, y: 0 }}
@@ -250,47 +253,54 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
               <ErrorDisplay error={activeResponse.error} onRetry={() => onRegenerate(id)} />
           )}
           
+          {/* Main Content Area */}
           <div className="markdown-content max-w-none w-full text-slate-800 dark:text-gray-100 leading-relaxed break-words min-w-0">
-            {displaySegments.map((segment: any, index: number) => {
-                const key = `${id}-${index}`;
-                if (segment.type === 'component') {
-                    const { componentType, data } = segment;
-                    switch (componentType) {
-                        case 'VIDEO': return <VideoDisplay key={key} {...data} />;
-                        case 'ONLINE_VIDEO': return <VideoDisplay key={key} srcUrl={data.url} prompt={data.title} />;
-                        case 'IMAGE':
-                        case 'ONLINE_IMAGE': return <ImageDisplay key={key} onEdit={handleEditImage} {...data} />;
-                        case 'MCQ': return <McqComponent key={key} {...data} />;
-                        case 'MAP': return <motion.div key={key} initial={{ opacity: 0 }} animate={{ opacity: 1 }}><MapDisplay {...data} /></motion.div>;
-                        case 'FILE': return <FileAttachment key={key} {...data} />;
-                        case 'BROWSER': return <BrowserSessionDisplay key={key} {...data} />;
-                        case 'CODE_OUTPUT': return <CodeExecutionResult key={key} {...data} />;
-                        case 'CHART': return <UniversalChart key={key} engine={data.engine} code={data.content} onFixCode={handleFixCode} isStreaming={msg.isThinking} />;
-                        case 'LOADING_CHART': return <ChartLoadingPlaceholder key={key} type={data.type} />;
-                        case 'ARTIFACT_CODE': return (
-                            <Suspense fallback={<div className="h-64 w-full bg-gray-100 dark:bg-white/5 rounded-xl animate-pulse my-4" />}>
-                                <ArtifactRenderer key={key} type="code" content={data.code} language={data.language} title={data.title} />
-                            </Suspense>
+            {(!typedFinalAnswer && !msg.isThinking && !activeResponse?.error && logic.hasThinkingText) ? (
+                 <div className="text-sm text-slate-500 italic p-2 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg">
+                    No final answer generated. Please check the reasoning logs.
+                 </div>
+            ) : (
+                displaySegments.map((segment: any, index: number) => {
+                    const key = `${id}-${index}`;
+                    if (segment.type === 'component') {
+                        const { componentType, data } = segment;
+                        switch (componentType) {
+                            case 'VIDEO': return <VideoDisplay key={key} {...data} />;
+                            case 'ONLINE_VIDEO': return <VideoDisplay key={key} srcUrl={data.url} prompt={data.title} />;
+                            case 'IMAGE':
+                            case 'ONLINE_IMAGE': return <ImageDisplay key={key} onEdit={handleEditImage} {...data} />;
+                            case 'MCQ': return <McqComponent key={key} {...data} />;
+                            case 'MAP': return <motion.div key={key} initial={{ opacity: 0 }} animate={{ opacity: 1 }}><MapDisplay {...data} /></motion.div>;
+                            case 'FILE': return <FileAttachment key={key} {...data} />;
+                            case 'BROWSER': return <BrowserSessionDisplay key={key} {...data} />;
+                            case 'CODE_OUTPUT': return <CodeExecutionResult key={key} {...data} />;
+                            case 'CHART': return <UniversalChart key={key} engine={data.engine} code={data.content} onFixCode={handleFixCode} isStreaming={msg.isThinking} />;
+                            case 'LOADING_CHART': return <ChartLoadingPlaceholder key={key} type={data.type} />;
+                            case 'ARTIFACT_CODE': return (
+                                <Suspense fallback={<div className="h-64 w-full bg-gray-100 dark:bg-white/5 rounded-xl animate-pulse my-4" />}>
+                                    <ArtifactRenderer key={key} type="code" content={data.code} language={data.language} title={data.title} />
+                                </Suspense>
+                            );
+                            case 'ARTIFACT_DATA': return (
+                                <Suspense fallback={<div className="h-64 w-full bg-gray-100 dark:bg-white/5 rounded-xl animate-pulse my-4" />}>
+                                    <ArtifactRenderer key={key} type="data" content={data.content} title={data.title} />
+                                </Suspense>
+                            );
+                            default: return <ErrorDisplay key={key} error={{ message: `Unknown component: ${componentType}`, details: JSON.stringify(data) }} />;
+                        }
+                    } else {
+                        return (
+                            <ManualCodeRenderer 
+                                key={key} 
+                                text={segment.content!} 
+                                components={MarkdownComponents} 
+                                isStreaming={msg.isThinking ?? false} 
+                                onFixCode={handleFixCode}
+                            />
                         );
-                        case 'ARTIFACT_DATA': return (
-                            <Suspense fallback={<div className="h-64 w-full bg-gray-100 dark:bg-white/5 rounded-xl animate-pulse my-4" />}>
-                                <ArtifactRenderer key={key} type="data" content={data.content} title={data.title} />
-                            </Suspense>
-                        );
-                        default: return <ErrorDisplay key={key} error={{ message: `Unknown component: ${componentType}`, details: JSON.stringify(data) }} />;
                     }
-                } else {
-                    return (
-                        <ManualCodeRenderer 
-                            key={key} 
-                            text={segment.content!} 
-                            components={MarkdownComponents} 
-                            isStreaming={msg.isThinking ?? false} 
-                            onFixCode={handleFixCode}
-                        />
-                    );
-                }
-            })}
+                })
+            )}
           </div>
 
           {/* Stopped Indicator - Rendered below content */}

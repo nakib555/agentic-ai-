@@ -45,7 +45,8 @@ export const processBackendStream = async (response: Response, callbacks: Stream
     let flushTimeoutId: any = null;
 
     const flushTextUpdates = () => {
-        if (pendingText !== null) {
+        // Only flush if we actually have text content
+        if (pendingText !== null && pendingText.length > 0) {
             callbacks.onTextChunk(pendingText);
             pendingText = null;
         }
