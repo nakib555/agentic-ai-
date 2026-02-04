@@ -4,7 +4,7 @@
 /* --- Modern, Theme-Aware Scrollbar --- */
 
 html {
-  font-size: 15px;
+  font-size: 13.5px;
   /* Prevent font scaling in landscape on mobile */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
@@ -12,7 +12,7 @@ html {
 
 @media (min-width: 768px) {
   html {
-    font-size: 15px;
+    font-size: 13.5px;
   }
 }
 
