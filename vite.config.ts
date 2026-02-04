@@ -89,6 +89,9 @@ export default defineConfig(({ mode }) => {
           }
         }
       },
+      optimizeDeps: {
+        include: ['react', 'react-dom', 'framer-motion', 'lucide-react', 'clsx', 'tailwind-merge'],
+      },
       plugins: [
         MillionLint.vite(),
         react({
