@@ -608,7 +608,8 @@ TASK:
 2. Ensure it is valid JSON/JavaScript object structure.
 3. If it's ECharts, ensure the "option" object is correctly structured.
 4. Output ONLY the fixed XML block: <echarts>{ ... }</echarts>
-5. Do NOT output markdown ticks.
+5. Do NOT use markdown code blocks (\`\`\`) inside or outside the XML tags.
+6. Ensure all keys in JSON are double-quoted.
 `;
                 try {
                     const result = await generateProviderCompletion(activeProviderName, chatApiKey, model || defaultModel, fixPrompt);

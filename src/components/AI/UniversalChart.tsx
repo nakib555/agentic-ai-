@@ -54,6 +54,9 @@ const looseJsonParse = (str: string) => {
         .replace(/:\s*False\b/g, ': false')
         .replace(/:\s*None\b/g, ': null')
         .replace(/,,\s*/g, ',') // Fix double commas
+        // Fix unquoted keys if simple alphanumeric (risky but handles many bad LLM outputs)
+        // Only applies if the key is not already quoted
+        .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')
         .replace(/"[\w\d_]+"\s*:\s*(?=[,}\]])/g, '') // Remove empty keys
         .replace(/,\s*([\]}])/g, '$1'); // Remove trailing commas
 

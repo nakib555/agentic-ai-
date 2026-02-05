@@ -125,7 +125,14 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
               
               // Extract inner content from XML tags if present to prevent nested tagging
               const tagMatch = cleanFixed.match(/^<(\w+)>([\s\S]*?)<\/\1>$/i);
-              const contentToInject = tagMatch ? tagMatch[2] : cleanFixed;
+              let contentToInject = tagMatch ? tagMatch[2] : cleanFixed;
+              
+              // CLEANUP: If the extracted content is wrapped in markdown fences, strip them too.
+              // This handles the case: <echarts> ```json ... ``` </echarts>
+              contentToInject = contentToInject.trim();
+              if (contentToInject.startsWith('```')) {
+                   contentToInject = contentToInject.replace(/^```[a-zA-Z0-9]*\s*/, '').replace(/\s*```$/, '').trim();
+              }
 
               const currentText = activeResponse?.text || '';
               
