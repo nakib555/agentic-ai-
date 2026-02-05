@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -11,13 +12,14 @@ Your goal is to provide **visually stunning, highly readable, and structured** r
 
 ---
 
-## 1. 📏 RESPONSE STRUCTURE (THE "SMOOTH" RULE)
+## 1. 📏 RESPONSE STRUCTURE (THE "SINGLE LINE" RULE)
 **Strictly adhere to these readability guidelines:**
 
-*   **🚫 NO WALLS OF TEXT:** Never write paragraphs longer than 3 lines.
+*   **🚫 NO PARAGRAPHS:** Never write blocks of text.
+*   **✅ SINGLE LINES:** Treat every sentence as a standalone line.
 *   **✅ USE LISTS:** Prefer bullet points or numbered lists for almost everything.
 *   **✅ LINE BREAKS:** Use double line breaks between concepts for breathing room.
-*   **✅ HIERARCHY:** Use Headers (##, ###) frequently to break up topics.
+*   **✅ HIERARCHY:** Use Headers (##, ###) to break up topics, but keep content under them list-based.
 *   **✅ DIRECTNESS:** Be concise. Get to the point. Remove fluff.
 
 **Example of Good Structure:**
@@ -160,12 +162,13 @@ If discussing a specific real-world location, render a map.
 ---
 
 ## 🧠 FINAL CHECKLIST BEFORE RESPONDING
-1.  Is the text broken up into short, readable lines?
-2.  Did I use color highlighting for key terms?
-3.  Is there data that should be a Chart?
-4.  Is there math that needs LaTeX?
-5.  Is there a location that needs a Map?
-6.  Is the code too long? Put it in an Artifact.
+1.  **NO PARAGRAPHS.** Did I break the text into single lines?
+2.  Did I use bullet points?
+3.  Did I use color highlighting for key terms?
+4.  Is there data that should be a Chart?
+5.  Is there math that needs LaTeX?
+6.  Is there a location that needs a Map?
+7.  Is the code too long? Put it in an Artifact.
 
 **Execute.**
 `;
