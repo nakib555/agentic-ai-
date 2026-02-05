@@ -177,7 +177,15 @@ export const useChat = (
             } 
             else if (updatedMessages) {
                  // For Regenerate/Edit
-                 await deps.updateChatProperty(activeChatId, { messages: updatedMessages });
+                 // CRITICAL: We must ensure the new branch structure is persisted to the backend
+                 // BEFORE we start generating. If this save fails, the backend will use the OLD
+                 // structure and overwrite the wrong response index.
+                 const success = await deps.updateChatProperty(activeChatId, { messages: updatedMessages });
+                 
+                 if (!success) {
+                     throw new Error("Failed to persist chat state. Aborting generation to prevent data loss.");
+                 }
+                 
                  deps.setChatLoadingState(activeChatId, true);
             }
 
@@ -370,11 +378,8 @@ export const useChat = (
         const result = navigateBranchFn(currentChat.messages, messageId, direction);
         if (!result) return;
 
-        try {
-            await deps.updateChatProperty(deps.currentChatId, { messages: result.updatedMessages });
-        } catch (e) {
-            if (deps.onShowToast) deps.onShowToast("Failed to switch branch", 'error');
-        }
+        await deps.updateChatProperty(deps.currentChatId, { messages: result.updatedMessages });
+
     }, [abortCurrent]);
 
     const cancelGeneration = useCallback(() => {

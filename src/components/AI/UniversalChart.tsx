@@ -68,169 +68,178 @@ const looseJsonParse = (str: string) => {
 };
 
 /**
- * SMART LAYOUT ENGINE
- * Intelligently restructures chart options to ensure responsiveness without overlapping.
- * It transforms flat options into ECharts Media Query structure if not already present.
+ * MASTER ROBUST CHART ADAPTER
+ * Enforces strict responsiveness, readability, and mobile safety rules.
+ * 
+ * Rules Implemented:
+ * 1. Universal Grid Containment (Prevent overlap)
+ * 2. Auto-Scaling Text (Readable on all devices)
+ * 3. Axis Label Safety (Truncation, Rotation, Hiding Overlap)
+ * 4. Legend Scroll & Positioning (Prevent crowding)
+ * 5. Tooltip Confinement (Never overflows)
+ * 6. Series Safety Defaults (Universal Transition)
+ * 7. Mobile-First Media Queries
+ * 8. Auto-Orientation Flip for dense data
  */
-const smartLayoutAdapter = (option: any, isDark: boolean) => {
+const robustChartAdapter = (option: any, isDark: boolean, width: number) => {
     if (!option || typeof option !== 'object') return {};
 
-    // --- 1. Standardization: Convert Flat to BaseOption/Media ---
-    let rootOption = option;
-    let existingMedia = [];
-
-    // Deep clone to safely mutate and remove holes/nulls
-    try {
-        if (option.baseOption) {
-            rootOption = JSON.parse(JSON.stringify(option.baseOption)); 
-            existingMedia = option.media || [];
-        } else {
-            rootOption = JSON.parse(JSON.stringify(option));
-        }
-    } catch (e) {
-        // Fallback for circular structures (unlikely from JSON)
-        return {};
+    // --- 1. Deep Clone & Normalization ---
+    let base = option.baseOption 
+        ? JSON.parse(JSON.stringify(option.baseOption)) 
+        : JSON.parse(JSON.stringify(option));
+    
+    // Remove nulls from series to prevent crashes
+    if (base.series && Array.isArray(base.series)) {
+        base.series = base.series.filter((s: any) => s && typeof s === 'object');
     }
 
-    // --- CRITICAL FIX: Sanitize Series ---
-    // Removes null/undefined entries that cause ECharts to crash with "cannot read property type of undefined"
-    // This commonly happens if the LLM outputs sparse arrays or trailing commas interpreted as holes
-    if (rootOption.series) {
-        if (Array.isArray(rootOption.series)) {
-            rootOption.series = rootOption.series.filter((s: any) => s && typeof s === 'object');
-        } else if (typeof rootOption.series !== 'object') {
-            // Reset if invalid type
-            rootOption.series = [];
-        }
-    }
-
-    // --- 2. Theming & Styling (Applied to Base) ---
+    // --- 2. Theming Constants ---
     const textColor = isDark ? '#f4f4f5' : '#1e293b';
     const subTextColor = isDark ? '#a1a1aa' : '#64748b';
-    const lineColor = isDark ? '#52525b' : '#e2e8f0';
-    const splitLineColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
+    const axisColor = isDark ? '#71717a' : '#94a3b8'; // Lighter axis lines
+    const splitColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
     const tooltipBg = isDark ? 'rgba(24, 24, 27, 0.95)' : 'rgba(255, 255, 255, 0.95)';
     const tooltipBorder = isDark ? '#3f3f46' : '#e2e8f0';
 
-    // Apply Colors Helper
-    const applyAxisStyles = (axis: any) => {
-        if (!axis) return axis;
-        const axes = Array.isArray(axis) ? axis : [axis];
-        // Filter out null axes just in case
-        return axes.filter((a: any) => a && typeof a === 'object').map((a: any) => ({
-            ...a,
-            nameTextStyle: { color: subTextColor, ...a.nameTextStyle },
-            axisLabel: { color: subTextColor, ...a.axisLabel },
-            axisLine: { lineStyle: { color: lineColor }, ...a.axisLine },
-            splitLine: { lineStyle: { color: splitLineColor }, ...a.splitLine }
-        }));
-    };
-    
-    if (rootOption.xAxis) rootOption.xAxis = applyAxisStyles(rootOption.xAxis);
-    if (rootOption.yAxis) rootOption.yAxis = applyAxisStyles(rootOption.yAxis);
-    
-    // Ensure Legend handles overflow
-    if (rootOption.legend) {
-        rootOption.legend.textStyle = { color: textColor, ...rootOption.legend.textStyle };
-        rootOption.legend.pageTextStyle = { color: textColor };
-        rootOption.legend.type = 'scroll'; // Always scrollable for safety
-        
-        // Default desktop legend position if not set
-        if (!rootOption.legend.top && !rootOption.legend.bottom) rootOption.legend.top = '5%';
-        if (!rootOption.legend.left && !rootOption.legend.right) rootOption.legend.right = '5%';
-    }
-    
-    if (rootOption.title) {
-        const titles = Array.isArray(rootOption.title) ? rootOption.title : [rootOption.title];
-        rootOption.title = titles.filter((t: any) => t).map((t: any) => ({
-            ...t,
-            textStyle: { color: textColor, fontSize: 16, ...t.textStyle },
-            subtextStyle: { color: subTextColor, ...t.subtextStyle }
-        }));
-    }
+    // --- 3. Auto-Scaling Font Logic ---
+    // Scale font size between 10px and 14px based on window width
+    const fontSize = Math.max(10, Math.min(width / 40, 14));
 
-    // Force tooltip to stay inside chart
-    rootOption.tooltip = {
+    // --- 4. Universal Grid Rules ---
+    // Force containment to allow ECharts to calculate margins automatically
+    base.grid = {
+        top: '12%',     // Sufficient space for title
+        bottom: '15%',  // Sufficient space for x-axis/legend
+        left: '5%',     // Minimal safe margin
+        right: '5%',
+        containLabel: true, // NON-NEGOTIABLE for responsiveness
+        ...base.grid
+    };
+
+    // --- 5. Tooltip Safety ---
+    base.tooltip = {
         trigger: 'axis',
-        confine: true, // Critical: keeps tooltip inside chart container
+        confine: true, // Prevents tooltip from clipping out of the div
         backgroundColor: tooltipBg,
         borderColor: tooltipBorder,
-        textStyle: { color: textColor },
-        ...rootOption.tooltip
+        textStyle: { color: textColor, fontSize },
+        axisPointer: { type: 'line', lineStyle: { color: axisColor } },
+        ...base.tooltip
     };
 
-    // --- 3. Enforce Non-Overlapping Grid (Desktop Default) ---
-    if (rootOption.grid) {
-        const grids = Array.isArray(rootOption.grid) ? rootOption.grid : [rootOption.grid];
-        rootOption.grid = grids.filter((g: any) => g).map((g: any) => ({
-            containLabel: true, // The most important ECharts property for layout safety
-            left: g.left || '5%',
-            right: g.right || '5%',
-            bottom: g.bottom || '10%', // Base spacing
-            top: g.top || 60,
-            ...g
-        }));
-    } else {
-        // Inject grid if missing
-        rootOption.grid = { containLabel: true, left: '5%', right: '5%', bottom: '10%', top: 60 };
+    // --- 6. Auto Legend Management ---
+    if (base.legend) {
+        base.legend = {
+            type: 'scroll',       // Always scrollable to prevent overflow
+            orient: 'horizontal',
+            bottom: 0,            // Anchor to bottom
+            left: 'center',       // Center align
+            itemGap: 12,
+            pageIconSize: 12,
+            textStyle: { color: textColor, fontSize },
+            pageTextStyle: { color: textColor },
+            ...base.legend
+        };
+        // Reset top if it was set, prefer bottom for consistency
+        if (!base.legend.top) base.legend.top = 'auto'; 
     }
 
-    // --- 4. Dynamic Media Query Generation (Mobile Optimization) ---
-    // We inject a high-priority media query for screens < 650px
-    const mobileQuery = {
-        query: { maxWidth: 650 }, 
+    // --- 7. Axis Styling & Safety Enforcer ---
+    const applyAxisSafe = (axis: any, type: 'x' | 'y') => {
+        if (!axis) return axis;
+        const axes = Array.isArray(axis) ? axis : [axis];
+        return axes.map((a: any) => ({
+            ...a,
+            nameTextStyle: { color: subTextColor, fontSize },
+            axisLabel: { 
+                color: subTextColor, 
+                fontSize,
+                hideOverlap: true, // ECharts auto-hiding
+                interval: 'auto',
+                overflow: 'truncate',
+                width: 80,         // Max width before truncation
+                ellipsis: '...',
+                // Dynamic rotation: If x-axis and screen is small, rotate 45 deg
+                rotate: (type === 'x' && width < 600) ? 45 : (a.axisLabel?.rotate || 0),
+                ...a.axisLabel 
+            },
+            axisLine: { lineStyle: { color: axisColor }, ...a.axisLine },
+            splitLine: { lineStyle: { color: splitColor }, ...a.splitLine }
+        }));
+    };
+
+    base.xAxis = applyAxisSafe(base.xAxis, 'x');
+    base.yAxis = applyAxisSafe(base.yAxis, 'y');
+
+    // --- 8. Title Styling ---
+    if (base.title) {
+        const titles = Array.isArray(base.title) ? base.title : [base.title];
+        base.title = titles.map((t: any) => ({
+            ...t,
+            left: 'center', // Center title by default for safety
+            textStyle: { color: textColor, fontSize: fontSize + 4, ...t.textStyle },
+            subtextStyle: { color: subTextColor, fontSize: fontSize, ...t.subtextStyle }
+        }));
+    }
+
+    // --- 9. Auto-Orientation Flip (Density Check) ---
+    // If we have a category X-axis with too many items on a narrow screen, flip it to Y-axis
+    let xAxis = Array.isArray(base.xAxis) ? base.xAxis[0] : base.xAxis;
+    
+    // Heuristic: If > 8 items on mobile, or > 20 on desktop, vertical chart is better
+    const flipThreshold = width < 600 ? 8 : 20;
+    
+    if (xAxis && xAxis.type === 'category' && xAxis.data && xAxis.data.length > flipThreshold) {
+        const yAxis = Array.isArray(base.yAxis) ? base.yAxis[0] : (base.yAxis || { type: 'value' });
+        
+        // Only flip if yAxis is a value axis (simple bar/line charts)
+        if (!yAxis.type || yAxis.type === 'value') {
+             const oldX = JSON.parse(JSON.stringify(xAxis));
+             const oldY = JSON.parse(JSON.stringify(yAxis));
+             
+             base.yAxis = { ...oldX, axisLabel: { ...oldX.axisLabel, rotate: 0, width: 100 } }; // Reset rotation for Y
+             base.xAxis = { ...oldY };
+             
+             // Ensure series respects the swap (encode might need adjustment, but standard series usually auto-adapt)
+        }
+    }
+
+    // --- 10. Series Safety Defaults ---
+    if (base.series) {
+        base.series = base.series.map((s: any) => ({
+             ...s,
+             universalTransition: true, // Smooth animation on config updates
+             label: { 
+                 show: false, // Default labels off to prevent clutter, unless specified
+                 position: 'top',
+                 hideOverlap: true,
+                 color: textColor,
+                 fontSize,
+                 ...s.label
+             },
+             emphasis: { focus: 'series', ...s.emphasis }
+        }));
+    }
+    
+    // --- 11. Mobile-First Media Query Injection ---
+    // We add a strict override for very small screens
+    const mobileMedia = {
+        query: { maxWidth: 600 },
         option: {
-            legend: {
-                orient: 'horizontal',
-                bottom: 0,        // Move to bottom on mobile
-                left: 'center',   // Center align
-                top: 'auto',      // Clear top
-                right: 'auto',    // Clear right
-                padding: [5, 10],
-                itemGap: 10,
-                type: 'scroll'    // Ensure scrolling if too many items
-            },
-            grid: {
-                bottom: 50, // Increase bottom padding to fit the legend we moved there
-                top: 50,    
-                left: 10,   // Minimal safe margins
-                right: 10,
-                containLabel: true // Strict containment
-            },
-            title: {
-                left: 'center', // Center title on mobile
-                top: 10,
-                textStyle: { fontSize: 14 }
-            },
-            xAxis: {
-                axisLabel: {
-                    rotate: 45, // Rotate labels to fit on narrow screens
-                    fontSize: 10,
-                    hideOverlap: true, // Automatically hide every Nth label if they collide
-                    interval: 'auto'
-                }
-            },
-            yAxis: {
-                nameLocation: 'end',
-                nameGap: 10,
-                axisLabel: { fontSize: 10 }
-            },
-            toolbox: {
-                show: false // Hide complex tools on mobile
-            }
+            grid: { left: 5, right: 5, bottom: 40, top: 50, containLabel: true },
+            legend: { orient: 'horizontal', bottom: 0, left: 'center', itemWidth: 15, itemHeight: 10 },
+            title: { left: 'center', top: 5, textStyle: { fontSize: 14 } },
+            toolbox: { show: false } // Hide complex tools on mobile
         }
     };
 
-    // Merge our generated media query with any existing ones
-    // We prepend ours or append depending on specificity, but here appending works as a specific override
-    const finalMedia = [
-        ...existingMedia,
-        mobileQuery
-    ];
+    // Merge with existing media queries if any
+    const existingMedia = option.media || [];
 
     return {
-        baseOption: rootOption,
-        media: finalMedia
+        baseOption: base,
+        media: [...existingMedia, mobileMedia]
     };
 };
 
@@ -243,8 +252,9 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
     const [isFixing, setIsFixing] = useState(false);
     const [localCodeOverride, setLocalCodeOverride] = useState<string | null>(null);
     
-    // Container size state
+    // Container and Dimensions
     const [containerHeight, setContainerHeight] = useState<number>(500);
+    const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
 
     const containerRef = useRef<HTMLDivElement>(null);
     const echartsRef = useRef<any>(null);
@@ -258,6 +268,13 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
     });
 
     useEffect(() => {
+        const handleResize = () => {
+             setWindowWidth(window.innerWidth);
+             if (echartsRef.current) {
+                 echartsRef.current.getEchartsInstance().resize({ animation: false });
+             }
+        };
+
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
                 if (mutation.attributeName === 'class') {
@@ -265,8 +282,14 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                 }
             });
         });
+        
         observer.observe(document.documentElement, { attributes: true });
-        return () => observer.disconnect();
+        window.addEventListener('resize', handleResize);
+        
+        return () => {
+            observer.disconnect();
+            window.removeEventListener('resize', handleResize);
+        };
     }, []);
 
     // Reset override when streaming starts (new generation)
@@ -370,12 +393,12 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         }
     }, [content, code, isFixing, localCodeOverride, isStreaming]);
 
-    // Compute final options using Smart Layout Adapter
+    // Compute final options using Robust Chart Adapter
     const finalOption = useMemo(() => {
         if (!config?.option) return null;
-        // Pass current theme to adapter
-        return smartLayoutAdapter(config.option, isDark);
-    }, [config, isDark]);
+        // Pass current theme and width to adapter
+        return robustChartAdapter(config.option, isDark, windowWidth);
+    }, [config, isDark, windowWidth]);
 
     // Handle clicks/touches outside the chart to dismiss tooltip
     useEffect(() => {
@@ -590,7 +613,7 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                         option={finalOption}
                         theme={isDark ? 'dark' : undefined}
                         style={{ height: containerHeight, width: '100%', minHeight: '300px' }}
-                        opts={{ renderer: 'svg' }}
+                        opts={{ renderer: 'canvas', useDirtyRect: true }} // Use Canvas + DirtyRect for best mobile perf
                     />
                 </ErrorBoundary>
             </div>

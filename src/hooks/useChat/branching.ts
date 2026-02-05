@@ -104,6 +104,11 @@ export const createBranchForModelResponse = (
         targetMessage.activeResponseIndex = 0;
     }
 
+    // Fix potential legacy data where activeResponseIndex is undefined
+    if (targetMessage.activeResponseIndex === undefined) {
+        targetMessage.activeResponseIndex = 0;
+    }
+
     const currentResponseIndex = targetMessage.activeResponseIndex;
     
     // Save state of current response specifically.

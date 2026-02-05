@@ -216,8 +216,9 @@ export const useChatHistory = () => {
   }, [setChatLoadingState]);
 
   // Persist updates to backend
-  const updateChatProperty = useCallback(async (chatId: string, update: Partial<ChatSession>, debounceMs: number = 0) => {
-      if (!chatId) return;
+  // Returns true on success, false on failure to allow callers to handle critical failures
+  const updateChatProperty = useCallback(async (chatId: string, update: Partial<ChatSession>, debounceMs: number = 0): Promise<boolean> => {
+      if (!chatId) return false;
 
       updateLocalAndCache(old => (old || []).map(c => c.id === chatId ? { ...c, ...update } : c));
       
@@ -227,8 +228,7 @@ export const useChatHistory = () => {
       
       try {
           const body = JSON.stringify(update);
-          // keepalive has a 64KB limit. We use it for small updates to ensure saving persists 
-          // even if the tab is closed, but disable it for large payloads to prevent "Failed to fetch".
+          // keepalive has a 64KB limit. Use it for small updates only.
           const useKeepalive = new Blob([body]).size < 60000;
 
           await fetchApi(`/api/chats/${chatId}`, {
@@ -236,8 +236,10 @@ export const useChatHistory = () => {
               body,
               keepalive: useKeepalive
           });
+          return true;
       } catch (e) {
           console.error("Failed to save chat property", e);
+          return false;
       }
   }, [updateLocalAndCache, currentChatId]);
 
