@@ -65,6 +65,32 @@ export const useFileHandling = (ref: React.ForwardedRef<MessageFormHandle>) => {
       }
     }
   }));
+  
+  // NEW: Update a specific file (e.g. after media processing)
+  const updateFile = useCallback((id: string, newFile: File) => {
+      // Create new ProcessedFile entry
+      const updatedEntry: ProcessedFile = {
+          id: id, // Keep same ID to maintain position
+          file: newFile,
+          progress: 0,
+          base64Data: null,
+          error: null
+      };
+      
+      // Update state to start loading the new file data
+      setProcessedFiles(prev => prev.map(f => f.id === id ? updatedEntry : f));
+      
+      // Process the new file
+      fileToBase64WithProgress(newFile, (progress) => {
+          setProcessedFiles(prev => prev.map(f => f.id === id ? { ...f, progress } : f));
+      })
+      .then(base64Data => {
+          setProcessedFiles(prev => prev.map(f => f.id === id ? { ...f, base64Data, progress: 100 } : f));
+      })
+      .catch(error => {
+          setProcessedFiles(prev => prev.map(f => f.id === id ? { ...f, error: error.message } : f));
+      });
+  }, []);
 
   // Restore file drafts from IDB on initial load
   useEffect(() => {
@@ -141,6 +167,7 @@ export const useFileHandling = (ref: React.ForwardedRef<MessageFormHandle>) => {
     processAndSetFiles,
     handleFileChange,
     handleRemoveFile,
+    updateFile, // Export new method
     getFilesToSend,
     clearFiles,
   };

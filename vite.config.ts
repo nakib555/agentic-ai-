@@ -39,15 +39,20 @@ const staticAssetsPlugin = (appVersion: string) => ({
     }
 
     // 3. Generate _headers file for Cloudflare
+    // ADDED: Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy for FFmpeg.wasm
     const headersContent = `/*
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   X-XSS-Protection: 1; mode=block
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(self), microphone=(self), camera=(self)
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
 
 /index.html
   Cache-Control: no-cache, no-store, must-revalidate
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
 
 /sw.js
   Cache-Control: no-cache, no-store, must-revalidate
@@ -76,6 +81,11 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        // Enable headers for local dev SharedArrayBuffer support
+        headers: {
+          'Cross-Origin-Opener-Policy': 'same-origin',
+          'Cross-Origin-Embedder-Policy': 'require-corp',
+        },
         proxy: {
           '/api': {
             target: 'http://localhost:3001',

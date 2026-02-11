@@ -11,7 +11,7 @@ import { Mic, Send, Paperclip, Sparkles, X, Plus } from 'lucide-react';
 import { useMessageForm } from './useMessageForm';
 import { UploadMenu } from './UploadMenu';
 import { VoiceVisualizer } from '../../UI/VoiceVisualizer';
-import { MessageFormHandle } from './types';
+import { MessageFormHandle, ProcessedFile } from './types';
 import { Message } from '../../../types';
 import { TextType } from '../../UI/TextType';
 import { Tooltip } from '../../UI/Tooltip';
@@ -20,6 +20,7 @@ import { AttachedFilePreview } from './AttachedFilePreview';
 const motion = motionTyped as any;
 
 const FilePreviewSidebar = React.lazy(() => import('./FilePreviewSidebar').then(m => ({ default: m.FilePreviewSidebar })));
+const MediaProcessorModal = React.lazy(() => import('../../Media/MediaProcessorModal').then(m => ({ default: m.MediaProcessorModal })));
 
 type MessageFormProps = {
   onSubmit: (message: string, files?: File[], options?: { isHidden?: boolean; isThinkingModeEnabled?: boolean; }) => void;
@@ -52,6 +53,9 @@ export const MessageForm = forwardRef<MessageFormHandle, MessageFormProps>((prop
     false,
     hasApiKey
   );
+  
+  // State for Media Processing
+  const [mediaToProcess, setMediaToProcess] = useState<ProcessedFile | null>(null);
 
   useEffect(() => {
       // Log connection status issues that might disable the form
@@ -108,6 +112,17 @@ export const MessageForm = forwardRef<MessageFormHandle, MessageFormProps>((prop
             onClose={() => logic.setPreviewFile(null)}
             file={logic.previewFile}
           />
+          
+          {mediaToProcess && (
+              <MediaProcessorModal 
+                  isOpen={!!mediaToProcess}
+                  onClose={() => setMediaToProcess(null)}
+                  file={mediaToProcess.file}
+                  onProcessed={(newFile) => {
+                      logic.updateFile(mediaToProcess.id, newFile);
+                  }}
+              />
+          )}
       </Suspense>
 
       {/* Hidden inputs managed by logic hook hooks, but we still need them for the menu */}
@@ -166,6 +181,7 @@ export const MessageForm = forwardRef<MessageFormHandle, MessageFormProps>((prop
                             file={file.file}
                             onRemove={() => logic.handleRemoveFile(file.id)}
                             onPreview={() => logic.setPreviewFile(file)}
+                            onProcess={() => setMediaToProcess(file)}
                             progress={file.progress}
                             error={file.error}
                         />
