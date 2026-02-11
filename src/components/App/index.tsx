@@ -71,7 +71,6 @@ export const App = () => {
   // --- Keyboard Detection Logic ---
   const [stableHeight, setStableHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 0);
   const widthRef = useRef(typeof window !== 'undefined' ? window.innerWidth : 0);
-  const sidebarPanelRef = useRef<any>(null);
 
   useEffect(() => {
       const handleResize = () => {
@@ -104,32 +103,11 @@ export const App = () => {
       (logic.provider === 'openrouter' && !!logic.openRouterApiKey) || 
       (logic.provider === 'ollama'); 
 
-  // Synchronize Sidebar Panel state with Application State
-  useEffect(() => {
-    if (logic.isDesktop && sidebarPanelRef.current) {
-        const panel = sidebarPanelRef.current;
-        if (logic.isSidebarCollapsed) {
-            if (!panel.isCollapsed()) panel.collapse();
-        } else {
-            if (panel.isCollapsed()) panel.expand();
-        }
-    }
-  }, [logic.isDesktop, logic.isSidebarCollapsed]);
-
   // Handler for toggle button in ChatHeader
   const handleToggleSidebar = () => {
       if (logic.isDesktop) {
-          // On Desktop, toggle collapse state via ref to ensure animation triggers
-          if (sidebarPanelRef.current) {
-              const panel = sidebarPanelRef.current;
-              if (panel.isCollapsed()) {
-                  panel.expand();
-              } else {
-                  panel.collapse();
-              }
-          }
+          logic.handleSetSidebarCollapsed(!logic.isSidebarCollapsed);
       } else {
-          // On Mobile, toggle open state overlay
           logic.handleToggleSidebar();
       }
   };
@@ -190,18 +168,10 @@ export const App = () => {
       
       <Suspense fallback={<AppSkeleton />}>
         {logic.isDesktop ? (
-            <PanelGroup direction="horizontal" autoSaveId="app-layout">
-                <Panel 
-                    defaultSize={20} 
-                    minSize={15} 
-                    maxSize={30} 
-                    collapsible={true}
-                    collapsedSize={4} // 4% width when collapsed (Mini Sidebar Rail)
-                    onCollapse={() => logic.handleSetSidebarCollapsed(true)}
-                    onExpand={() => logic.handleSetSidebarCollapsed(false)}
-                    ref={sidebarPanelRef}
-                    id="sidebar"
-                    order={1}
+            <div className="flex w-full h-full">
+                {/* Fixed Width Sidebar Container */}
+                <div 
+                    className={`flex-shrink-0 h-full border-r border-border-default bg-layer-1 transition-all duration-300 ease-in-out z-20 ${logic.isSidebarCollapsed ? 'w-[72px]' : 'w-[280px]'}`}
                 >
                     <Sidebar
                         isDesktop={true}
@@ -219,36 +189,39 @@ export const App = () => {
                         onUpdateChatTitle={logic.updateChatTitle}
                         onSettingsClick={() => logic.setIsSettingsOpen(true)}
                     />
-                </Panel>
-                
-                <PanelResizeHandle className={`w-1 bg-transparent hover:bg-primary-main/50 transition-colors duration-200 focus:outline-none z-30 ${logic.isSidebarCollapsed ? 'hidden' : 'block'}`} />
+                </div>
 
-                <Panel order={2} minSize={30}>
-                    {renderMainContent()}
-                </Panel>
-
-                {(logic.isSourcesSidebarOpen || logic.isArtifactOpen) && (
-                    <>
-                        <PanelResizeHandle className="w-1 bg-transparent hover:bg-primary-main/50 transition-colors duration-200 focus:outline-none z-30" />
-                        <Panel defaultSize={25} minSize={20} maxSize={40} order={3} id="right-sidebar">
-                            {logic.isSourcesSidebarOpen ? (
-                                <SourcesSidebar
-                                    isOpen={logic.isSourcesSidebarOpen}
-                                    onClose={logic.handleCloseSourcesSidebar}
-                                    sources={logic.sourcesForSidebar}
-                                />
-                            ) : (
-                                <ArtifactSidebar
-                                    isOpen={logic.isArtifactOpen}
-                                    onClose={() => logic.setIsArtifactOpen(false)}
-                                    content={logic.artifactContent}
-                                    language={logic.artifactLanguage}
-                                />
-                            )}
+                {/* Main Content + Right Sidebar */}
+                <div className="flex-1 min-w-0 h-full relative">
+                    <PanelGroup direction="horizontal" autoSaveId="app-layout-main">
+                        <Panel order={2} minSize={30}>
+                            {renderMainContent()}
                         </Panel>
-                    </>
-                )}
-            </PanelGroup>
+
+                        {(logic.isSourcesSidebarOpen || logic.isArtifactOpen) && (
+                            <>
+                                <PanelResizeHandle className="w-1 bg-transparent hover:bg-primary-main/50 transition-colors duration-200 focus:outline-none z-30" />
+                                <Panel defaultSize={25} minSize={20} maxSize={40} order={3} id="right-sidebar">
+                                    {logic.isSourcesSidebarOpen ? (
+                                        <SourcesSidebar
+                                            isOpen={logic.isSourcesSidebarOpen}
+                                            onClose={logic.handleCloseSourcesSidebar}
+                                            sources={logic.sourcesForSidebar}
+                                        />
+                                    ) : (
+                                        <ArtifactSidebar
+                                            isOpen={logic.isArtifactOpen}
+                                            onClose={() => logic.setIsArtifactOpen(false)}
+                                            content={logic.artifactContent}
+                                            language={logic.artifactLanguage}
+                                        />
+                                    )}
+                                </Panel>
+                            </>
+                        )}
+                    </PanelGroup>
+                </div>
+            </div>
         ) : (
             // Mobile Layout
             <>
