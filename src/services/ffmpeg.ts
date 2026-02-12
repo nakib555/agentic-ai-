@@ -50,7 +50,7 @@ class FFmpegService {
     await this.ffmpeg.exec(['-i', name, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23', outputName]);
 
     const data = await this.ffmpeg.readFile(outputName);
-    const newBlob = new Blob([data], { type: 'video/mp4' });
+    const newBlob = new Blob([data as any], { type: 'video/mp4' });
     
     // Cleanup
     await this.ffmpeg.deleteFile(name);
@@ -75,7 +75,7 @@ class FFmpegService {
     await this.ffmpeg.exec(['-i', name, outputName]);
 
     const data = await this.ffmpeg.readFile(outputName);
-    const newBlob = new Blob([data], { type: 'audio/mpeg' });
+    const newBlob = new Blob([data as any], { type: 'audio/mpeg' });
 
     // Cleanup
     await this.ffmpeg.deleteFile(name);
@@ -108,7 +108,7 @@ class FFmpegService {
     ]);
 
     const data = await this.ffmpeg.readFile(outputName);
-    const newBlob = new Blob([data], { type: 'video/mp4' });
+    const newBlob = new Blob([data as any], { type: 'video/mp4' });
 
     // Cleanup
     await this.ffmpeg.deleteFile(name);
@@ -134,7 +134,7 @@ class FFmpegService {
     await this.ffmpeg.exec(['-i', name, '-vf', 'fps=10,scale=320:-1:flags=lanczos', outputName]);
 
     const data = await this.ffmpeg.readFile(outputName);
-    const newBlob = new Blob([data], { type: 'image/gif' });
+    const newBlob = new Blob([data as any], { type: 'image/gif' });
 
     // Cleanup
     await this.ffmpeg.deleteFile(name);
