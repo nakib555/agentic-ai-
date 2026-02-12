@@ -1,4 +1,3 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -406,10 +405,14 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
     // Handle clicks/touches outside the chart to dismiss tooltip
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+            const target = event.target as Node;
+            if (!target) return;
+
             if (
                 activeEngine === 'echarts' && 
                 containerRef.current && 
-                !containerRef.current.contains(event.target as Node)
+                document.contains(target) && // Ensure target is still in DOM
+                !containerRef.current.contains(target)
             ) {
                 if (echartsRef.current) {
                     try {
@@ -422,7 +425,8 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
         };
 
         window.addEventListener('mousedown', handleClickOutside);
-        window.addEventListener('touchstart', handleClickOutside);
+        // Passive listener for touchstart to prevent scroll blocking violation
+        window.addEventListener('touchstart', handleClickOutside, { passive: true });
 
         return () => {
             window.removeEventListener('mousedown', handleClickOutside);
