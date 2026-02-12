@@ -42,7 +42,7 @@ class FFmpegService {
 
     await this.ffmpeg.writeFile(name, await fetchFile(file));
 
-    this.ffmpeg.on('progress', ({ progress }) => {
+    this.ffmpeg.on('progress', ({ progress }: { progress: number }) => {
       onProgress(Math.round(progress * 100));
     });
 
@@ -68,7 +68,7 @@ class FFmpegService {
 
     await this.ffmpeg.writeFile(name, await fetchFile(file));
 
-    this.ffmpeg.on('progress', ({ progress }) => {
+    this.ffmpeg.on('progress', ({ progress }: { progress: number }) => {
       onProgress(Math.round(progress * 100));
     });
 
@@ -93,7 +93,7 @@ class FFmpegService {
 
     await this.ffmpeg.writeFile(name, await fetchFile(file));
 
-    this.ffmpeg.on('progress', ({ progress }) => {
+    this.ffmpeg.on('progress', ({ progress }: { progress: number }) => {
       onProgress(Math.round(progress * 100));
     });
 
@@ -126,7 +126,7 @@ class FFmpegService {
 
     await this.ffmpeg.writeFile(name, await fetchFile(file));
 
-    this.ffmpeg.on('progress', ({ progress }) => {
+    this.ffmpeg.on('progress', ({ progress }: { progress: number }) => {
       onProgress(Math.round(progress * 100));
     });
 
