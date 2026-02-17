@@ -1,4 +1,5 @@
 
+
 const CACHE_NAME = 'agentic-ai-cache-{{VERSION}}';
 
 // We precache the core shell. Note: We do NOT precache index.js/tsx here because
@@ -48,8 +49,16 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // Skip non-GET, API calls, and extensions
-  if (event.request.method !== 'GET' || url.pathname.startsWith('/api/') || url.protocol === 'chrome-extension:') {
+  // Skip non-GET, API calls, extensions, and map tiles
+  // Excluding OSM tiles prevents CORS/Opaque response issues that cause map loading failures
+  if (
+    event.request.method !== 'GET' || 
+    url.pathname.startsWith('/api/') || 
+    url.protocol === 'chrome-extension:' ||
+    url.hostname.includes('openstreetmap.org') || 
+    url.hostname.includes('leaflet') ||
+    url.hostname.includes('unpkg.com') // Skip unpkg CDN to rely on browser caching
+  ) {
     return;
   }
 
