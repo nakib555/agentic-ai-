@@ -248,7 +248,7 @@ const robustChartAdapter = (option: any, isDark: boolean, width: number) => {
     };
 };
 
-export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ content, code, onFixCode, isStreaming }) => {
+export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ content, code, onFixCode, isStreaming, engine }) => {
     const [config, setConfig] = useState<EChartsConfig | null>(null);
     const [htmlContent, setHtmlContent] = useState<string | null>(null);
     const [activeEngine, setActiveEngine] = useState<ChartEngine>('echarts');
@@ -315,6 +315,32 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
 
                 const trimmedCode = stripMarkdown(rawContent);
 
+                // 1. Explicit Engine Prop (from Code Block)
+                if (engine && !localCodeOverride) {
+                    if (engine === 'tikz') {
+                        setActiveEngine('tikz');
+                        setError(null);
+                        return;
+                    }
+                    if (engine === 'mafs') {
+                        setActiveEngine('mafs');
+                        setError(null);
+                        return;
+                    }
+                    if (engine === 'jsxgraph') {
+                        setActiveEngine('jsxgraph');
+                        setError(null);
+                        return;
+                    }
+                    if (engine === 'html') {
+                         setActiveEngine('html');
+                         setHtmlContent(trimmedCode);
+                         setError(null);
+                         return;
+                    }
+                    // For ECharts, we still need to parse the JSON
+                }
+
                 const baseResetStyle = `
                     <style>
                         body { margin: 0; padding: 0; font-family: 'Inter', system-ui, sans-serif; box-sizing: border-box; background: transparent; }
@@ -367,6 +393,19 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                              setError(null);
                              return;
                          }
+                     } else if (isStreaming) {
+                         // Check for partial start tags to show specific loading state
+                         const startTagMatch = trimmedCode.match(/^<(echarts|chart|tikz|mafs|jsxgraph)>/i);
+                         if (startTagMatch) {
+                             const tag = startTagMatch[1].toLowerCase();
+                             let engineName = 'Chart';
+                             if (tag === 'tikz') engineName = 'TikZ Diagram';
+                             else if (tag === 'mafs') engineName = 'Mafs Visualization';
+                             else if (tag === 'jsxgraph') engineName = 'JSXGraph';
+                             
+                             setError(`Generating ${engineName}...`);
+                             return;
+                         }
                      }
 
                      setActiveEngine('html');
@@ -417,18 +456,26 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                     }
                     setError(null);
                 } else {
+                    // If parsing failed but we have an explicit engine (e.g. echarts code block with invalid JSON),
+                    // we might want to show error.
+                    // But if engine was 'tikz' etc, we already handled it above.
                     throw new Error("Parsed content is not a valid object");
                 }
             } 
         } catch (e: any) {
             if (isStreaming) {
-                 setError(`Rendering...`); 
+                 let loadingMsg = "Rendering...";
+                 if (engine === 'tikz') loadingMsg = "Generating TikZ Diagram...";
+                 else if (engine === 'mafs') loadingMsg = "Generating Mafs Visualization...";
+                 else if (engine === 'jsxgraph') loadingMsg = "Generating JSXGraph...";
+                 
+                 setError(loadingMsg); 
             } else {
                  console.warn("Chart parsing error (Final):", e.message);
                  setError(e.message || "Invalid Chart Configuration");
             }
         }
-    }, [content, code, isFixing, localCodeOverride, isStreaming]);
+    }, [content, code, isFixing, localCodeOverride, isStreaming, engine]);
 
     // Compute final options using Robust Chart Adapter
     const finalOption = useMemo(() => {
@@ -545,7 +592,7 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
 
 
     if (error) {
-        const isRendering = error === 'Rendering...' || error === 'Fixing chart...';
+        const isRendering = error === 'Rendering...' || error === 'Fixing chart...' || error.startsWith('Generating');
         return (
             <div className="my-4 px-3 py-2 border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 rounded-lg text-xs flex items-center justify-between gap-3 w-full animate-in fade-in duration-300">
                  <div className="flex items-center gap-2 overflow-hidden">
@@ -557,7 +604,7 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                          </div>
                      )}
                      <span className="text-slate-500 dark:text-slate-400 font-medium truncate" title={error}>
-                        {isRendering ? (isFixing ? "Fixing Graph..." : "Rendering...") : (error.length > 50 ? error.substring(0, 47) + '...' : error)}
+                        {isRendering ? (isFixing ? "Fixing Graph..." : error) : (error.length > 50 ? error.substring(0, 47) + '...' : error)}
                      </span>
                  </div>
                  
