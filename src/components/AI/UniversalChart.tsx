@@ -315,32 +315,6 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
 
                 const trimmedCode = stripMarkdown(rawContent);
 
-                // 1. Explicit Engine Prop (from Code Block)
-                if (engine && !localCodeOverride) {
-                    if (engine === 'tikz') {
-                        setActiveEngine('tikz');
-                        setError(null);
-                        return;
-                    }
-                    if (engine === 'mafs') {
-                        setActiveEngine('mafs');
-                        setError(null);
-                        return;
-                    }
-                    if (engine === 'jsxgraph') {
-                        setActiveEngine('jsxgraph');
-                        setError(null);
-                        return;
-                    }
-                    if (engine === 'html') {
-                         setActiveEngine('html');
-                         setHtmlContent(trimmedCode);
-                         setError(null);
-                         return;
-                    }
-                    // For ECharts, we still need to parse the JSON
-                }
-
                 const baseResetStyle = `
                     <style>
                         body { margin: 0; padding: 0; font-family: 'Inter', system-ui, sans-serif; box-sizing: border-box; background: transparent; }
