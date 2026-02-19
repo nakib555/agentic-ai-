@@ -110,9 +110,10 @@ export const getMarkdownComponents = (options: MarkdownOptions = {}) => ({
             codeContent = codeContent.replace(/\n$/, '');
 
             // --- Custom Chart Renderer Hook ---
-            if (language === 'echarts' || language === 'chart') {
+            if (language === 'echarts' || language === 'chart' || language === 'tikz' || language === 'mafs' || language === 'jsxgraph') {
                 return React.createElement(UniversalChart, { 
                     code: codeContent, 
+                    engine: language,
                     isStreaming: options.isStreaming,
                     onFixCode: options.onFixCode
                 });

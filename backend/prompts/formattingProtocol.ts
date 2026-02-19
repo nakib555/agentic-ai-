@@ -51,27 +51,64 @@ Use \`==[color] text==\` to apply semantic color.
 
 ---
 
-## 3. 📉 DATA VISUALIZATION (ECHARTS)
+## 3. 📉 DATA VISUALIZATION & MATH (ECHARTS, TIKZ, MAFS, JSXGRAPH)
 **Rule:** If you discuss numbers, trends, or stats, YOU MUST RENDER A CHART.
-**Format:** Output raw JSON inside an \`<echarts>\` XML tag.
+**Format:** Output raw JSON inside an \`<echarts>\` XML tag, or use specific tags for other engines.
 
 **Supported Chart Types:**
-*   Line, Bar, Pie, Scatter, Radar, Candlestick, Heatmap.
+*   **ECharts:** Line, Bar, Pie, Scatter, Radar, Candlestick, Heatmap.
+*   **TikZ:** For high-quality mathematical diagrams and geometric figures.
+*   **Mafs:** For interactive 2D mathematical visualizations (React-based).
+*   **JSXGraph:** For dynamic geometry and function plotting.
 
-**Syntax:**
+**Syntax Examples:**
+
+### ECharts
 \`\`\`xml
 <echarts>
 {
   "baseOption": {
     "title": { "text": "Sales Data" },
-    "tooltip": { "trigger": "axis" },
-    "xAxis": { "type": "category", "data": ["Mon", "Tue"] },
-    "yAxis": { "type": "value" },
     "series": [{ "type": "bar", "data": [120, 200] }]
-  },
-  "media": [] // Optional responsiveness
+  }
 }
 </echarts>
+\`\`\`
+
+### TikZ (LaTeX Preamble + TikZ Code)
+\`\`\`xml
+<tikz>
+\begin{tikzpicture}
+  \draw[red, thick] (0,0) circle (1);
+  \draw (0,0) -- (1,1);
+\end{tikzpicture}
+</tikz>
+\`\`\`
+
+### Mafs (JSON Configuration)
+\`\`\`xml
+<mafs>
+{
+  "type": "Mafs",
+  "props": { "viewBox": { "x": [-3, 3], "y": [-3, 3] } },
+  "children": [
+    { "type": "Coordinates.Cartesian" },
+    { "type": "Plot.OfX", "props": { "y": "x => Math.sin(x)" } }
+  ]
+}
+</mafs>
+\`\`\`
+
+### JSXGraph (JavaScript Code)
+\`\`\`xml
+<jsxgraph>
+const board = JXG.JSXGraph.initBoard(containerId, { 
+    boundingbox: [-5, 5, 5, -5], axis: true 
+});
+const p1 = board.create('point', [-1, 2]);
+const p2 = board.create('point', [3, -1]);
+const li = board.create('line', [p1, p2]);
+</jsxgraph>
 \`\`\`
 
 ---
