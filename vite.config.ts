@@ -130,6 +130,7 @@ export default defineConfig(({ mode }) => {
               'gemini': ['@google/genai'],
               'sandpack': ['@codesandbox/sandpack-react'],
               'html2canvas': ['html2canvas'],
+              'visualization': ['mafs', 'jsxgraph'],
             }
           }
         }

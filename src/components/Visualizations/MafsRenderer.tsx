@@ -1,8 +1,6 @@
 
 import React, { useMemo } from 'react';
 import * as Mafs from "mafs";
-import "mafs/core.css";
-import "mafs/font.css";
 import { ErrorBoundary } from '../ErrorBoundary';
 
 interface MafsRendererProps {
