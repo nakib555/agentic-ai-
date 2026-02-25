@@ -37,6 +37,7 @@ export const useChat = (
 ) => {
     const { 
         chatHistory, 
+        activeChat,
         currentChatId, 
         isHistoryLoading,
         updateChatTitle, 
@@ -62,6 +63,7 @@ export const useChat = (
     // Access latest props/state inside async functions without closure staleness
     const depsRef = useRef({
         chatHistory,
+        activeChat,
         currentChatId,
         settings,
         initialModel,
@@ -82,6 +84,7 @@ export const useChat = (
     useEffect(() => {
         depsRef.current = {
             chatHistory,
+            activeChat,
             currentChatId,
             settings,
             initialModel,
@@ -285,8 +288,11 @@ export const useChat = (
                      const finalChatState = deps.chatHistory.find(c => c.id === activeChatId) 
                         || { id: activeChatId, messages: [], title: 'New Chat', model: deps.initialModel } as any;
 
+                     // Use activeChat messages if available, otherwise fallback to finalChatState
+                     const messagesToUse = deps.activeChat?.id === activeChatId ? deps.activeChat.messages : finalChatState.messages;
+
                      if (finalChatState && finalChatState.title === "New Chat") {
-                         generateChatTitle(finalChatState.messages || [], finalChatState.model)
+                         generateChatTitle(messagesToUse || [], finalChatState.model)
                             .then(newTitle => {
                                 const finalTitle = newTitle.length > 45 ? newTitle.substring(0, 42) + '...' : newTitle;
                                 deps.updateChatTitle(activeChatId, finalTitle);
@@ -430,10 +436,11 @@ export const useChat = (
 
     return { 
         chatHistory,
+        activeChat,
         currentChatId, 
         isHistoryLoading,
         updateChatTitle, updateChatProperty, loadChat: loadChatHistory, deleteChat: deleteChatHistory, clearAllChats: clearAllChatsHistory, importChat, startNewChat: startNewChatHistory,
-        messages: chatHistory.find(c => c.id === currentChatId)?.messages || [], 
+        messages: activeChat?.messages || [], 
         sendMessage, 
         isLoading, 
         cancelGeneration, 

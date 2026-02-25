@@ -484,7 +484,7 @@ export const useAppLogic = () => {
 
     const handleExportChat = useCallback((format: 'md' | 'json' | 'pdf') => {
         if (!chat.currentChatId) return;
-        const currentChat = chat.chatHistory.find(c => c.id === chat.currentChatId);
+        const currentChat = chat.activeChat?.id === chat.currentChatId ? chat.activeChat : chat.chatHistory.find(c => c.id === chat.currentChatId);
         if (!currentChat) return;
 
         import('../utils/exportUtils/index').then(mod => {
@@ -492,17 +492,17 @@ export const useAppLogic = () => {
             else if (format === 'md') mod.exportChatToMarkdown(currentChat);
             else if (format === 'pdf') mod.exportChatToPdf(currentChat);
         });
-    }, [chat.currentChatId, chat.chatHistory]);
+    }, [chat.currentChatId, chat.chatHistory, chat.activeChat]);
 
     const handleShareChat = useCallback(() => {
         if (!chat.currentChatId) return;
-        const currentChat = chat.chatHistory.find(c => c.id === chat.currentChatId);
+        const currentChat = chat.activeChat?.id === chat.currentChatId ? chat.activeChat : chat.chatHistory.find(c => c.id === chat.currentChatId);
         if (!currentChat) return;
         
         import('../utils/exportUtils/index').then(mod => {
             mod.exportChatToClipboard(currentChat);
         });
-    }, [chat.currentChatId, chat.chatHistory]);
+    }, [chat.currentChatId, chat.chatHistory, chat.activeChat]);
 
     return {
         isDesktop, isWideDesktop, visualViewportHeight,
