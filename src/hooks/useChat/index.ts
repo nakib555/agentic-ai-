@@ -289,7 +289,7 @@ export const useChat = (
                         || { id: activeChatId, messages: [], title: 'New Chat', model: deps.initialModel } as any;
 
                      // Use activeChat messages if available, otherwise fallback to finalChatState
-                     const messagesToUse = deps.activeChat?.id === activeChatId ? deps.activeChat.messages : finalChatState.messages;
+                     const messagesToUse = deps.activeChat?.id === activeChatId ? deps.activeChat?.messages : finalChatState.messages;
 
                      if (finalChatState && finalChatState.title === "New Chat") {
                          generateChatTitle(messagesToUse || [], finalChatState.model)

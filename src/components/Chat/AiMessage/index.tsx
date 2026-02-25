@@ -22,7 +22,6 @@ import type { MessageFormHandle } from '../MessageForm/index';
 import { useAiMessageLogic } from './useAiMessageLogic';
 import { MessageToolbar } from './MessageToolbar';
 import { BrowserSessionDisplay } from '../../AI/BrowserSessionDisplay';
-import { useTypewriter } from '../../../hooks/useTypewriter';
 import { parseContentSegments } from '../../../utils/workflowParsing';
 import { CodeExecutionResult } from '../../AI/CodeExecutionResult';
 import { UniversalChart } from '../../AI/UniversalChart';
@@ -91,7 +90,7 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
   const logic = useAiMessageLogic(msg, ttsVoice, ttsModel, sendMessage, isLoading);
   const { activeResponse, finalAnswerText } = logic;
   
-  const typedFinalAnswer = useTypewriter(finalAnswerText, msg.isThinking ?? false);
+  const typedFinalAnswer = finalAnswerText;
   
   // Handler for Fixing Code Snippets (Charts, etc)
   const handleFixCode = async (badCode: string, errorMsg?: string) => {
