@@ -48,11 +48,11 @@ async function startServer() {
   app.use(cors(corsOptions) as any);
 
   // Security Headers for SharedArrayBuffer (Required for FFmpeg.wasm)
-  app.use((req: any, res: any, next: any) => {
-    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-    res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
-    next();
-  });
+  // app.use((req: any, res: any, next: any) => {
+  //   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  //   res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+  //   next();
+  // });
   
   // Request Logger Middleware
   app.use(((req: any, res: any, next: any) => {
