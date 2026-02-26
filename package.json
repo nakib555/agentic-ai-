@@ -18,7 +18,7 @@
   "scripts": {
     "build": "npm run build:client && npm run build:server",
     "build:client": "tsc && vite build && npx tailwindcss -i ./src/styles/main.css -o ./dist/styles/main.css --minify",
-    "build:server": "esbuild backend/server.ts --bundle --platform=node --format=cjs --outfile=dist/server.cjs --external:playwright",
+    "build:server": "esbuild backend/server.ts --bundle --platform=node --format=cjs --outfile=dist/server.cjs --external:playwright --external:better-sqlite3",
     "start": "node dist/server.cjs",
     "dev": "node dev.js",
     "lint": "eslint . --report-unused-disable-directives --max-warnings 0",

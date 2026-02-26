@@ -5,7 +5,8 @@
  */
 
 import { useState, useEffect } from 'react';
-import { themeControlCenter, ThemeMode } from '../services/themeControlCenter';
+import { themeControlCenter } from '../services/themeControlCenter';
+import { ThemeMode } from '../services/types';
 
 // Re-export type for compatibility
 export type Theme = ThemeMode;
