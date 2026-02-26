@@ -5,7 +5,12 @@
 
 import Database from 'better-sqlite3';
 import path from 'path';
+import fs from 'fs';
 import { DATA_DIR } from './constants';
+
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
 
 const dbPath = path.join(DATA_DIR, 'app.db');
 const db = new Database(dbPath);
