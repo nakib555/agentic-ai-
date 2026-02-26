@@ -9,7 +9,7 @@ import * as crudHandler from './crudHandler';
 import { getSettings, updateSettings } from './settingsHandler';
 import { getMemory, updateMemory, clearMemory } from './memoryHandler';
 import { getAvailableModelsHandler } from './modelsHandler';
-import { initDataStore, HISTORY_PATH } from './data-store';
+import { DATA_DIR, HISTORY_PATH } from './constants';
 
 // Determine directory for static files safely across ESM (Dev) and CJS (Prod)
 let serverDir: string;
@@ -29,7 +29,10 @@ try {
 
 async function startServer() {
   // --- Initialize Data Store ---
-  await initDataStore();
+  console.log(`[DataStore] Initializing storage at: ${DATA_DIR}`);
+  await fs.promises.mkdir(DATA_DIR, { recursive: true });
+  await fs.promises.mkdir(HISTORY_PATH, { recursive: true });
+  console.log(`[DataStore] Storage ready.`);
 
   const app = express();
   const PORT = process.env.PORT || 3001;

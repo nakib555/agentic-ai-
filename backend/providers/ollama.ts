@@ -6,7 +6,7 @@
 
 import type { AIProvider, ChatOptions, CompletionOptions, ModelLists } from './types';
 import type { Model as AppModel } from '../../src/types';
-import { readData, SETTINGS_FILE_PATH } from '../data-store';
+import { ensureSettingsLoaded } from '../services/settingsService';
 
 const sortModelsByName = (models: AppModel[]): AppModel[] => {
     return models.sort((a, b) => a.name.localeCompare(b.name));
@@ -15,7 +15,7 @@ const sortModelsByName = (models: AppModel[]): AppModel[] => {
 const getEffectiveEndpoint = async (): Promise<string> => {
     let host = '';
     try {
-        const settings: any = await readData(SETTINGS_FILE_PATH);
+        const settings: any = await ensureSettingsLoaded();
         host = settings.ollamaHost || '';
     } catch (e) {
         // Ignore errors reading settings, fall back to env
