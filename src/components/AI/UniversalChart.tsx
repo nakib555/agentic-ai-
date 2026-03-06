@@ -7,11 +7,8 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
 import * as echarts from 'echarts';
 import { ErrorBoundary } from '../ErrorBoundary';
-import { TikZRenderer } from '../Visualizations/TikZRenderer';
-import { JSXGraphRenderer } from '../Visualizations/JSXGraphRenderer';
-import { MafsRenderer } from '../Visualizations/MafsRenderer';
 
-export type ChartEngine = 'echarts' | 'html' | 'tikz' | 'mafs' | 'jsxgraph';
+export type ChartEngine = 'echarts' | 'html';
 
 type UniversalChartProps = {
     content?: string; // Legacy support for markdown parsing or raw code
@@ -248,7 +245,7 @@ const robustChartAdapter = (option: any, isDark: boolean, width: number) => {
     };
 };
 
-export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ content, code, onFixCode, isStreaming, engine }) => {
+export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ content, code, onFixCode, isStreaming }) => {
     const [config, setConfig] = useState<EChartsConfig | null>(null);
     const [htmlContent, setHtmlContent] = useState<string | null>(null);
     const [activeEngine, setActiveEngine] = useState<ChartEngine>('echarts');
@@ -327,32 +324,9 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
 
                 if (trimmedCode.trim().startsWith('<')) {
                      // Check for known chart tags first to prevent mistaking them for HTML if passed raw
-                     const xmlMatch = trimmedCode.match(/^<(echarts|chart|tikz|mafs|jsxgraph)>([\s\S]*?)<\/\1>$/i);
+                     const xmlMatch = trimmedCode.match(/^<(echarts|chart)>([\s\S]*?)<\/\1>$/i);
                      if (xmlMatch) {
-                         const tag = xmlMatch[1].toLowerCase();
                          const contentString = xmlMatch[2];
-
-                         if (tag === 'tikz') {
-                             setActiveEngine('tikz');
-                             setLocalCodeOverride(contentString);
-                             setError(null);
-                             return;
-                         }
-
-                         if (tag === 'mafs') {
-                             setActiveEngine('mafs');
-                             setLocalCodeOverride(contentString);
-                             setError(null);
-                             return;
-                         }
-
-                         if (tag === 'jsxgraph') {
-                             setActiveEngine('jsxgraph');
-                             setLocalCodeOverride(contentString);
-                             setError(null);
-                             return;
-                         }
-
                          const parsed = looseJsonParse(contentString);
                          if (parsed && typeof parsed === 'object') {
                              setActiveEngine('echarts');
@@ -365,19 +339,6 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                                  setContainerHeight(500);
                              }
                              setError(null);
-                             return;
-                         }
-                     } else if (isStreaming) {
-                         // Check for partial start tags to show specific loading state
-                         const startTagMatch = trimmedCode.match(/^<(echarts|chart|tikz|mafs|jsxgraph)>/i);
-                         if (startTagMatch) {
-                             const tag = startTagMatch[1].toLowerCase();
-                             let engineName = 'Chart';
-                             if (tag === 'tikz') engineName = 'TikZ Diagram';
-                             else if (tag === 'mafs') engineName = 'Mafs Visualization';
-                             else if (tag === 'jsxgraph') engineName = 'JSXGraph';
-                             
-                             setError(`Generating ${engineName}...`);
                              return;
                          }
                      }
@@ -400,15 +361,6 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                         if (parsed.css) combinedContent = `<style>${parsed.css}</style>\n${combinedContent}`;
                         if (parsed.javascript || parsed.js) combinedContent = `${combinedContent}\n<script>${parsed.javascript || parsed.js}</script>`;
                         setHtmlContent(`${baseResetStyle}${combinedContent}`);
-                    } else if (parsed.engine === 'tikz' || (parsed.type && parsed.type.toLowerCase() === 'tikz')) {
-                        setActiveEngine('tikz');
-                        setLocalCodeOverride(parsed.code || parsed.content);
-                    } else if (parsed.engine === 'mafs' || (parsed.type && parsed.type.toLowerCase() === 'mafs')) {
-                        setActiveEngine('mafs');
-                        setLocalCodeOverride(JSON.stringify(parsed.config || parsed.content || parsed.code || parsed));
-                    } else if (parsed.engine === 'jsxgraph' || (parsed.type && parsed.type.toLowerCase() === 'jsxgraph')) {
-                        setActiveEngine('jsxgraph');
-                        setLocalCodeOverride(parsed.code || parsed.content);
                     } else {
                         setActiveEngine('echarts');
                         setConfig({ option: parsed });
@@ -430,26 +382,18 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                     }
                     setError(null);
                 } else {
-                    // If parsing failed but we have an explicit engine (e.g. echarts code block with invalid JSON),
-                    // we might want to show error.
-                    // But if engine was 'tikz' etc, we already handled it above.
                     throw new Error("Parsed content is not a valid object");
                 }
             } 
         } catch (e: any) {
             if (isStreaming) {
-                 let loadingMsg = "Rendering...";
-                 if (engine === 'tikz') loadingMsg = "Generating TikZ Diagram...";
-                 else if (engine === 'mafs') loadingMsg = "Generating Mafs Visualization...";
-                 else if (engine === 'jsxgraph') loadingMsg = "Generating JSXGraph...";
-                 
-                 setError(loadingMsg); 
+                 setError(`Rendering...`); 
             } else {
                  console.warn("Chart parsing error (Final):", e.message);
                  setError(e.message || "Invalid Chart Configuration");
             }
         }
-    }, [content, code, isFixing, localCodeOverride, isStreaming, engine]);
+    }, [content, code, isFixing, localCodeOverride, isStreaming]);
 
     // Compute final options using Robust Chart Adapter
     const finalOption = useMemo(() => {
@@ -566,7 +510,7 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
 
 
     if (error) {
-        const isRendering = error === 'Rendering...' || error === 'Fixing chart...' || error.startsWith('Generating');
+        const isRendering = error === 'Rendering...' || error === 'Fixing chart...';
         return (
             <div className="my-4 px-3 py-2 border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 rounded-lg text-xs flex items-center justify-between gap-3 w-full animate-in fade-in duration-300">
                  <div className="flex items-center gap-2 overflow-hidden">
@@ -578,7 +522,7 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                          </div>
                      )}
                      <span className="text-slate-500 dark:text-slate-400 font-medium truncate" title={error}>
-                        {isRendering ? (isFixing ? "Fixing Graph..." : error) : (error.length > 50 ? error.substring(0, 47) + '...' : error)}
+                        {isRendering ? (isFixing ? "Fixing Graph..." : "Rendering...") : (error.length > 50 ? error.substring(0, 47) + '...' : error)}
                      </span>
                  </div>
                  
@@ -605,7 +549,6 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                     ${isFullscreen ? 'bg-white dark:bg-black p-0 border-0 rounded-none' : ''}
                 `}
             >
-                {/* ... existing html render ... */}
                 <div className={`px-4 py-2 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/5 backdrop-blur-sm ${isFullscreen ? 'hidden' : ''}`}>
                     <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.6)]"></span>
@@ -640,73 +583,6 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                         <div className="w-8 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></div>
                     </div>
                 )}
-            </div>
-        );
-    }
-
-    if (activeEngine === 'tikz') {
-        const raw = localCodeOverride || code || content || '';
-        if (!raw) return <div className="h-64 bg-gray-100 dark:bg-white/5 rounded-lg animate-pulse my-6" />;
-        return (
-            <div className="my-6 w-full rounded-xl overflow-hidden border border-gray-200 dark:border-white/10 bg-white dark:bg-[#18181b] shadow-sm">
-                 <div className="px-4 py-2 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/5 backdrop-blur-sm">
-                    <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.6)]"></span>
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                            TikZ Diagram
-                        </span>
-                    </div>
-                </div>
-                <div className="overflow-auto p-4 flex justify-center bg-white">
-                    <TikZRenderer code={raw} />
-                </div>
-            </div>
-        );
-    }
-
-    if (activeEngine === 'jsxgraph') {
-        const raw = localCodeOverride || code || content || '';
-        if (!raw) return <div className="h-64 bg-gray-100 dark:bg-white/5 rounded-lg animate-pulse my-6" />;
-        return (
-            <div className="my-6 w-full rounded-xl overflow-hidden border border-gray-200 dark:border-white/10 bg-white dark:bg-[#18181b] shadow-sm">
-                 <div className="px-4 py-2 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/5 backdrop-blur-sm">
-                    <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)]"></span>
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                            JSXGraph
-                        </span>
-                    </div>
-                </div>
-                <div className="overflow-hidden bg-white">
-                    <JSXGraphRenderer code={raw} height={containerHeight} />
-                </div>
-                 <div 
-                    className="h-3 w-full bg-slate-50 dark:bg-white/5 border-t border-gray-100 dark:border-white/5 cursor-ns-resize flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
-                    onMouseDown={startResize}
-                    title="Drag to resize"
-                >
-                    <div className="w-8 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></div>
-                </div>
-            </div>
-        );
-    }
-
-    if (activeEngine === 'mafs') {
-        const raw = localCodeOverride || code || content || '';
-        if (!raw) return <div className="h-64 bg-gray-100 dark:bg-white/5 rounded-lg animate-pulse my-6" />;
-        return (
-            <div className="my-6 w-full rounded-xl overflow-hidden border border-gray-200 dark:border-white/10 bg-white dark:bg-[#18181b] shadow-sm">
-                 <div className="px-4 py-2 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/5 backdrop-blur-sm">
-                    <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]"></span>
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                            Mafs Visualization
-                        </span>
-                    </div>
-                </div>
-                <div className="overflow-hidden bg-white flex justify-center">
-                    <MafsRenderer config={raw} height={containerHeight} width={windowWidth > 600 ? 600 : windowWidth - 40} />
-                </div>
             </div>
         );
     }

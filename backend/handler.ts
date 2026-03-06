@@ -16,7 +16,7 @@ import { getApiKey, getProvider, getGeminiKey } from './settingsHandler';
 import { generateProviderCompletion } from './utils/generateProviderCompletion';
 import { historyControl } from './services/historyControl';
 import { vectorMemory } from './services/vectorMemory';
-import { ensureSettingsLoaded } from './services/settingsService';
+import { readData, SETTINGS_FILE_PATH } from './data-store';
 import { providerRegistry } from './providers/registry'; 
 import { GoogleGenAI } from "@google/genai";
 
@@ -260,7 +260,7 @@ export const apiHandler = async (req: any, res: any) => {
             // We switched provider via payload but didn't provide a key.
             // Try to fetch specific key from settings based on the *requested* provider name.
             try {
-                const settings: any = await ensureSettingsLoaded();
+                const settings: any = await readData(SETTINGS_FILE_PATH);
                 if (activeProviderName === 'openrouter') {
                     chatApiKey = settings.openRouterApiKey || process.env.OPENROUTER_API_KEY;
                 }
@@ -281,7 +281,7 @@ export const apiHandler = async (req: any, res: any) => {
     // We try to get it even if the main provider is OpenRouter/Ollama
     const geminiKey = await getGeminiKey();
     
-    const globalSettings: any = await ensureSettingsLoaded();
+    const globalSettings: any = await readData(SETTINGS_FILE_PATH);
     const defaultModel = globalSettings.activeModel || 'gemini-2.5-flash';
 
     const isSuggestionTask = ['title', 'suggestions', 'enhance', 'memory_suggest', 'memory_consolidate', 'run_piston', 'fix_code'].includes(task);

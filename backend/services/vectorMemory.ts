@@ -6,8 +6,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { promises as fs } from 'fs';
 import path from 'path';
-import { DATA_DIR } from '../constants';
-import { writeData } from '../utils/fileUtils';
+import { DATA_DIR, writeData } from '../data-store';
 
 const VECTOR_STORE_PATH = path.join(DATA_DIR, 'vector_store.json');
 

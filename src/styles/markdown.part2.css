@@ -1,0 +1,58 @@
+
+/* PART 2 of 2 of markdown.css */
+
+/* KaTeX Formula Styling */
+
+/* Ensure KaTeX containers scroll horizontally if they overflow */
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+  vertical-align: middle;
+  margin: 1em 0;
+  padding: 0.5em 0;
+  
+  /* Transparent background and no border */
+  background-color: transparent;
+  border: none;
+}
+
+/* Adjust coloring to match theme and increase size */
+.katex {
+  color: var(--text-primary);
+  font-size: 1.15em; /* Reduced from 1.5em to 1.15em */
+}
+
+/* Styles for bullet points inside workflow */
+.workflow-markdown ul {
+    list-style-type: disc;
+    padding-left: 1.25rem;
+}
+
+.workflow-markdown li {
+    margin-bottom: 0.25rem;
+}
+
+/* Highlight / Mark Tag Styling */
+.mark-highlight {
+  background-color: transparent;
+  padding: 0;
+  margin: 0;
+  font-weight: bold;
+}
+
+.mark-highlight-default { color: var(--primary-main); }
+.mark-highlight-red { color: var(--status-error-text); }
+.mark-highlight-blue { color: var(--primary-main); }
+.mark-highlight-green { color: var(--status-success-text); }
+.mark-highlight-yellow { color: var(--status-warning-text); }
+.mark-highlight-purple { color: #9333ea; }
+.mark-highlight-orange { color: #ea580c; }
+
+.markdown-content-user mark {
+  background-color: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  padding: 0.1em 0.3em;
+  margin: 0 0.1em;
+  border-radius: 0.25rem;
+}

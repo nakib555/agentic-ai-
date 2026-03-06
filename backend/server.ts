@@ -9,7 +9,7 @@ import * as crudHandler from './crudHandler';
 import { getSettings, updateSettings } from './settingsHandler';
 import { getMemory, updateMemory, clearMemory } from './memoryHandler';
 import { getAvailableModelsHandler } from './modelsHandler';
-import { DATA_DIR, HISTORY_PATH } from './constants';
+import { initDataStore, HISTORY_PATH } from './data-store';
 
 // Determine directory for static files safely across ESM (Dev) and CJS (Prod)
 let serverDir: string;
@@ -29,10 +29,7 @@ try {
 
 async function startServer() {
   // --- Initialize Data Store ---
-  console.log(`[DataStore] Initializing storage at: ${DATA_DIR}`);
-  await fs.promises.mkdir(DATA_DIR, { recursive: true });
-  await fs.promises.mkdir(HISTORY_PATH, { recursive: true });
-  console.log(`[DataStore] Storage ready.`);
+  await initDataStore();
 
   const app = express();
   const PORT = process.env.PORT || 3001;
@@ -48,11 +45,11 @@ async function startServer() {
   app.use(cors(corsOptions) as any);
 
   // Security Headers for SharedArrayBuffer (Required for FFmpeg.wasm)
-  // app.use((req: any, res: any, next: any) => {
-  //   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-  //   res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
-  //   next();
-  // });
+  app.use((req: any, res: any, next: any) => {
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+    next();
+  });
   
   // Request Logger Middleware
   app.use(((req: any, res: any, next: any) => {

@@ -6,9 +6,9 @@
  */
 
 import type { Model as AppModel } from '../../src/types';
+import { readData, SETTINGS_FILE_PATH } from '../data-store';
 import { providerRegistry } from '../providers/registry';
 import { ModelLists } from '../providers/types';
-import { ensureSettingsLoaded } from './settingsService';
 
 // Cache structure
 type ModelCache = {
@@ -27,7 +27,7 @@ export async function listAvailableModels(apiKey: string, forceRefresh = false, 
     
     if (!providerId) {
         try {
-            const settings: any = await ensureSettingsLoaded();
+            const settings: any = await readData(SETTINGS_FILE_PATH);
             providerId = settings.provider;
         } catch(e) {
             // ignore
@@ -43,7 +43,7 @@ export async function listAvailableModels(apiKey: string, forceRefresh = false, 
     // For Ollama, include the host URL in the cache key.
     if (providerId === 'ollama') {
          try {
-             const settings: any = await ensureSettingsLoaded();
+             const settings: any = await readData(SETTINGS_FILE_PATH);
              currentKeyHash += (settings.ollamaHost || '').trim();
          } catch(e) {}
     }

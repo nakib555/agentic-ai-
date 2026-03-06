@@ -3,194 +3,402 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import db from '../db';
+import { promises as fs } from 'fs';
 import path from 'path';
-import { HISTORY_PATH } from '../constants';
-import type { ChatSession, Message } from '../../src/types';
+import { HISTORY_PATH, HISTORY_INDEX_PATH, TIME_GROUPS_PATH, readData, writeData } from '../data-store';
+import type { ChatSession } from '../../src/types';
+import { isToday, isYesterday, isThisWeek } from 'date-fns';
+
+// Minimal metadata stored in the master index for fast listing
+type ChatIndexEntry = {
+    id: string;
+    title: string;
+    folderName: string;
+    createdAt: number;
+    updatedAt: number;
+    model: string;
+};
+
+// Full conversation structure stored inside the chat folder
+type ChatDataFile = ChatSession & {
+    pagination?: {
+        currentPage: number;
+        totalPages: number;
+        pageSize: number;
+    };
+    version: number;
+};
+
+// Simple Mutex for serializing async operations
+class Mutex {
+    private mutex = Promise.resolve();
+
+    lock(): Promise<() => void> {
+        let unlock: () => void = () => {};
+        const nextLock = new Promise<void>(resolve => {
+            unlock = resolve;
+        });
+
+        const willLock = this.mutex.then(() => unlock);
+        this.mutex = this.mutex.then(() => nextLock);
+
+        return willLock;
+    }
+
+    async dispatch<T>(fn: (() => T | PromiseLike<T>)): Promise<T> {
+        const unlock = await this.lock();
+        try {
+            return await Promise.resolve(fn());
+        } finally {
+            unlock();
+        }
+    }
+}
 
 class HistoryControlService {
-    
-    // --- CRUD Operations ---
+    private indexCache: ChatIndexEntry[] | null = null;
+    private indexLock = new Mutex();
 
-    async createChat(session: ChatSession): Promise<ChatSession> {
+    // --- Index Management ---
+
+    private async loadIndex(): Promise<ChatIndexEntry[]> {
+        if (this.indexCache) return this.indexCache;
         try {
-            const insertChat = db.prepare(`
-                INSERT INTO chats (id, title, createdAt, updatedAt, model)
-                VALUES (?, ?, ?, ?, ?)
-            `);
+            this.indexCache = await readData(HISTORY_INDEX_PATH);
+            return this.indexCache!;
+        } catch (error: any) {
+            // Only return empty if file strictly doesn't exist
+            if (error.code === 'ENOENT') {
+                return [];
+            }
             
-            const insertMessage = db.prepare(`
-                INSERT INTO messages (id, chatId, role, content, createdAt)
-                VALUES (?, ?, ?, ?, ?)
-            `);
+            console.error(`[HistoryControl] Critical Error: Failed to load history index.`, error);
+            
+            // If the file exists but is corrupt (SyntaxError) or unreadable, BACK IT UP before returning empty.
+            // This prevents the app from silently wiping the user's history file on the next save.
+            try {
+                const backupPath = `${HISTORY_INDEX_PATH}.corrupt.${Date.now()}.bak`;
+                await fs.copyFile(HISTORY_INDEX_PATH, backupPath);
+                console.warn(`[HistoryControl] CORRUPT INDEX DETECTED. Backed up to: ${backupPath}`);
+            } catch (backupError) {
+                console.error(`[HistoryControl] Failed to backup corrupt index:`, backupError);
+            }
 
-            const transaction = db.transaction(() => {
-                insertChat.run(
-                    session.id,
-                    session.title,
-                    session.createdAt,
-                    Date.now(),
-                    session.model || null
-                );
-
-                for (const msg of session.messages) {
-                    insertMessage.run(
-                        msg.id,
-                        session.id,
-                        msg.role,
-                        JSON.stringify(msg),
-                        Date.now()
-                    );
-                }
-            });
-
-            transaction();
-            return session;
-        } catch (error) {
-            console.error("[HistoryControl] Failed to create chat:", error);
-            throw error;
+            return [];
         }
     }
 
-    async getChat(id: string): Promise<ChatSession | null> {
+    private async saveIndex(index: ChatIndexEntry[]) {
+        this.indexCache = index;
+        
+        // Check and ensure directory exists to prevent crash if folder is deleted manually
         try {
-            const chat = db.prepare('SELECT * FROM chats WHERE id = ?').get(id) as any;
-            if (!chat) return null;
+            await fs.mkdir(HISTORY_PATH, { recursive: true });
+        } catch (error: any) {
+            if (error.code !== 'EEXIST') console.error("Failed to ensure history directory:", error);
+        }
 
-            const messages = db.prepare('SELECT * FROM messages WHERE chatId = ? ORDER BY createdAt ASC').all(id) as any[];
+        await writeData(HISTORY_INDEX_PATH, index);
+        await this.updateTimeGroups(index);
+    }
 
-            const parsedMessages: Message[] = messages.map(dbMsg => {
-                try {
-                    const parsed = JSON.parse(dbMsg.content);
-                    return { ...parsed, id: dbMsg.id };
-                } catch (e) {
-                    console.error(`[HistoryControl] Failed to parse message content for ${dbMsg.id}`, e);
-                    return null;
-                }
-            }).filter((m): m is Message => m !== null);
+    private sanitizeTitle(title: string): string {
+        // Improved to support Unicode characters for international titles
+        // while maintaining filesystem safety.
+        // Allows letters (unicode), numbers, spaces, dashes, underscores.
+        return title
+            .replace(/[^\p{L}\p{N}\s\-_]/gu, '') 
+            .trim()
+            .replace(/\s+/g, '-')      // Space to dash
+            .replace(/-+/g, '-')       // Collapse dashes
+            .substring(0, 64)          // Reasonable limit
+            || 'Untitled';
+    }
 
-            return {
-                id: chat.id,
-                title: chat.title,
-                messages: parsedMessages,
-                model: chat.model || undefined,
-                createdAt: chat.createdAt,
-                isLoading: false,
+    private getFolderName(title: string, id: string): string {
+        const safeTitle = this.sanitizeTitle(title);
+        // Suffix with ID to ensure uniqueness and persistence even if titles collide
+        return `${safeTitle}-${id.substring(0, 8)}`;
+    }
+
+    private async updateTimeGroups(index: ChatIndexEntry[]) {
+        const groups: Record<string, ChatIndexEntry[]> = {
+            'Today': [],
+            'Yesterday': [],
+            'Previous 7 Days': [],
+            'Older': []
+        };
+
+        for (const entry of index) {
+            const date = new Date(entry.updatedAt);
+            if (isToday(date)) {
+                groups['Today'].push(entry);
+            } else if (isYesterday(date)) {
+                groups['Yesterday'].push(entry);
+            } else if (isThisWeek(date)) {
+                groups['Previous 7 Days'].push(entry);
+            } else {
+                // Group older items by Month Year
+                const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+                if (!groups[monthYear]) groups[monthYear] = [];
+                groups[monthYear].push(entry);
+            }
+        }
+        
+        // Remove empty default groups if not used (except maybe Today)
+        if (groups['Older'].length === 0) delete groups['Older'];
+
+        // Check and ensure directory exists
+        try {
+            await fs.mkdir(HISTORY_PATH, { recursive: true });
+        } catch (error: any) {
+             if (error.code !== 'EEXIST') console.error("Failed to ensure history directory:", error);
+        }
+
+        await writeData(TIME_GROUPS_PATH, groups);
+    }
+
+    // --- CRUD Operations ---
+
+    async createChat(session: ChatSession): Promise<ChatSession> {
+        // Use lock to prevent index race conditions
+        return this.indexLock.dispatch(async () => {
+            const folderName = this.getFolderName(session.title, session.id);
+            const chatFolderPath = path.join(HISTORY_PATH, folderName);
+            const chatSubDir = path.join(chatFolderPath, 'chat');
+            const fileSubDir = path.join(chatFolderPath, 'file');
+
+            // 1. Create Directory Structure
+            await fs.mkdir(chatFolderPath, { recursive: true });
+            await fs.mkdir(chatSubDir, { recursive: true });
+            await fs.mkdir(fileSubDir, { recursive: true });
+
+            // 2. Save Conversation Data (conversation.tsx inside chat/)
+            const chatData: ChatDataFile = {
+                ...session,
+                version: 1,
+                pagination: { currentPage: 1, totalPages: 1, pageSize: 100 }
             };
+            await writeData(path.join(chatSubDir, 'conversation.tsx'), chatData);
+
+            // 3. Update Index
+            const index = await this.loadIndex();
+            const entry: ChatIndexEntry = {
+                id: session.id,
+                title: session.title,
+                folderName: folderName,
+                createdAt: session.createdAt,
+                updatedAt: Date.now(),
+                model: session.model
+            };
+            index.unshift(entry); // Add to top
+            await this.saveIndex(index);
+
+            return session;
+        });
+    }
+
+    async getChat(id: string): Promise<ChatSession | null> {
+        // Read is safe without exclusive lock, but we access indexCache
+        // which should be stable. For strictly consistent reads during writes,
+        // we could lock, but it might kill perf. 
+        // Given Node single-thread event loop, reading indexCache is atomic.
+        // We only await loadIndex if cache is null.
+        
+        const index = await this.loadIndex();
+        const entry = index.find(e => e.id === id);
+        if (!entry) return null;
+
+        const filePath = path.join(HISTORY_PATH, entry.folderName, 'chat', 'conversation.tsx');
+        try {
+            return await readData(filePath);
         } catch (error) {
-            console.error(`[HistoryControl] Failed to get chat ${id}:`, error);
+            console.error(`[HistoryControl] Failed to read chat ${id}:`, error);
             return null;
         }
     }
 
     async updateChat(id: string, updates: Partial<ChatSession>): Promise<ChatSession | null> {
-        try {
-            const transaction = db.transaction(() => {
-                // 1. Update Chat Metadata
-                const sets: string[] = ['updatedAt = ?'];
-                const args: any[] = [Date.now()];
+        return this.indexLock.dispatch(async () => {
+            const index = await this.loadIndex();
+            const entryIndex = index.findIndex(e => e.id === id);
+            if (entryIndex === -1) return null;
 
-                if (updates.title) {
-                    sets.push('title = ?');
-                    args.push(updates.title);
-                }
-                if (updates.model) {
-                    sets.push('model = ?');
-                    args.push(updates.model);
-                }
-                
-                args.push(id); // For WHERE clause
+            const entry = index[entryIndex];
+            const originalFolderPath = path.join(HISTORY_PATH, entry.folderName);
+            
+            // Read current data (directly from file to get latest state)
+            const filePath = path.join(HISTORY_PATH, entry.folderName, 'chat', 'conversation.tsx');
+            let currentChat: ChatSession;
+            try {
+                currentChat = await readData(filePath);
+            } catch (e) {
+                return null;
+            }
 
-                db.prepare(`UPDATE chats SET ${sets.join(', ')} WHERE id = ?`).run(...args);
+            const updatedChat: ChatDataFile = {
+                ...currentChat,
+                ...updates,
+                version: 1 // Ensure version is preserved or incremented
+            };
+            let newFolderName = entry.folderName;
 
-                // 2. Handle Messages Update (Full Replacement)
-                if (updates.messages) {
-                    db.prepare('DELETE FROM messages WHERE chatId = ?').run(id);
-                    
-                    const insertMessage = db.prepare(`
-                        INSERT INTO messages (id, chatId, role, content, createdAt)
-                        VALUES (?, ?, ?, ?, ?)
-                    `);
+            // Handle Renaming (Title Change) - Rename the folder dynamically
+            if (updates.title && updates.title !== entry.title) {
+                newFolderName = this.getFolderName(updates.title, id);
+                const newFolderPath = path.join(HISTORY_PATH, newFolderName);
 
-                    for (const msg of updates.messages) {
-                        insertMessage.run(
-                            msg.id,
-                            id,
-                            msg.role,
-                            JSON.stringify(msg),
-                            Date.now()
-                        );
+                if (newFolderName !== entry.folderName) {
+                    try {
+                        // Check for collision
+                        try {
+                            await fs.access(newFolderPath);
+                            // If exists (rare), keep old folder or append timestamp?
+                            // Appending timestamp to ensure uniqueness
+                            newFolderName = `${newFolderName}-${Date.now()}`;
+                            // Re-calculate path
+                            await fs.rename(originalFolderPath, path.join(HISTORY_PATH, newFolderName));
+                        } catch {
+                            // Destination does not exist, safe to rename
+                            await fs.rename(originalFolderPath, newFolderPath);
+                        }
+
+                        entry.folderName = newFolderName;
+                    } catch (error) {
+                        console.error(`[HistoryControl] Failed to rename folder for chat ${id}:`, error);
+                        // Fallback: keep old folder name if rename fails
+                        newFolderName = entry.folderName; 
                     }
                 }
-            });
+                // Always update index title if requested
+                entry.title = updates.title;
+            }
 
-            transaction();
-            return await this.getChat(id);
+            // Update File content in the (potentially new) location
+            const chatSubDir = path.join(HISTORY_PATH, newFolderName, 'chat');
+            
+            try {
+                // Ensure directory exists (in case of manual deletion or corruption)
+                await fs.mkdir(chatSubDir, { recursive: true });
+                
+                await writeData(path.join(chatSubDir, 'conversation.tsx'), updatedChat);
+            } catch (error) {
+                console.error(`[HistoryControl] Failed to write conversation data for ${id}:`, error);
+                throw error; // Propagate up so crudHandler can send 500
+            }
 
-        } catch (error) {
-            console.error(`[HistoryControl] Failed to update chat ${id}:`, error);
-            return null;
-        }
+            // Update Index metadata
+            entry.updatedAt = Date.now();
+            if (updates.model) entry.model = updates.model;
+            
+            // Move updated entry to top (Recency)
+            index.splice(entryIndex, 1);
+            index.unshift(entry);
+            
+            await this.saveIndex(index);
+            return updatedChat;
+        });
     }
 
     async deleteChat(id: string): Promise<void> {
-        try {
-            db.prepare('DELETE FROM chats WHERE id = ?').run(id);
-        } catch (error) {
-            console.error(`[HistoryControl] Failed to delete chat ${id}:`, error);
-        }
+        return this.indexLock.dispatch(async () => {
+            const index = await this.loadIndex();
+            const entryIndex = index.findIndex(e => e.id === id);
+            if (entryIndex === -1) return;
+
+            const entry = index[entryIndex];
+            const folderPath = path.join(HISTORY_PATH, entry.folderName);
+
+            try {
+                await fs.rm(folderPath, { recursive: true, force: true });
+            } catch (error) {
+                console.error(`[HistoryControl] Failed to delete folder ${folderPath}:`, error);
+            }
+
+            index.splice(entryIndex, 1);
+            await this.saveIndex(index);
+        });
     }
 
     async deleteAllChats(): Promise<void> {
-        try {
-            db.prepare('DELETE FROM chats').run();
-        } catch (error) {
-            console.error("[HistoryControl] Failed to delete all chats:", error);
-            throw error;
-        }
+        return this.indexLock.dispatch(async () => {
+            // 1. Clear In-Memory Cache
+            this.indexCache = [];
+
+            // 2. Physically Wipe the History Directory
+            try {
+                // Check if directory exists first
+                try {
+                    await fs.access(HISTORY_PATH);
+                } catch {
+                    // Directory doesn't exist, nothing to delete.
+                    // Re-initialize empty index and return.
+                    await this.saveIndex([]);
+                    return;
+                }
+
+                const entries = await fs.readdir(HISTORY_PATH);
+                for (const entry of entries) {
+                    const fullPath = path.join(HISTORY_PATH, entry);
+                    // Forcefully remove everything in the history path
+                    await fs.rm(fullPath, { recursive: true, force: true });
+                }
+            } catch (error) {
+                console.error("[HistoryControl] Failed to wipe history directory:", error);
+                throw error;
+            }
+
+            // 3. Re-initialize empty Index and TimeGroups files
+            await this.saveIndex([]);
+        });
     }
 
     async getHistoryList(): Promise<Omit<ChatSession, 'messages'>[]> {
-        try {
-            const chats = db.prepare('SELECT id, title, createdAt, updatedAt, model FROM chats ORDER BY updatedAt DESC').all() as any[];
-
-            return chats.map(chat => ({
-                id: chat.id,
-                title: chat.title,
-                createdAt: chat.createdAt,
-                updatedAt: chat.updatedAt,
-                model: chat.model || undefined,
-                messages: undefined as any
-            }));
-        } catch (error) {
-            console.error("[HistoryControl] Failed to get history list:", error);
-            return [];
-        }
+        const index = await this.loadIndex();
+        // Return the cached index list. 
+        // CRITICAL: We explicitly set messages to undefined so the frontend knows 
+        // this is a summary and needs to fetch full details.
+        return index.map(e => ({
+            id: e.id,
+            title: e.title,
+            createdAt: e.createdAt,
+            model: e.model,
+            messages: undefined as any // Type cast to satisfy TS but send "undefined" in logic (JSON.stringify will omit it)
+        }));
     }
 
-    // --- Public Path Resolvers ---
+    // --- Public Path Resolvers for other services ---
     
     async getChatFolderPath(id: string): Promise<string | null> {
-        // In DB mode, we use the ID as the folder name for any file attachments
-        return path.join(HISTORY_PATH, id);
+        const index = await this.loadIndex();
+        const entry = index.find(e => e.id === id);
+        if (!entry) return null;
+        return path.join(HISTORY_PATH, entry.folderName);
     }
     
     async getPublicUrlBase(id: string): Promise<string | null> {
+        const index = await this.loadIndex();
+        const entry = index.find(e => e.id === id);
+        if (!entry) return null;
         // Returns the URL segment for the frontend to access files
-        // We map /uploads/{id}/file to the physical path
-        return `/uploads/${id}/file`;
+        return `/uploads/${entry.folderName}/file`;
     }
 
-    // --- Truncation Logic ---
+    // --- Truncation Logic for Regeneration ---
     async truncateChatHistory(chatId: string, messageId: string): Promise<ChatSession | null> {
         const chat = await this.getChat(chatId);
         if (!chat) return null;
 
         const messageIndex = chat.messages.findIndex(m => m.id === messageId);
+        // If message not found, or it's the very first message, handled by caller or no-op
         if (messageIndex === -1) return chat;
 
+        // Keep messages BEFORE this index
+        // This removes the target AI message and anything after it.
+        // It keeps the User message that triggered it if the AI message is at index > 0
         const truncatedMessages = chat.messages.slice(0, messageIndex);
         
+        // We update the chat with truncated messages
         return await this.updateChat(chatId, { messages: truncatedMessages });
     }
 }

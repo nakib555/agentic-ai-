@@ -8,7 +8,7 @@ import path from 'path';
 import { Buffer } from 'buffer';
 import { ToolError } from '../utils/apiError';
 import { historyControl } from './historyControl';
-import { writeFileAtomic } from '../utils/fileUtils';
+import { writeFileAtomic } from '../data-store';
 
 const ensureDir = async (dirPath: string) => {
     try {

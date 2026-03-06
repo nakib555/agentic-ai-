@@ -45,15 +45,29 @@ type MessageListProps = {
 // We memoize this to prevent re-creation if props haven't changed.
 const MessageWrapper = React.memo(({ 
     msg,
+    index,
     isLast,
-    userQuery,
+    messages,
     contextProps
 }: { 
     msg: Message;
+    index: number;
     isLast: boolean;
-    userQuery: string;
+    messages: Message[];
     contextProps: Omit<MessageListProps, 'messages'>;
 }) => {
+    // Determine context for AI messages (the prompt that triggered it)
+    let userQuery = '';
+    if (msg.role === 'model') {
+        // Find the most recent user message before this one
+        for (let i = index - 1; i >= 0; i--) {
+            if (messages[i].role === 'user' && !messages[i].isHidden) {
+                userQuery = messages[i].text;
+                break;
+            }
+        }
+    }
+
     return (
         <MessageComponent 
             msg={msg} 
@@ -78,26 +92,6 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({
   // Safeguard against undefined messages prop
   const visibleMessages = useMemo(() => (messages || []).filter(msg => !msg.isHidden), [messages]);
   
-  // Pre-compute data for Virtuoso to keep itemContent stable and leverage React.memo
-  const virtuosoData = useMemo(() => {
-      return visibleMessages.map((msg, index) => {
-          let userQuery = '';
-          if (msg.role === 'model') {
-              for (let i = index - 1; i >= 0; i--) {
-                  if (visibleMessages[i].role === 'user') {
-                      userQuery = visibleMessages[i].text;
-                      break;
-                  }
-              }
-          }
-          return {
-              msg,
-              isLast: index === visibleMessages.length - 1,
-              userQuery
-          };
-      });
-  }, [visibleMessages]);
-
   // Track previous length to detect new messages
   const prevMessagesLength = useRef(visibleMessages.length);
 
@@ -159,18 +153,17 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({
   ]);
 
   // Memoize itemContent so Virtuoso doesn't re-render all items on every parent render
-  const itemContent = useCallback((index: number, item: { msg: Message, isLast: boolean, userQuery: string }) => {
-      return (
-          <div className="px-4 sm:px-6 md:px-8 max-w-5xl mx-auto w-full py-2 sm:py-4">
-              <MessageWrapper 
-                  msg={item.msg}
-                  isLast={item.isLast}
-                  userQuery={item.userQuery}
-                  contextProps={contextProps}
-              />
-          </div>
-      );
-  }, [contextProps]);
+  const itemContent = useCallback((index: number, msg: Message) => (
+      <div className="px-4 sm:px-6 md:px-8 max-w-4xl mx-auto w-full py-2 sm:py-4">
+          <MessageWrapper 
+              msg={msg}
+              index={index}
+              isLast={index === visibleMessages.length - 1}
+              messages={visibleMessages}
+              contextProps={contextProps}
+          />
+      </div>
+  ), [visibleMessages, contextProps]);
 
   return (
     <div className="flex-1 min-h-0 relative w-full">
@@ -193,8 +186,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({
             <Virtuoso
                 ref={virtuosoRef}
                 style={{ height: '100%', width: '100%' }}
-                data={virtuosoData}
-                computeItemKey={(index, item) => item.msg.id}
+                data={visibleMessages}
                 followOutput={atBottom ? "auto" : false} 
                 increaseViewportBy={600} 
                 overscan={400} 
