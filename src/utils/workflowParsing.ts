@@ -146,9 +146,13 @@ export const parseContentSegments = (text: string): RenderSegment[] => {
     if (lastIndex < text.length) {
         const remainingText = text.substring(lastIndex);
         
-        // Check for an OPENING tag that hasn't been closed
+        // Check for an OPENING XML tag that hasn't been closed
         const openTagRegex = new RegExp(`(<(${xmlPattern})>)`, 'i');
         const openTagMatch = remainingText.match(openTagRegex);
+
+        // Check for an OPENING Square Bracket tag that hasn't been closed
+        const openSquareRegex = new RegExp(`(\\[(${squarePattern})\\])`, 'i');
+        const openSquareMatch = remainingText.match(openSquareRegex);
         
         if (openTagMatch) {
             // Check context for partial tag to prevent partials inside code blocks showing as loading
@@ -174,6 +178,28 @@ export const parseContentSegments = (text: string): RenderSegment[] => {
                     data: { type: tagType }
                 });
             }
+        } else if (openSquareMatch) {
+             // Handle open square bracket tag
+             const absoluteIndex = lastIndex + openSquareMatch.index!;
+             const textUpToOpen = text.substring(0, absoluteIndex);
+             const backtickCount = (textUpToOpen.match(/```/g) || []).length;
+
+             if (backtickCount % 2 !== 0) {
+                 segments.push({ type: 'text', content: remainingText });
+             } else {
+                 const textBefore = remainingText.substring(0, openSquareMatch.index);
+                 const tagType = openSquareMatch[2].toUpperCase();
+
+                 if (textBefore) {
+                     segments.push({ type: 'text', content: textBefore });
+                 }
+
+                 segments.push({
+                     type: 'component',
+                     componentType: 'LOADING_ARTIFACT',
+                     data: { type: tagType }
+                 });
+             }
         } else {
              let cleanedPart = remainingText;
 

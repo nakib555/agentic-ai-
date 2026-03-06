@@ -68,6 +68,8 @@ const ChartLoadingPlaceholder: React.FC<{ type: string }> = ({ type }) => {
     if (type === 'd3') label = 'Visualization';
     else if (type === 'hybrid') label = 'Interactive Chart';
     else if (type === 'map') label = 'Map';
+    else if (type === 'ARTIFACT_CODE') label = 'Code Artifact';
+    else if (type === 'ARTIFACT_DATA') label = 'Data Artifact';
 
     return (
         <motion.div 
@@ -283,6 +285,7 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
                             case 'CODE_OUTPUT': return <CodeExecutionResult key={key} {...data} />;
                             case 'CHART': return <UniversalChart key={key} engine={data.engine} code={data.content} onFixCode={handleFixCode} isStreaming={msg.isThinking} />;
                             case 'LOADING_CHART': return <ChartLoadingPlaceholder key={key} type={data.type} />;
+                            case 'LOADING_ARTIFACT': return <ChartLoadingPlaceholder key={key} type={data.type} />;
                             case 'ARTIFACT_CODE': return (
                                 <Suspense fallback={<div className="h-64 w-full bg-gray-100 dark:bg-white/5 rounded-xl animate-pulse my-4" />}>
                                     <ArtifactRenderer key={key} type="code" content={data.code} language={data.language} title={data.title} />

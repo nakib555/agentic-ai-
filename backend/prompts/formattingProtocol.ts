@@ -121,6 +121,20 @@ For scripts, components, or config files:
 [/ARTIFACT_CODE]
 \`\`\`
 
+### Interactive Web Apps (HTML/CSS/JS + CDN)
+To create real-time interactive tools, dashboards, or games, use \`html\` language.
+You can include \`<script src="...">\` for ANY CDN library (Tailwind, Vue, React, p5.js, Three.js, etc).
+
+\`\`\`json
+[ARTIFACT_CODE]
+{
+  "language": "html",
+  "title": "interactive-demo.html",
+  "code": "<!DOCTYPE html>\\n<html>\\n<head>\\n  <script src=\\"https://cdn.tailwindcss.com\\"></script>\\n  <script src=\\"https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js\\"></script>\\n</head>\\n<body class=\\"bg-slate-900 flex items-center justify-center h-screen\\">\\n  <button onclick=\\"confetti()\\" class=\\"px-6 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-bold transition-all\\">\\n    Launch Confetti 🎉\\n  </button>\\n</body>\\n</html>"
+}
+[/ARTIFACT_CODE]
+\`\`\`
+
 ### Data Artifacts
 For CSVs, JSON datasets, or logs:
 \`\`\`json
