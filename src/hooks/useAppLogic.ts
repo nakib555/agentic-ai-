@@ -504,6 +504,10 @@ export const useAppLogic = () => {
         });
     }, [chat.currentChatId, chat.chatHistory]);
 
+    const handleNewChat = useCallback(() => {
+        chat.startNewChat(settings.activeModel, chatSettings);
+    }, [chat.startNewChat, settings.activeModel, chatSettings]);
+
     return {
         isDesktop, isWideDesktop, visualViewportHeight,
         appContainerRef, messageListRef,
@@ -586,6 +590,7 @@ export const useAppLogic = () => {
         ...sidebar,
         
         ...chat,
+        handleNewChat, // Expose the wrapper
         setActiveResponseIndex: chat.setResponseIndex,
         handleRequestClearAll, handleDeleteChatRequest,
         handleImportChat: () => ui.setImportModalOpen(true),

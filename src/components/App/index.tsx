@@ -51,10 +51,12 @@ function lazyLoad<T extends React.ComponentType<any>>(
   );
 }
 
-// Lazy Load Major UI Blocks
-const Sidebar = lazyLoad(() => import('../Sidebar/Sidebar'), 'Sidebar');
-const ChatArea = lazyLoad(() => import('../Chat/ChatArea'), 'ChatArea');
-const ChatHeader = lazyLoad(() => import('../Chat/ChatHeader'), 'ChatHeader');
+// Core UI Blocks - Direct Import for faster LCP
+import { Sidebar } from '../Sidebar/Sidebar';
+import { ChatArea } from '../Chat/ChatArea';
+import { ChatHeader } from '../Chat/ChatHeader';
+
+// Lazy Load Secondary UI Blocks
 const SourcesSidebar = lazyLoad(() => import('../AI/SourcesSidebar'), 'SourcesSidebar');
 const ArtifactSidebar = lazyLoad(() => import('../Sidebar/ArtifactSidebar'), 'ArtifactSidebar');
 const AppModals = lazyLoad(() => import('./AppModals'), 'AppModals');
@@ -182,7 +184,7 @@ export const App = () => {
                         history={logic.chatHistory}
                         isHistoryLoading={logic.isHistoryLoading}
                         currentChatId={logic.currentChatId}
-                        onNewChat={logic.startNewChat}
+                        onNewChat={logic.handleNewChat}
                         isNewChatDisabled={logic.isNewChatDisabled}
                         onLoadChat={logic.loadChat}
                         onDeleteChat={logic.handleDeleteChatRequest}
@@ -234,7 +236,7 @@ export const App = () => {
                     history={logic.chatHistory}
                     isHistoryLoading={logic.isHistoryLoading}
                     currentChatId={logic.currentChatId}
-                    onNewChat={logic.startNewChat}
+                    onNewChat={logic.handleNewChat}
                     isNewChatDisabled={logic.isNewChatDisabled}
                     onLoadChat={logic.loadChat}
                     onDeleteChat={logic.handleDeleteChatRequest}
@@ -261,81 +263,83 @@ export const App = () => {
             </>
         )}
 
-        <AppModals
-          isDesktop={logic.isDesktop}
-          isSettingsOpen={logic.isSettingsOpen}
-          setIsSettingsOpen={logic.setIsSettingsOpen}
-          isMemoryModalOpen={logic.isMemoryModalOpen}
-          setIsMemoryModalOpen={logic.setIsMemoryModalOpen}
-          isImportModalOpen={logic.isImportModalOpen}
-          setIsImportModalOpen={logic.setIsImportModalOpen}
-          handleFileUploadForImport={logic.handleFileUploadForImport}
-          onRunTests={() => logic.setIsTestMode(true)}
-          onDownloadLogs={logic.handleDownloadLogs}
-          onShowDataStructure={logic.handleShowDataStructure}
-          onExportAllChats={logic.handleExportAllChats}
-          availableModels={logic.availableModels}
-          availableImageModels={logic.availableImageModels}
-          availableVideoModels={logic.availableVideoModels}
-          availableTtsModels={logic.availableTtsModels}
-          activeModel={logic.activeModel}
-          onModelChange={logic.onModelChange}
-          modelsLoading={logic.modelsLoading || logic.settingsLoading}
-          clearAllChats={logic.handleRequestClearAll}
-          apiKey={logic.apiKey}
-          onSaveApiKey={logic.onSaveApiKey}
-          aboutUser={logic.aboutUser}
-          setAboutUser={logic.setAboutUser}
-          aboutResponse={logic.aboutResponse}
-          setAboutResponse={logic.setAboutResponse}
-          temperature={logic.temperature}
-          setTemperature={logic.setTemperature}
-          maxTokens={logic.maxTokens}
-          setMaxTokens={logic.setMaxTokens}
-          imageModel={logic.imageModel}
-          onImageModelChange={logic.onImageModelChange}
-          videoModel={logic.videoModel}
-          onVideoModelChange={logic.onVideoModelChange}
-          ttsModel={logic.ttsModel}
-          onTtsModelChange={logic.onTtsModelChange}
-          defaultTemperature={DEFAULT_TEMPERATURE}
-          defaultMaxTokens={DEFAULT_MAX_TOKENS}
-          isMemoryEnabled={logic.isMemoryEnabled}
-          setIsMemoryEnabled={logic.setIsMemoryEnabled}
-          onManageMemory={logic.onManageMemory}
-          memoryContent={logic.memoryContent}
-          memoryFiles={logic.memoryFiles}
-          clearMemory={logic.clearMemory}
-          updateBackendMemory={logic.updateBackendMemory}
-          updateMemoryFiles={logic.updateMemoryFiles}
-          isConfirmationOpen={logic.isConfirmationOpen}
-          memorySuggestions={logic.memorySuggestions}
-          confirmMemoryUpdate={logic.confirmMemoryUpdate}
-          cancelMemoryUpdate={logic.cancelMemoryUpdate}
-          ttsVoice={logic.ttsVoice}
-          setTtsVoice={logic.setTtsVoice}
-          confirmation={logic.confirmation}
-          onConfirm={logic.handleConfirm}
-          onCancel={logic.handleCancel}
-          theme={logic.theme}
-          setTheme={logic.setTheme}
-          serverUrl={logic.serverUrl}
-          onSaveServerUrl={logic.onSaveServerUrl}
-          provider={logic.provider}
-          openRouterApiKey={logic.openRouterApiKey}
-          ollamaApiKey={logic.ollamaApiKey}
-          onProviderChange={logic.onProviderChange}
-          ollamaHost={logic.ollamaHost}
-          onSaveOllamaHost={logic.onSaveOllamaHost}
-        />
-
-        {logic.isTestMode && (
-            <TestRunner 
-                isOpen={logic.isTestMode}
-                onClose={() => logic.setIsTestMode(false)}
-                runTests={logic.runDiagnosticTests}
+        <Suspense fallback={null}>
+            <AppModals
+              isDesktop={logic.isDesktop}
+              isSettingsOpen={logic.isSettingsOpen}
+              setIsSettingsOpen={logic.setIsSettingsOpen}
+              isMemoryModalOpen={logic.isMemoryModalOpen}
+              setIsMemoryModalOpen={logic.setIsMemoryModalOpen}
+              isImportModalOpen={logic.isImportModalOpen}
+              setIsImportModalOpen={logic.setIsImportModalOpen}
+              handleFileUploadForImport={logic.handleFileUploadForImport}
+              onRunTests={() => logic.setIsTestMode(true)}
+              onDownloadLogs={logic.handleDownloadLogs}
+              onShowDataStructure={logic.handleShowDataStructure}
+              onExportAllChats={logic.handleExportAllChats}
+              availableModels={logic.availableModels}
+              availableImageModels={logic.availableImageModels}
+              availableVideoModels={logic.availableVideoModels}
+              availableTtsModels={logic.availableTtsModels}
+              activeModel={logic.activeModel}
+              onModelChange={logic.onModelChange}
+              modelsLoading={logic.modelsLoading || logic.settingsLoading}
+              clearAllChats={logic.handleRequestClearAll}
+              apiKey={logic.apiKey}
+              onSaveApiKey={logic.onSaveApiKey}
+              aboutUser={logic.aboutUser}
+              setAboutUser={logic.setAboutUser}
+              aboutResponse={logic.aboutResponse}
+              setAboutResponse={logic.setAboutResponse}
+              temperature={logic.temperature}
+              setTemperature={logic.setTemperature}
+              maxTokens={logic.maxTokens}
+              setMaxTokens={logic.setMaxTokens}
+              imageModel={logic.imageModel}
+              onImageModelChange={logic.onImageModelChange}
+              videoModel={logic.videoModel}
+              onVideoModelChange={logic.onVideoModelChange}
+              ttsModel={logic.ttsModel}
+              onTtsModelChange={logic.onTtsModelChange}
+              defaultTemperature={DEFAULT_TEMPERATURE}
+              defaultMaxTokens={DEFAULT_MAX_TOKENS}
+              isMemoryEnabled={logic.isMemoryEnabled}
+              setIsMemoryEnabled={logic.setIsMemoryEnabled}
+              onManageMemory={logic.onManageMemory}
+              memoryContent={logic.memoryContent}
+              memoryFiles={logic.memoryFiles}
+              clearMemory={logic.clearMemory}
+              updateBackendMemory={logic.updateBackendMemory}
+              updateMemoryFiles={logic.updateMemoryFiles}
+              isConfirmationOpen={logic.isConfirmationOpen}
+              memorySuggestions={logic.memorySuggestions}
+              confirmMemoryUpdate={logic.confirmMemoryUpdate}
+              cancelMemoryUpdate={logic.cancelMemoryUpdate}
+              ttsVoice={logic.ttsVoice}
+              setTtsVoice={logic.setTtsVoice}
+              confirmation={logic.confirmation}
+              onConfirm={logic.handleConfirm}
+              onCancel={logic.handleCancel}
+              theme={logic.theme}
+              setTheme={logic.setTheme}
+              serverUrl={logic.serverUrl}
+              onSaveServerUrl={logic.onSaveServerUrl}
+              provider={logic.provider}
+              openRouterApiKey={logic.openRouterApiKey}
+              ollamaApiKey={logic.ollamaApiKey}
+              onProviderChange={logic.onProviderChange}
+              ollamaHost={logic.ollamaHost}
+              onSaveOllamaHost={logic.onSaveOllamaHost}
             />
-        )}
+
+            {logic.isTestMode && (
+                <TestRunner 
+                    isOpen={logic.isTestMode}
+                    onClose={() => logic.setIsTestMode(false)}
+                    runTests={logic.runDiagnosticTests}
+                />
+            )}
+        </Suspense>
       </Suspense>
     </div>
   );

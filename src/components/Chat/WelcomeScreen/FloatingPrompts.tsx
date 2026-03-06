@@ -19,8 +19,8 @@ const containerVariants = {
     visible: {
       opacity: 1,
       transition: {
-        delayChildren: 0.4,
-        staggerChildren: 0.08,
+        delayChildren: 0.2,
+        staggerChildren: 0.05,
       },
     },
 };

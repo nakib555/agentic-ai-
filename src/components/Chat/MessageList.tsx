@@ -14,8 +14,7 @@ import { useViewport } from '../../hooks/useViewport';
 
 const motion = motionTyped as any;
 
-// Safe lazy loads
-const WelcomeScreen = React.lazy(() => import('./WelcomeScreen/index').then(m => ({ default: m.WelcomeScreen })));
+import { WelcomeScreen } from './WelcomeScreen/WelcomeScreen';
 const ChatSkeleton = React.lazy(() => import('../UI/ChatSkeleton').then(m => ({ default: m.ChatSkeleton })));
 
 export type MessageListHandle = {
@@ -176,9 +175,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({
             </div>
         ) : (
             <div className="h-full overflow-y-auto custom-scrollbar">
-                 <Suspense fallback={<div className="h-full flex items-center justify-center"><div className="animate-spin w-6 h-6 border-2 border-indigo-500 rounded-full border-t-transparent"></div></div>}>
-                    <WelcomeScreen sendMessage={sendMessage} />
-                 </Suspense>
+                <WelcomeScreen sendMessage={sendMessage} />
             </div>
         )
       ) : (

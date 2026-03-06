@@ -182,7 +182,19 @@ async function startServer() {
   const server = app.listen(PORT, () => {
     console.log(`[SERVER] Backend API is running on port ${PORT}`);
     try {
-      initWebSocket(server);
+      const wss = initWebSocket();
+      
+      server.on('upgrade', (request, socket, head) => {
+        console.log(`[SERVER] Upgrade request for ${request.url}`);
+        
+        if (request.url === '/api/ws') {
+          wss.handleUpgrade(request, socket, head, (ws) => {
+            wss.emit('connection', ws, request);
+          });
+        } else {
+          socket.destroy();
+        }
+      });
     } catch (err) {
       console.error('[SERVER] Failed to initialize WebSocket server:', err);
     }
