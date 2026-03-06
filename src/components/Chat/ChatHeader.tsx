@@ -8,6 +8,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion as motionTyped, AnimatePresence } from 'framer-motion';
 import { TextType } from '../UI/TextType';
 import { Tooltip } from '../UI/Tooltip';
+import { useWebSocket } from '../../hooks/useWebSocket';
 const motion = motionTyped as any;
 
 type ChatHeaderProps = {
@@ -112,6 +113,17 @@ export const ChatHeader = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    const [wsUrl, setWsUrl] = useState('');
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            setWsUrl(`${protocol}//${window.location.host}`);
+        }
+    }, []);
+
+    const { isConnected, lastMessage } = useWebSocket(wsUrl);
+
     const baseButtonClasses = "w-11 h-11 flex items-center justify-center rounded-full transition-all duration-200 bg-white/60 dark:bg-black/20 border shadow-sm hover:scale-105 active:scale-95 touch-manipulation";
     const activeClasses = "text-indigo-700 border-indigo-200 dark:text-indigo-300 dark:border-indigo-500/40";
     const inactiveClasses = "text-slate-700 border-slate-200/80 hover:bg-white dark:text-slate-200 dark:border-white/10 dark:hover:bg-black/40";
@@ -168,7 +180,17 @@ export const ChatHeader = ({
                 </div>
 
                 {/* --- Right: Options --- */}
-                <div className="flex-shrink-0">
+                <div className="flex-shrink-0 flex items-center gap-3">
+                    {/* Real-time Indicator */}
+                    <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/50 dark:bg-black/20 border border-slate-200/50 dark:border-white/5 backdrop-blur-sm shadow-sm">
+                        <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+                        <span className="text-[10px] font-mono font-medium text-slate-500 dark:text-slate-400 tabular-nums">
+                            {isConnected && lastMessage?.type === 'time' 
+                                ? new Date(lastMessage.content).toLocaleTimeString([], { hour12: false }) 
+                                : (isConnected ? 'LIVE' : 'OFFLINE')}
+                        </span>
+                    </div>
+
                     <div className="relative">
                         <Tooltip content="Options" position="bottom" delay={500}>
                             <button

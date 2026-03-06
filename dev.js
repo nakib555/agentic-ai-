@@ -7,7 +7,7 @@ import { rm, readFile, writeFile, mkdir } from 'fs/promises';
 import fs from 'fs';
 
 const FRONTEND_DEV_PORT = 8000;
-const BACKEND_PORT = 3001;
+const BACKEND_PORT = 3000;
 
 process.env.APP_VERSION = process.env.APP_VERSION || 'dev';
 
@@ -133,12 +133,8 @@ try {
     },
   });
   await frontendBuilder.watch();
-  const { host, port } = await frontendBuilder.serve({
-    servedir: 'dist',
-    port: FRONTEND_DEV_PORT,
-  });
-  console.log(`\n🚀 Frontend server running at http://${host}:${port}`);
+  console.log(`\n🚀 Frontend builder watching...`);
 } catch (e) {
-  console.error('Frontend server failed:', e);
+  console.error('Frontend build failed:', e);
   process.exit(1);
 }

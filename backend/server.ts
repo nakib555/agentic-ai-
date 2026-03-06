@@ -11,13 +11,15 @@ import { getMemory, updateMemory, clearMemory } from './memoryHandler';
 import { getAvailableModelsHandler } from './modelsHandler';
 import { initDataStore, HISTORY_PATH } from './data-store';
 
+import { initWebSocket } from './websocketHandler';
+
 // Determine directory for static files safely across ESM (Dev) and CJS (Prod)
 let serverDir: string;
 try {
   // In ESM environment (Dev)
   if (import.meta && import.meta.url) {
     const currentFile = fileURLToPath(import.meta.url);
-    serverDir = path.dirname(currentFile);
+    serverDir = path.join(path.dirname(currentFile), '../dist');
   } else {
     throw new Error('CJS environment detected');
   }
@@ -177,8 +179,9 @@ async function startServer() {
     }
   }) as any);
 
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`[SERVER] Backend API is running on port ${PORT}`);
+    initWebSocket(server);
   });
 }
 
