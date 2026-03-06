@@ -12,11 +12,11 @@ import { MarkdownComponents } from '../../Markdown/markdownComponents';
 import { ErrorDisplay } from '../../UI/ErrorDisplay';
 import { ImageDisplay } from '../../AI/ImageDisplay';
 import { VideoDisplay } from '../../AI/VideoDisplay';
-import { ManualCodeRenderer } from '../../Markdown/ManualCodeRenderer';
 import { TypingIndicator } from '../TypingIndicator';
 import { McqComponent } from '../../AI/McqComponent';
-import { MapDisplay } from '../../AI/MapDisplay';
 import { FileAttachment } from '../../AI/FileAttachment';
+
+const ManualCodeRenderer = React.lazy(() => import('../../Markdown/ManualCodeRenderer').then(m => ({ default: m.ManualCodeRenderer })));
 import { SuggestedActions } from '../SuggestedActions';
 import type { MessageFormHandle } from '../MessageForm/index';
 import { useAiMessageLogic } from './useAiMessageLogic';
@@ -25,10 +25,11 @@ import { BrowserSessionDisplay } from '../../AI/BrowserSessionDisplay';
 import { useTypewriter } from '../../../hooks/useTypewriter';
 import { parseContentSegments } from '../../../utils/workflowParsing';
 import { CodeExecutionResult } from '../../AI/CodeExecutionResult';
-import { UniversalChart } from '../../AI/UniversalChart';
 import { fetchFromApi } from '../../../utils/api';
 
-// Lazy load the heavy ArtifactRenderer
+// Lazy load heavy components
+const UniversalChart = React.lazy(() => import('../../AI/UniversalChart').then(m => ({ default: m.UniversalChart })));
+const MapDisplay = React.lazy(() => import('../../AI/MapDisplay').then(m => ({ default: m.MapDisplay })));
 const ArtifactRenderer = React.lazy(() => import('../../Artifacts/ArtifactRenderer').then(m => ({ default: m.ArtifactRenderer })));
 
 // Optimized spring physics for performance
@@ -279,11 +280,19 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
                             case 'IMAGE':
                             case 'ONLINE_IMAGE': return <ImageDisplay key={key} onEdit={handleEditImage} {...data} />;
                             case 'MCQ': return <McqComponent key={key} {...data} />;
-                            case 'MAP': return <motion.div key={key} initial={{ opacity: 0 }} animate={{ opacity: 1 }}><MapDisplay {...data} /></motion.div>;
+                            case 'MAP': return (
+                                <Suspense fallback={<ChartLoadingPlaceholder type="map" />}>
+                                    <motion.div key={key} initial={{ opacity: 0 }} animate={{ opacity: 1 }}><MapDisplay {...data} /></motion.div>
+                                </Suspense>
+                            );
                             case 'FILE': return <FileAttachment key={key} {...data} />;
                             case 'BROWSER': return <BrowserSessionDisplay key={key} {...data} />;
                             case 'CODE_OUTPUT': return <CodeExecutionResult key={key} {...data} />;
-                            case 'CHART': return <UniversalChart key={key} engine={data.engine} code={data.content} onFixCode={handleFixCode} isStreaming={msg.isThinking} />;
+                            case 'CHART': return (
+                                <Suspense fallback={<ChartLoadingPlaceholder type="chart" />}>
+                                    <UniversalChart key={key} engine={data.engine} code={data.content} onFixCode={handleFixCode} isStreaming={msg.isThinking} />
+                                </Suspense>
+                            );
                             case 'LOADING_CHART': return <ChartLoadingPlaceholder key={key} type={data.type} />;
                             case 'LOADING_ARTIFACT': return <ChartLoadingPlaceholder key={key} type={data.type} />;
                             case 'ARTIFACT_CODE': return (
@@ -300,13 +309,15 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
                         }
                     } else {
                         return (
-                            <ManualCodeRenderer 
-                                key={key} 
-                                text={segment.content!} 
-                                components={MarkdownComponents} 
-                                isStreaming={msg.isThinking ?? false} 
-                                onFixCode={handleFixCode}
-                            />
+                            <Suspense fallback={<div className="h-4 bg-gray-100 dark:bg-white/5 rounded w-1/2 animate-pulse" />}>
+                                <ManualCodeRenderer 
+                                    key={key} 
+                                    text={segment.content!} 
+                                    components={MarkdownComponents} 
+                                    isStreaming={msg.isThinking ?? false} 
+                                    onFixCode={handleFixCode}
+                                />
+                            </Suspense>
                         );
                     }
                 })

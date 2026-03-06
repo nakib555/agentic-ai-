@@ -64,7 +64,7 @@ const CHAT_PROMPTS: { icon: string; text: string; prompt: string; color: PromptC
     }
 ];
 
-export const FloatingPrompts = ({ onPromptClick }: FloatingPromptsProps) => {
+export const FloatingPrompts = React.memo(({ onPromptClick }: FloatingPromptsProps) => {
   const prompts = CHAT_PROMPTS;
 
   const handleClick = (prompt: string) => {
@@ -95,4 +95,4 @@ export const FloatingPrompts = ({ onPromptClick }: FloatingPromptsProps) => {
         ))}
     </motion.div>
   );
-};
+});

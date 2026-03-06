@@ -9,6 +9,7 @@ import { motion as motionTyped, AnimatePresence } from 'framer-motion';
 import { TextType } from '../UI/TextType';
 import { Tooltip } from '../UI/Tooltip';
 import { useWebSocket } from '../../hooks/useWebSocket';
+import { getApiBaseUrl } from '../../utils/api';
 const motion = motionTyped as any;
 
 type ChatHeaderProps = {
@@ -117,8 +118,28 @@ export const ChatHeader = ({
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            setWsUrl(`${protocol}//${window.location.host}/api/ws`);
+            const apiBase = getApiBaseUrl();
+            let wsBase = '';
+
+            if (apiBase) {
+                // Convert http(s) to ws(s)
+                if (apiBase.startsWith('https://')) {
+                    wsBase = apiBase.replace('https://', 'wss://');
+                } else if (apiBase.startsWith('http://')) {
+                    wsBase = apiBase.replace('http://', 'ws://');
+                } else {
+                    // Handle protocol-relative or other formats if necessary
+                    // Fallback to window.location if protocol is missing but it's an absolute URL
+                    const isSecure = window.location.protocol === 'https:';
+                    wsBase = `${isSecure ? 'wss:' : 'ws:'}//${apiBase}`;
+                }
+            } else {
+                // Default to current host
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                wsBase = `${protocol}//${window.location.host}`;
+            }
+
+            setWsUrl(`${wsBase}/api/ws`);
         }
     }, []);
 

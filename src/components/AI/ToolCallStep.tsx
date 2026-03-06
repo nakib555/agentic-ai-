@@ -9,11 +9,13 @@ import React, { useState } from 'react';
 import { motion as motionTyped } from 'framer-motion';
 const motion = motionTyped as any;
 import type { ToolCallEvent } from '../../types';
-import { ManualCodeRenderer } from '../Markdown/ManualCodeRenderer';
 import { WorkflowMarkdownComponents } from '../Markdown/markdownComponents';
+
+const ManualCodeRenderer = React.lazy(() => import('../Markdown/ManualCodeRenderer').then(m => ({ default: m.ManualCodeRenderer })));
 import { LocationPermissionRequest } from './LocationPermissionRequest';
-import { MapDisplay } from './MapDisplay';
 import { ImageDisplay } from './ImageDisplay';
+
+const MapDisplay = React.lazy(() => import('./MapDisplay').then(m => ({ default: m.MapDisplay })));
 import { VideoDisplay } from './VideoDisplay';
 import { ErrorDisplay } from '../UI/ErrorDisplay';
 import { CodeExecutionResult } from './CodeExecutionResult';
@@ -56,7 +58,11 @@ const ToolResultDisplay: React.FC<ToolResultDisplayProps> = ({ result, sendMessa
     if (mapMatch && mapMatch[1]) {
         try {
             const mapData = JSON.parse(mapMatch[1]);
-            return <MapDisplay {...mapData} />;
+            return (
+                <React.Suspense fallback={<div className="h-64 bg-gray-100 dark:bg-white/5 rounded-lg animate-pulse" />}>
+                    <MapDisplay {...mapData} />
+                </React.Suspense>
+            );
         } catch (e) {
             return <ErrorDisplay error={{ message: 'Failed to render map component.', details: `Invalid JSON: ${e}` }} />;
         }
@@ -72,7 +78,9 @@ const ToolResultDisplay: React.FC<ToolResultDisplayProps> = ({ result, sendMessa
                     <BrowserSessionDisplay {...browserData} />
                     {restOfContent && (
                          <div className="mt-4 p-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg">
-                            <ManualCodeRenderer text={restOfContent.length > RESULT_TRUNCATE_LENGTH && !isExpanded ? `${restOfContent.substring(0, RESULT_TRUNCATE_LENGTH)}...` : restOfContent} components={WorkflowMarkdownComponents} isStreaming={false} />
+                            <React.Suspense fallback={<div className="h-4 bg-gray-100 dark:bg-white/5 rounded w-1/2 animate-pulse" />}>
+                                <ManualCodeRenderer text={restOfContent.length > RESULT_TRUNCATE_LENGTH && !isExpanded ? `${restOfContent.substring(0, RESULT_TRUNCATE_LENGTH)}...` : restOfContent} components={WorkflowMarkdownComponents} isStreaming={false} />
+                            </React.Suspense>
                              {restOfContent.length > RESULT_TRUNCATE_LENGTH && (
                                 <button
                                     onClick={() => setIsExpanded(!isExpanded)}
@@ -154,7 +162,9 @@ const ToolResultDisplay: React.FC<ToolResultDisplayProps> = ({ result, sendMessa
             <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">Output</p>
             <div className="p-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg shadow-sm">
                 <div className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 workflow-markdown font-mono break-words whitespace-pre-wrap">
-                    <ManualCodeRenderer text={displayedResult} components={WorkflowMarkdownComponents} isStreaming={false} />
+                    <React.Suspense fallback={<div className="h-4 bg-gray-100 dark:bg-white/5 rounded w-1/2 animate-pulse" />}>
+                        <ManualCodeRenderer text={displayedResult} components={WorkflowMarkdownComponents} isStreaming={false} />
+                    </React.Suspense>
                 </div>
                 {isLongResult && (
                     <button
@@ -192,7 +202,11 @@ export const ToolCallStep = ({ event, sendMessage, onRegenerate, messageId }: To
     // Special rendering for the 'displayMap' tool call to embed the map directly.
     if (call.name === 'displayMap' && args) {
         const { location, latitude, longitude, zoom, markerText } = args as { location?: string, latitude?: number, longitude?: number, zoom?: number, markerText?: string };
-        return <MapDisplay location={location} latitude={latitude} longitude={longitude} zoom={zoom ?? 13} markerText={markerText} />;
+        return (
+            <React.Suspense fallback={<div className="h-64 bg-gray-100 dark:bg-white/5 rounded-lg animate-pulse" />}>
+                <MapDisplay location={location} latitude={latitude} longitude={longitude} zoom={zoom ?? 13} markerText={markerText} />
+            </React.Suspense>
+        );
     }
     
     // Special rendering for live browser session

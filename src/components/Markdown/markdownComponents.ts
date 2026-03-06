@@ -12,7 +12,8 @@ import { InlineCode } from './InlineCode';
 import { StyledMark } from './StyledMark';
 import { Collapsible } from './Collapsible';
 import { ChecklistItem } from './ChecklistItem';
-import { UniversalChart } from '../AI/UniversalChart';
+
+const UniversalChart = React.lazy(() => import('../AI/UniversalChart').then(m => ({ default: m.UniversalChart })));
 
 // Custom Blockquote component that acts as a router for Callouts and Bubbles
 const BlockquoteRouter = (props: any) => {
@@ -111,11 +112,15 @@ export const getMarkdownComponents = (options: MarkdownOptions = {}) => ({
 
             // --- Custom Chart Renderer Hook ---
             if (language === 'echarts' || language === 'chart') {
-                return React.createElement(UniversalChart, { 
-                    code: codeContent, 
-                    isStreaming: options.isStreaming,
-                    onFixCode: options.onFixCode
-                });
+                return React.createElement(
+                    React.Suspense,
+                    { fallback: React.createElement('div', { className: "animate-pulse h-64 bg-gray-100 dark:bg-white/5 rounded-lg my-4" }) },
+                    React.createElement(UniversalChart, { 
+                        code: codeContent, 
+                        isStreaming: options.isStreaming,
+                        onFixCode: options.onFixCode
+                    })
+                );
             }
 
             return React.createElement(CodeBlock, { 
