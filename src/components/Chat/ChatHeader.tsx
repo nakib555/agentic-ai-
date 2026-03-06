@@ -118,7 +118,7 @@ export const ChatHeader = ({
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            setWsUrl(`${protocol}//${window.location.host}`);
+            setWsUrl(`${protocol}//${window.location.host}/api/ws`);
         }
     }, []);
 

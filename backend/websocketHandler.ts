@@ -2,9 +2,18 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { Server } from 'http';
 
 let wss: WebSocketServer | null = null;
+let intervalId: NodeJS.Timeout | null = null;
 
 export function initWebSocket(server: Server) {
-  wss = new WebSocketServer({ server });
+  if (intervalId) {
+    clearInterval(intervalId);
+  }
+  
+  if (wss) {
+    wss.close();
+  }
+
+  wss = new WebSocketServer({ server, path: '/api/ws' });
 
   wss.on('connection', (ws: WebSocket) => {
     console.log('[WS] Client connected');
@@ -24,7 +33,7 @@ export function initWebSocket(server: Server) {
   });
 
   // Broadcast time every second
-  setInterval(() => {
+  intervalId = setInterval(() => {
     broadcast({ type: 'time', content: new Date().toISOString() });
   }, 1000);
 

@@ -181,7 +181,11 @@ async function startServer() {
 
   const server = app.listen(PORT, () => {
     console.log(`[SERVER] Backend API is running on port ${PORT}`);
-    initWebSocket(server);
+    try {
+      initWebSocket(server);
+    } catch (err) {
+      console.error('[SERVER] Failed to initialize WebSocket server:', err);
+    }
   });
 }
 
