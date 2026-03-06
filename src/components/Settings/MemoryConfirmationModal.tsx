@@ -26,7 +26,7 @@ type MemoryConfirmationModalProps = {
 
 export const MemoryConfirmationModal: React.FC<MemoryConfirmationModalProps> = ({ isOpen, suggestions, onConfirm, onCancel }) => {
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onCancel()}>
+    <Dialog open={isOpen} onOpenChange={(open: boolean) => !open && onCancel()}>
       <DialogContent className="sm:max-w-md bg-white dark:bg-layer-1 border border-gray-200 dark:border-white/10 shadow-xl">
         <DialogHeader className="flex flex-row items-start gap-4 space-y-0">
           <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center flex-shrink-0 mt-1">

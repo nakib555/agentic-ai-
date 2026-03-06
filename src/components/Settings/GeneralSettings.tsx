@@ -152,13 +152,13 @@ const OllamaHostForm = ({ value, onSave }: { value: string, onSave: (host: strin
                 <Input 
                     type="text" 
                     value={host}
-                    onChange={(e) => setHost(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setHost(e.target.value)}
                     placeholder="http://localhost:11434"
                     autoComplete="off"
                     autoCapitalize="off"
                     autoCorrect="off"
                     spellCheck="false"
-                    onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+                    onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleSave()}
                 />
                 <Button
                     onClick={handleSave}
@@ -325,7 +325,7 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
                             autoCapitalize="off"
                             autoCorrect="off"
                             spellCheck="false"
-                            onBlur={(e) => onSaveServerUrl(e.target.value)}
+                            onBlur={(e: React.FocusEvent<HTMLInputElement>) => onSaveServerUrl(e.target.value)}
                             className={isCustomUrl ? 'border-amber-400 bg-amber-50 dark:bg-amber-900/10' : ''}
                         />
                         {isCustomUrl && (

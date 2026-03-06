@@ -118,7 +118,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = (props) => {
   const [activeTab, setActiveTab] = useState('general');
 
   return (
-    <Dialog open={props.isOpen} onOpenChange={props.onClose}>
+    <Dialog open={props.isOpen} onOpenChange={(open: boolean) => !open && props.onClose()}>
       <DialogContent 
         className="fixed left-[50%] top-[50%] z-50 grid w-[95vw] max-w-4xl translate-x-[-50%] translate-y-[-50%] gap-0 border border-border-default bg-page p-0 shadow-2xl duration-200 h-[85dvh] md:h-[80dvh] flex flex-col overflow-hidden rounded-2xl focus:outline-none [&>button]:hidden"
       >

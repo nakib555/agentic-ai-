@@ -167,7 +167,7 @@ export const ImportChatModal: React.FC<ImportChatModalProps> = ({ isOpen, onClos
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open: boolean) => !open && onClose()}>
       <DialogContent 
         className="fixed left-[50%] top-[50%] z-50 flex w-[95vw] max-w-2xl translate-x-[-50%] translate-y-[-50%] flex-col overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 shadow-2xl dark:bg-layer-1 max-h-[85dvh] p-0 focus:outline-none [&>button]:hidden"
         style={{ height: '600px' }}

@@ -351,7 +351,7 @@ export const MemoryModal: React.FC<MemoryModalProps> = ({ isOpen, onClose, memor
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open: boolean) => !open && onClose()}>
         <DialogContent 
             className="fixed left-[50%] top-[50%] z-50 grid w-[95vw] max-w-4xl translate-x-[-50%] translate-y-[-50%] gap-0 border border-border-default bg-page p-0 shadow-2xl duration-200 h-[85dvh] md:h-[80dvh] flex flex-col overflow-hidden rounded-2xl focus:outline-none [&>button]:hidden"
         >
