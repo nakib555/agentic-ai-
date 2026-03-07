@@ -74,8 +74,8 @@ export default defineConfig(({ mode }) => {
     // Fallback version if not provided by build system
     const appVersion = process.env.APP_VERSION || 'v1.0.0';
     
-    // Prioritize VITE_API_BASE_URL, fallback to API_BASE_URL or BACKEND_URL, then an empty string for relative paths.
-    const apiBaseUrl = env.VITE_API_BASE_URL || env.API_BASE_URL || env.BACKEND_URL || '';
+    // Prioritize VITE_API_BASE_URL, fallback to empty string for relative paths.
+    const apiBaseUrl = env.VITE_API_BASE_URL || '';
 
     return {
       server: {
