@@ -35,17 +35,38 @@ export const parseMessageText = (text: string, isThinking: boolean, hasError: bo
     return { thinkingText, finalAnswerText };
   }
 
-  // Rule 2: Active Thinking / Streaming
-  // If the model is still generating, and we haven't seen a final answer marker yet,
-  // we assume everything so far is part of the thought process/agent log.
-  // This keeps the main chat bubble clean while the "Thinking..." accordion or sidebar updates.
-  if (isThinking) {
-    return { thinkingText: text, finalAnswerText: '' };
+  // Rule 1.5: Support for <think> tags (DeepSeek, etc.)
+  if (text.includes('<think>')) {
+    const thinkStartIndex = text.indexOf('<think>');
+    const thinkEndIndex = text.indexOf('</think>');
+    
+    if (thinkEndIndex !== -1) {
+      // Thinking is complete
+      const thinkingText = text.substring(thinkStartIndex + 7, thinkEndIndex).trim();
+      const finalAnswerText = text.substring(thinkEndIndex + 8).trim();
+      return { thinkingText, finalAnswerText };
+    } else {
+      // Still thinking
+      const thinkingText = text.substring(thinkStartIndex + 7).trim();
+      return { thinkingText, finalAnswerText: '' };
+    }
   }
 
-  // Rule 3: Generation Stopped (Finished or Error) WITHOUT Final Answer Marker
-  // This handles cases where the model crashed, was interrupted, or just didn't follow protocol.
-  // We fallback to showing the entire text as the final answer to ensure the user sees *something*
-  // rather than an empty bubble. The sidebar will be empty in this case, but visibility is priority.
-  return { thinkingText: '', finalAnswerText: text.trim() };
+  // Rule 2: Active Thinking / Streaming (Agentic)
+  // If the model is still generating, and we haven't seen a final answer marker yet,
+  // we assume everything so far is part of the thought process/agent log ONLY IF it contains a [STEP] marker.
+  // Otherwise, it's a normal chat stream and should be shown immediately.
+  const isAgentic = text.includes('[STEP]');
+
+  if (isAgentic) {
+    if (isThinking) {
+      return { thinkingText: text, finalAnswerText: '' };
+    }
+    // Rule 3: Generation Stopped (Finished or Error) WITHOUT Final Answer Marker
+    // This handles cases where the model crashed, was interrupted, or just didn't follow protocol.
+    return { thinkingText: '', finalAnswerText: text.trim() };
+  }
+
+  // Normal Chat Stream: Everything is the final answer, streamed in real-time.
+  return { thinkingText: '', finalAnswerText: text };
 };
