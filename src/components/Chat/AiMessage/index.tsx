@@ -21,6 +21,7 @@ import { SuggestedActions } from '../SuggestedActions';
 import type { MessageFormHandle } from '../MessageForm/index';
 import { useAiMessageLogic } from './useAiMessageLogic';
 import { MessageToolbar } from './MessageToolbar';
+import { ThinkingProcess } from './ThinkingProcess';
 import { BrowserSessionDisplay } from '../../AI/BrowserSessionDisplay';
 import { parseContentSegments } from '../../../utils/workflowParsing';
 import { CodeExecutionResult } from '../../AI/CodeExecutionResult';
@@ -257,6 +258,15 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
         >
           {logic.isWaitingForFinalAnswer && <TypingIndicator />}
           
+          {logic.hasThinkingText && (
+              <ThinkingProcess 
+                  thinkingText={logic.thinkingText} 
+                  isThinking={msg.isThinking ?? false} 
+                  startTime={logic.startTime} 
+                  endTime={logic.endTime} 
+              />
+          )}
+
           {/* Only show error if NOT stopped by user */}
           {activeResponse?.error && !isStoppedByUser && (
               <ErrorDisplay error={activeResponse.error} onRetry={() => onRegenerate(id)} />

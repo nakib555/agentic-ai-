@@ -57,7 +57,7 @@ export const useAiMessageLogic = (
 
     const isStreamingFinalAnswer = !!isThinking && hasFinalAnswer && !activeResponse?.error;
     
-    const isWaitingForFinalAnswer = !!isThinking && !hasFinalAnswer && !activeResponse?.error;
+    const isWaitingForFinalAnswer = !!isThinking && !hasFinalAnswer && !hasThinkingText && !activeResponse?.error;
     
     return {
         activeResponse, 

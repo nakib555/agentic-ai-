@@ -58,10 +58,15 @@ export const processBackendStream = async (response: Response, callbacks: Stream
 
     // Helper to read with a timeout to prevent infinite hanging
     const readWithTimeout = async () => {
+        let timeoutId: any;
         const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error("Stream timeout: No data received from backend")), WATCHDOG_TIMEOUT_MS);
+            timeoutId = setTimeout(() => reject(new Error("Stream timeout: No data received from backend")), WATCHDOG_TIMEOUT_MS);
         });
-        return Promise.race([reader.read(), timeoutPromise]);
+        try {
+            return await Promise.race([reader.read(), timeoutPromise]);
+        } finally {
+            clearTimeout(timeoutId);
+        }
     };
 
     try {
