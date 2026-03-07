@@ -92,14 +92,19 @@ export const Tooltip: React.FC<TooltipProps> = ({
   useEffect(() => {
     if (!isVisible) return;
     
+    let rafId: number;
     const handleUpdate = () => {
-        updatePosition();
+        cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(() => {
+            updatePosition();
+        });
     };
     
     window.addEventListener('scroll', handleUpdate, true);
     window.addEventListener('resize', handleUpdate);
     
     return () => {
+        cancelAnimationFrame(rafId);
         window.removeEventListener('scroll', handleUpdate, true);
         window.removeEventListener('resize', handleUpdate);
     };

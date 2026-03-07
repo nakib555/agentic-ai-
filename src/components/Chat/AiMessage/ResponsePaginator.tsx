@@ -31,7 +31,7 @@ export const ResponsePaginator: React.FC<ResponsePaginatorProps> = ({ count, act
   };
 
   return (
-    <div className="flex items-center gap-1.5 p-1 pr-1.5 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-slate-200 dark:border-white/10 rounded-full shadow-sm select-none mr-2">
+    <div className="flex items-center gap-1.5 p-1 pr-1.5 bg-white/90 dark:bg-black/80 border border-slate-200 dark:border-white/10 rounded-full shadow-sm select-none mr-2">
         <motion.button
             onClick={handlePrev}
             disabled={activeIndex === 0}

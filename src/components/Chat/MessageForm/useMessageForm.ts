@@ -83,44 +83,6 @@ export const useMessageForm = (
     const timer = setTimeout(save, 500);
     return () => clearTimeout(timer);
   }, [inputValue]);
-  
-  // Optimized Resize Logic with RAF to prevent forced synchronous reflow
-  useLayoutEffect(() => {
-    const element = inputRef.current;
-    if (!element) return;
-
-    const rafId = requestAnimationFrame(() => {
-        const currentLength = inputValue.length;
-        const isDeleting = currentLength < prevValueLength.current;
-        prevValueLength.current = currentLength;
-
-        // Reset to auto ONLY if deleting or empty to allow shrinkage.
-        // Doing this inside RAF batches the DOM write with the subsequent read.
-        if (isDeleting || currentLength === 0) {
-            element.style.height = 'auto';
-        }
-        
-        const scrollHeight = element.scrollHeight;
-        
-        const MAX_HEIGHT_PX = 120;
-        const SINGLE_LINE_THRESHOLD = 32; 
-        
-        const shouldBeExpanded = scrollHeight > SINGLE_LINE_THRESHOLD || fileHandling.processedFiles.length > 0;
-        if (isExpanded !== shouldBeExpanded) {
-            setIsExpanded(shouldBeExpanded);
-        }
-        
-        if (scrollHeight > MAX_HEIGHT_PX) {
-            element.style.height = `${MAX_HEIGHT_PX}px`;
-            element.style.overflowY = 'auto';
-        } else {
-            element.style.height = `${scrollHeight}px`;
-            element.style.overflowY = 'hidden';
-        }
-    });
-
-    return () => cancelAnimationFrame(rafId);
-  }, [inputValue, fileHandling.processedFiles.length, isExpanded]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

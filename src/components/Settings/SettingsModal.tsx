@@ -126,7 +126,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = (props) => {
         <DialogDescription className="sr-only">Configure application settings, API keys, and models.</DialogDescription>
         
         {/* Header Section */}
-        <div className="flex-shrink-0 border-b border-border-default bg-layer-1/50 backdrop-blur-xl z-20">
+        <div className="flex-shrink-0 border-b border-border-default bg-layer-1/90 z-20">
             <div className="flex items-center justify-between px-6 pt-5 pb-2">
                 <h2 className="text-xl font-bold text-content-primary tracking-tight">Settings</h2>
                 <DialogClose className="p-2 -mr-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500">

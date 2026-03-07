@@ -213,7 +213,7 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({ error, onRetry }) =>
       <motion.div 
         initial={{ opacity: 0, y: 5, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        className={`w-full border p-4 rounded-2xl shadow-sm backdrop-blur-sm ${styles.container}`}
+        className={`w-full border p-4 rounded-2xl shadow-sm bg-white/90 dark:bg-black/80 ${styles.container}`}
         role="alert"
       >
         <div className="flex items-start gap-4">

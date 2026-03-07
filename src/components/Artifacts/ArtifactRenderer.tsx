@@ -152,7 +152,7 @@ export const ArtifactRenderer: React.FC<ArtifactRendererProps> = ({ type, conten
 
     return (
         <div className="my-4 rounded-xl overflow-hidden border border-border-default shadow-lg bg-code-surface transition-colors duration-300">
-            <div className="flex items-center justify-between px-4 py-2 bg-layer-2/50 border-b border-border-default backdrop-blur-sm">
+            <div className="flex items-center justify-between px-4 py-2 bg-layer-2 border-b border-border-default">
                 <span className="text-xs font-bold uppercase tracking-wider text-content-secondary">
                     {title || (type === 'code' ? 'Code Snippet' : 'Data View')}
                 </span>

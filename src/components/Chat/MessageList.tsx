@@ -214,7 +214,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(({
           >
             <button
                 onClick={handleScrollToBottom}
-                className="pointer-events-auto group flex items-center gap-2 px-4 py-2.5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md text-sm font-semibold text-gray-700 dark:text-gray-200 shadow-xl hover:shadow-2xl border border-gray-200/50 dark:border-white/10 rounded-full transition-all transform hover:-translate-y-1 active:scale-95 ring-1 ring-black/5 dark:ring-white/5"
+                className="pointer-events-auto group flex items-center gap-2 px-4 py-2.5 bg-white/90 dark:bg-gray-800/90 text-sm font-semibold text-gray-700 dark:text-gray-200 shadow-xl hover:shadow-2xl border border-gray-200/50 dark:border-white/10 rounded-full transition-all transform hover:-translate-y-1 active:scale-95 ring-1 ring-black/5 dark:ring-white/5"
                 aria-label="Scroll to latest messages"
             >
                 {!atBottom && isLoading && (

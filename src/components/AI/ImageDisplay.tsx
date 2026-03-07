@@ -75,7 +75,7 @@ export const ImageDisplay: React.FC<ImageDisplayProps> = ({ srcUrl, prompt, capt
           </div>
         )}
       </div>
-      <div className="p-4 bg-gray-50 dark:bg-black/20 backdrop-blur-sm border-t border-gray-200 dark:border-slate-200/10 flex items-start justify-between gap-4">
+      <div className="p-4 bg-gray-50 dark:bg-black/20 border-t border-gray-200 dark:border-slate-200/10 flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
             {displayCaption && (
               <p className="font-serif italic text-gray-600 dark:text-slate-300 break-words" title={`Full prompt: ${prompt}`}>

@@ -49,7 +49,7 @@ export const AppSkeleton = () => {
       {/* Main Content Ghost */}
       <div className="flex-1 flex flex-col min-w-0 bg-page relative z-10">
         {/* Chat Header */}
-        <div className="h-16 border-b border-border flex items-center justify-between px-6 flex-shrink-0 bg-page/80 backdrop-blur-none md:backdrop-blur-sm">
+        <div className="h-16 border-b border-border flex items-center justify-between px-6 flex-shrink-0 bg-page/90">
            <Skeleton className="h-8 w-48 rounded-full" />
            <Skeleton className="h-10 w-10 rounded-full" />
         </div>

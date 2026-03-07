@@ -258,7 +258,7 @@ export const ImportChatModal: React.FC<ImportChatModalProps> = ({ isOpen, onClos
                         </div>
                         
                         <div className="flex-1 min-h-0 rounded-xl bg-slate-200/50 dark:bg-black/30 border border-slate-300/50 dark:border-white/5 shadow-inner flex flex-col overflow-hidden">
-                            <div className="px-4 py-2.5 bg-slate-200 dark:bg-white/5 border-b border-slate-300/50 dark:border-white/5 flex justify-between items-center z-10 backdrop-blur-sm shrink-0">
+                            <div className="px-4 py-2.5 bg-slate-200/90 dark:bg-white/10 border-b border-slate-300/50 dark:border-white/5 flex justify-between items-center z-10 shrink-0">
                                 <p className="text-xs font-semibold text-slate-500 dark:text-gray-400 font-mono flex items-center gap-2">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M4.5 2A1.5 1.5 0 0 0 3 3.5v13A1.5 1.5 0 0 0 4.5 18h11a1.5 1.5 0 0 0 1.5-1.5V7.621a1.5 1.5 0 0 0-.44-1.06l-4.12-4.122A1.5 1.5 0 0 0 11.378 2H4.5Zm2.25 8.5a.75.75 0 0 0 0 1.5h6.5a.75.75 0 0 0 0-1.5h-6.5Zm0 3a.75.75 0 0 0 0 1.5h6.5a.75.75 0 0 0 0-1.5h-6.5Z" clipRule="evenodd" /></svg>
                                 example-chat.json

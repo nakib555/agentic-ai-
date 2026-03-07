@@ -180,7 +180,7 @@ export const ChatHeader = ({
                                 initial={{ opacity: 0, y: -10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -10 }}
-                                className="inline-block text-sm font-semibold text-gray-800 dark:text-slate-200 px-4 py-2 rounded-full bg-white/60 dark:bg-black/20 border border-slate-200/80 dark:border-white/10 shadow-sm min-h-[32px] backdrop-blur-none md:backdrop-blur-md" title={chatTitle}>
+                                className="inline-block text-sm font-semibold text-gray-800 dark:text-slate-200 px-4 py-2 rounded-full bg-white/90 dark:bg-black/80 border border-slate-200/80 dark:border-white/10 shadow-sm min-h-[32px]" title={chatTitle}>
                                 
                                 {isAnimatingTitle && animationKey ? (
                                     <TextType
@@ -203,7 +203,7 @@ export const ChatHeader = ({
                 {/* --- Right: Options --- */}
                 <div className="flex-shrink-0 flex items-center gap-3">
                     {/* Real-time Indicator */}
-                    <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/50 dark:bg-black/20 border border-slate-200/50 dark:border-white/5 backdrop-blur-sm shadow-sm">
+                    <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/90 dark:bg-black/80 border border-slate-200/50 dark:border-white/5 shadow-sm">
                         <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
                         <span className="text-[10px] font-mono font-medium text-slate-500 dark:text-slate-400 tabular-nums">
                             {isConnected && lastMessage?.type === 'time' 

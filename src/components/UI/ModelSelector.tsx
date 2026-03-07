@@ -149,14 +149,23 @@ export const ModelSelector: React.FC<ModelSelectorProps> = React.memo(({
             }
         };
 
+        let rafId: number;
+        const handleUpdate = () => {
+            cancelAnimationFrame(rafId);
+            rafId = requestAnimationFrame(() => {
+                updatePosition();
+            });
+        };
+
         document.addEventListener('mousedown', handleClickOutside);
-        window.addEventListener('resize', updatePosition);
-        window.addEventListener('scroll', updatePosition, true); 
+        window.addEventListener('resize', handleUpdate);
+        window.addEventListener('scroll', handleUpdate, true); 
         
         return () => {
+            cancelAnimationFrame(rafId);
             document.removeEventListener('mousedown', handleClickOutside);
-            window.removeEventListener('resize', updatePosition);
-            window.removeEventListener('scroll', updatePosition, true);
+            window.removeEventListener('resize', handleUpdate);
+            window.removeEventListener('scroll', handleUpdate, true);
         };
     }
   }, [isOpen, updatePosition]);

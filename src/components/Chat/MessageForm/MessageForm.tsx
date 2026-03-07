@@ -206,21 +206,30 @@ export const MessageForm = forwardRef<MessageFormHandle, MessageFormProps>((prop
                </div>
             )}
             
-            <textarea
-                id="main-chat-input"
-                ref={logic.inputRef}
-                value={logic.inputValue}
-                onChange={(e) => logic.setInputValue(e.target.value)}
-                onKeyDown={logic.handleKeyDown}
-                onPaste={logic.handlePaste}
-                onFocus={() => logic.setIsFocused(true)}
-                onBlur={() => logic.setIsFocused(false)}
-                disabled={isGeneratingResponse}
-                rows={1}
-                aria-label="Message Input"
-                className="w-full bg-transparent text-content-primary px-4 pt-3 pb-2 max-h-[120px] focus:outline-none resize-none overflow-y-auto leading-relaxed custom-scrollbar placeholder:text-transparent z-10"
-                style={{ minHeight: '3rem' }}
-            />
+            <div className="grid w-full relative">
+                <div 
+                    className="w-full px-4 pt-3 pb-2 leading-relaxed invisible whitespace-pre-wrap break-words col-start-1 row-start-1"
+                    style={{ minHeight: '3rem', maxHeight: '120px' }}
+                    aria-hidden="true"
+                >
+                    {logic.inputValue + ' '}
+                </div>
+                <textarea
+                    id="main-chat-input"
+                    ref={logic.inputRef}
+                    value={logic.inputValue}
+                    onChange={(e) => logic.setInputValue(e.target.value)}
+                    onKeyDown={logic.handleKeyDown}
+                    onPaste={logic.handlePaste}
+                    onFocus={() => logic.setIsFocused(true)}
+                    onBlur={() => logic.setIsFocused(false)}
+                    disabled={isGeneratingResponse}
+                    rows={1}
+                    aria-label="Message Input"
+                    className="w-full bg-transparent text-content-primary px-4 pt-3 pb-2 max-h-[120px] focus:outline-none resize-none overflow-y-auto leading-relaxed custom-scrollbar placeholder:text-transparent z-10 col-start-1 row-start-1 h-full"
+                    style={{ minHeight: '3rem' }}
+                />
+            </div>
         </div>
 
         {/* Bottom Toolbar */}

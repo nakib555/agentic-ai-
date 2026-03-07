@@ -108,7 +108,7 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({ isRecording })
     if (!isRecording) return null;
 
     return (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-none md:backdrop-blur-sm z-50 rounded-xl">
+        <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-50 rounded-xl">
             <div className="bg-white dark:bg-[#1e1e1e] p-4 rounded-2xl shadow-2xl flex flex-col items-center gap-2 border border-white/10">
                 <canvas ref={canvasRef} width={200} height={60} className="w-48 h-16" />
                 <span className="text-xs font-bold text-red-500 animate-pulse uppercase tracking-wider">Listening...</span>

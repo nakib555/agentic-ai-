@@ -153,7 +153,7 @@ export const AttachedFilePreview: React.FC<AttachedFilePreviewProps> = ({ file, 
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center z-10"
+                            className="absolute inset-0 bg-black/60 flex items-center justify-center z-10"
                         >
                             <svg className="w-6 h-6 -rotate-90 text-white" viewBox="0 0 36 36">
                                 <path
@@ -180,7 +180,7 @@ export const AttachedFilePreview: React.FC<AttachedFilePreviewProps> = ({ file, 
 
                 {/* Error Overlay */}
                 {hasFailed && (
-                    <div className="absolute inset-0 bg-white/80 dark:bg-black/60 flex items-center justify-center backdrop-blur-[1px]">
+                    <div className="absolute inset-0 bg-white/80 dark:bg-black/60 flex items-center justify-center">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6 text-red-500 drop-shadow-sm">
                             <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
                         </svg>

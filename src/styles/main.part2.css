@@ -90,15 +90,11 @@ html, body {
 /* Enhanced Glassmorphism - Active on ALL devices now */
 .glass-panel {
   background: var(--bg-glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border-subtle);
 }
 
 .glass-input {
   background: var(--bg-input);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border-default);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }

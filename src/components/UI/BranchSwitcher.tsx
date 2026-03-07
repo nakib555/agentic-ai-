@@ -37,7 +37,7 @@ export const BranchSwitcher: React.FC<BranchSwitcherProps> = ({ count, activeInd
 
   return (
     <div 
-        className={`flex items-center gap-1.5 p-1 pr-1.5 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-slate-200 dark:border-white/10 rounded-full shadow-sm select-none ${className}`}
+        className={`flex items-center gap-1.5 p-1 pr-1.5 bg-white/90 dark:bg-black/80 border border-slate-200 dark:border-white/10 rounded-full shadow-sm select-none ${className}`}
         onClick={(e) => e.stopPropagation()}
     >
         <motion.button

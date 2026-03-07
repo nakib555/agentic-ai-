@@ -132,7 +132,7 @@ type AppModalsProps = {
 
 // Global Fallback for modal chunks loading
 const ModalLoadingFallback = () => (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/10 backdrop-blur-[2px]">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40">
         <div className="bg-white dark:bg-layer-1 p-3 rounded-2xl shadow-xl border border-gray-200 dark:border-white/10">
             <svg className="animate-spin h-6 w-6 text-indigo-600 dark:text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>

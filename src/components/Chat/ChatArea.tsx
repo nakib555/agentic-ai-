@@ -187,7 +187,7 @@ export const ChatArea = ({
             exit={{ opacity: 0 }}
             className="absolute inset-0 bg-indigo-500/10 dark:bg-indigo-400/10 border-2 border-dashed border-indigo-500 dark:border-indigo-400 rounded-2xl z-30 flex items-center justify-center m-4 pointer-events-none"
           >
-            <div className="text-center font-bold text-indigo-600 dark:text-indigo-300 bg-white/80 dark:bg-black/80 px-6 py-4 rounded-xl shadow-lg backdrop-blur-sm">
+            <div className="text-center font-bold text-indigo-600 dark:text-indigo-300 bg-white/90 dark:bg-black/90 px-6 py-4 rounded-xl shadow-lg">
               <p className="text-lg">Drop files to attach</p>
             </div>
           </motion.div>

@@ -314,7 +314,7 @@ const PersonalizeSettings: React.FC<PersonalizeSettingsProps> = ({
                         Reset Defaults
                     </button>
                     
-                    <div className="flex items-center gap-2.5 px-4 py-2 bg-white/80 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/10 shadow-sm backdrop-blur-sm">
+                    <div className="flex items-center gap-2.5 px-4 py-2 bg-white/90 dark:bg-white/10 rounded-xl border border-slate-200 dark:border-white/10 shadow-sm">
                         {saveState === 'saved' ? (
                             <>
                                 <svg className="w-3.5 h-3.5 text-green-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">

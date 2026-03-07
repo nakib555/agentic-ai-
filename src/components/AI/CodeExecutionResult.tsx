@@ -61,7 +61,7 @@ export const CodeExecutionResult: React.FC<CodeExecutionResultProps> = ({ output
   return (
     <div className="my-6 rounded-xl overflow-hidden border border-gray-200 dark:border-white/10 bg-white dark:bg-[#09090b] shadow-sm">
       {/* Terminal Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-gray-50/80 dark:bg-[#18181b] border-b border-gray-200 dark:border-white/5 backdrop-blur-sm">
+      <div className="flex items-center justify-between px-4 py-3 bg-gray-50/80 dark:bg-[#18181b] border-b border-gray-200 dark:border-white/5">
         <div className="flex items-center gap-4">
             {/* Window Controls */}
             <div className="flex gap-1.5">

@@ -45,8 +45,6 @@ export const UserMessage = ({
               // Defer focus slightly to ensure DOM is ready
               setTimeout(() => {
                   if (textareaRef.current) {
-                      textareaRef.current.style.height = 'auto';
-                      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
                       textareaRef.current.focus();
                       // Move cursor to end
                       textareaRef.current.setSelectionRange(textareaRef.current.value.length, textareaRef.current.value.length);
@@ -91,18 +89,22 @@ export const UserMessage = ({
       return (
         <div className="w-full flex justify-end pb-2">
             <div className="w-full max-w-[85%] sm:max-w-[80%] bg-layer-2 rounded-2xl border border-primary-main shadow-md p-3 flex flex-col gap-2">
-               <textarea 
-                    ref={textareaRef}
-                    value={editText}
-                    onChange={(e) => {
-                        setEditedText(e.target.value);
-                        e.target.style.height = 'auto';
-                        e.target.style.height = `${e.target.scrollHeight}px`;
-                    }}
-                    onKeyDown={handleKeyDown}
-                    className="w-full bg-transparent text-content-primary resize-none focus:outline-none text-base leading-relaxed p-1"
-                    rows={1}
-               />
+               <div className="grid w-full">
+                   <div 
+                       className="w-full bg-transparent text-content-primary text-base leading-relaxed p-1 invisible whitespace-pre-wrap break-words col-start-1 row-start-1"
+                       aria-hidden="true"
+                   >
+                       {editText + ' '}
+                   </div>
+                   <textarea 
+                        ref={textareaRef}
+                        value={editText}
+                        onChange={(e) => setEditedText(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        className="w-full bg-transparent text-content-primary resize-none focus:outline-none text-base leading-relaxed p-1 col-start-1 row-start-1 h-full overflow-hidden"
+                        rows={1}
+                   />
+               </div>
                <div className="flex justify-end gap-2 mt-1">
                    <button 
                         onClick={handleEditCancel}

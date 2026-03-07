@@ -33,7 +33,7 @@ export const VersionMismatchOverlay: React.FC = () => {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="fixed inset-0 bg-black/70 backdrop-blur-none md:backdrop-blur-sm z-[100] flex items-center justify-center p-4 text-center"
+      className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 text-center"
       aria-live="assertive"
       role="alertdialog"
       aria-labelledby="version-mismatch-title"

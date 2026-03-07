@@ -549,7 +549,7 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
                     ${isFullscreen ? 'bg-white dark:bg-black p-0 border-0 rounded-none' : ''}
                 `}
             >
-                <div className={`px-4 py-2 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/5 backdrop-blur-sm ${isFullscreen ? 'hidden' : ''}`}>
+                <div className={`px-4 py-2 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/5 ${isFullscreen ? 'hidden' : ''}`}>
                     <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.6)]"></span>
                         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
@@ -629,7 +629,7 @@ export const UniversalChart: React.FC<UniversalChartProps> = React.memo(({ conte
             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-10">
                 <button 
                     onClick={toggleFullscreen}
-                    className="p-2 bg-white/80 dark:bg-black/50 backdrop-blur rounded-lg text-slate-500 hover:text-indigo-500 shadow-sm transition-colors"
+                    className="p-2 bg-white/90 dark:bg-black/80 rounded-lg text-slate-500 hover:text-indigo-500 shadow-sm transition-colors"
                     title="Fullscreen"
                 >
                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M13.28 7.78l3.22-3.22v2.69a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-.75-.75h-4.5a.75.75 0 0 0 0 1.5h2.69l-3.22 3.22a.75.75 0 0 0 1.06 1.06zM2 17.25v-4.5a.75.75 0 0 1 1.5 0v2.69l3.22-3.22a.75.75 0 1 1 1.06 1.06l-3.22 3.22h2.69a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1-.75-.75z"/></svg>

@@ -33,7 +33,7 @@ export const Toast: React.FC<ToastProps> = ({ message, type = 'info', onClose, d
                     animate={{ opacity: 1, y: 0, x: '-50%' }}
                     exit={{ opacity: 0, y: -20, x: '-50%' }}
                     transition={{ duration: 0.3, ease: 'easeOut' }}
-                    className={`fixed top-6 left-1/2 z-[200] px-4 py-2.5 rounded-full shadow-xl border backdrop-blur-none md:backdrop-blur-md text-sm font-medium flex items-center gap-2.5 pointer-events-none select-none max-w-[calc(100vw-2rem)]
+                    className={`fixed top-6 left-1/2 z-[200] px-4 py-2.5 rounded-full shadow-xl border bg-white/90 dark:bg-black/90 text-sm font-medium flex items-center gap-2.5 pointer-events-none select-none max-w-[calc(100vw-2rem)]
                         ${type === 'error' 
                             ? 'bg-red-50/95 text-red-700 border-red-200 dark:bg-red-900/90 dark:text-red-200 dark:border-red-800' 
                             : type === 'success' 
