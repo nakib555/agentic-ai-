@@ -187,6 +187,7 @@ const WorkflowNodeRaw = ({ node, sendMessage, onRegenerate, messageId, isLast }:
 // Helper for search source extraction (reused from old WorkflowNode)
 const extractSourcesFromSearchResult = (result: string) => {
     try {
+        // Try old format first
         const sourcesMatch = result.match(/\[SOURCES_PILLS\]([\s\S]*?)\[\/SOURCES_PILLS\]/s);
         if (sourcesMatch && sourcesMatch[1]) {
             const regex = /-\s*\[([^\]]+)\]\(([^)]+)\)/g;
@@ -197,6 +198,15 @@ const extractSourcesFromSearchResult = (result: string) => {
             }
             return parsedSources;
         }
+        
+        // Try new format (markdown list)
+        const regex = /\d+\.\s*\*\*\[([^\]]+)\]\(([^)]+)\)\*\*/g;
+        const parsedSources: { uri: string; title: string; }[] = [];
+        let match;
+        while ((match = regex.exec(result)) !== null) {
+            parsedSources.push({ title: match[1].trim(), uri: match[2].trim() });
+        }
+        return parsedSources;
     } catch (e) { return []; }
     return [];
 };

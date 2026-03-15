@@ -22,7 +22,7 @@ type ToolImplementation = (ai: GoogleGenAI, args: any, apiKey: string, chatId: s
 
 const BACKEND_TOOL_IMPLEMENTATIONS: Record<string, ToolImplementation> = {
     'generateImage': (ai, args, apiKey, chatId) => executeImageGenerator(ai, args, chatId),
-    'duckduckgoSearch': (ai, args) => executeWebSearch(ai, args),
+    'duckduckgoSearch': (ai, args, apiKey, chatId, onUpdate) => executeWebSearch(ai, args, onUpdate),
     'browser': (ai, args, apiKey, chatId, onUpdate) => executeBrowser(args, onUpdate), // Pass onUpdate
     'analyzeMapVisually': (ai, args) => executeAnalyzeMapVisually(ai, args),
     'analyzeImageVisually': (ai, args, apiKey, chatId) => executeAnalyzeImageVisually(ai, args, chatId),

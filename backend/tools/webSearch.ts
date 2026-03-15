@@ -13,10 +13,12 @@ function hasProperty<K extends PropertyKey>(obj: unknown, prop: K): obj is Recor
   return typeof obj === 'object' && obj !== null && prop in obj;
 }
 
-export const executeWebSearch = async (ai: GoogleGenAI, args: { query: string }): Promise<string> => {
+export const executeWebSearch = async (ai: GoogleGenAI, args: { query: string }, onUpdate?: (data: any) => void): Promise<string> => {
   if (!args.query || !args.query.trim()) {
       throw new ToolError('duckduckgoSearch', 'MISSING_QUERY', 'Search query cannot be empty.');
   }
+
+  const emit = (data: any) => { if (onUpdate) onUpdate(data); };
 
   try {
     let isUrl = false;
@@ -25,6 +27,7 @@ export const executeWebSearch = async (ai: GoogleGenAI, args: { query: string })
     } catch (_) { /* not a URL */ }
 
     if (isUrl) {
+      emit({ log: `Summarizing URL: ${args.query}...`, status: 'running' });
       const prompt = `You are a specialized URL summarizer. Fetch the content of this URL: "${args.query}".
       
       Output Requirements:
@@ -67,8 +70,10 @@ export const executeWebSearch = async (ai: GoogleGenAI, args: { query: string })
       
       const sourcesMarkdown = uniqueSources.map(s => `- [${s.title}](${s.uri})`).join('\n');
       
+      emit({ log: `Summarization complete.`, status: 'completed' });
       return `${summary}\n\n[SOURCES_PILLS]\n${sourcesMarkdown}\n[/SOURCES_PILLS]`;
     } else {
+      emit({ log: `Searching DuckDuckGo for: "${args.query}"...`, status: 'running' });
       // Perform actual DuckDuckGo HTML search
       const response = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(args.query)}`, {
           headers: {
@@ -80,6 +85,7 @@ export const executeWebSearch = async (ai: GoogleGenAI, args: { query: string })
           throw new Error(`DuckDuckGo returned status ${response.status}`);
       }
       
+      emit({ log: `Parsing search results...`, status: 'running' });
       const html = await response.text();
       const $ = cheerio.load(html);
       const results: { title: string; snippet: string; url: string }[] = [];
@@ -115,10 +121,12 @@ export const executeWebSearch = async (ai: GoogleGenAI, args: { query: string })
           markdownOutput += `${index + 1}. **[${res.title}](${res.url})**\n   ${res.snippet}\n\n`;
       });
       
+      emit({ log: `Found ${results.length} results.`, status: 'completed' });
       return markdownOutput;
     }
     
   } catch (err) {
+    emit({ log: `Search failed.`, status: 'failed' });
     if (err instanceof ToolError) throw err;
     const originalError = err instanceof Error ? err : new Error(String(err));
     throw new ToolError('duckduckgoSearch', 'SEARCH_FAILED', originalError.message, originalError, 'The search request failed. This may be a temporary API issue.');
