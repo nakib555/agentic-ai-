@@ -9,8 +9,6 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { motion, AnimatePresence } from 'framer-motion';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import 'leaflet-control-geocoder/dist/Control.Geocoder.css';
-import { geocoders } from 'leaflet-control-geocoder';
 
 // Fix for default marker icons in Leaflet with webpack/bundlers
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -175,21 +173,18 @@ export const MapDisplay = ({ location, latitude, longitude, zoom = 13, markerTex
     if (location && !position) {
         setSearchState('searching');
         
-        // Use Leaflet Control Geocoder (Nominatim by default)
-        const GeocoderClass = (L.Control as any).Geocoder?.Nominatim || (geocoders as any)?.Nominatim;
-        
-        if (GeocoderClass) {
-            const geocoder = new GeocoderClass();
-            geocoder.geocode(location, (results: any[]) => {
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}`)
+            .then(res => res.json())
+            .then(results => {
                 if (results && results.length > 0) {
                     // Success
                     const bestResult = results[0];
-                    const newCenter: [number, number] = [bestResult.center.lat, bestResult.center.lng];
+                    const newCenter: [number, number] = [parseFloat(bestResult.lat), parseFloat(bestResult.lon)];
                     
                     // Artificial delay for UX (to show the tick mark)
                     setTimeout(() => {
                         setPosition(newCenter);
-                        setDisplayText(bestResult.name);
+                        setDisplayText(bestResult.display_name || location);
                         setSearchState('found');
                         
                         // Transition to map after showing "Found" state
@@ -199,12 +194,20 @@ export const MapDisplay = ({ location, latitude, longitude, zoom = 13, markerTex
                     }, 800);
                 } else {
                     setSearchState('error');
+                    // Fallback to map after showing error
+                    setTimeout(() => {
+                        setSearchState('map');
+                    }, 2000);
                 }
+            })
+            .catch(err => {
+                console.error("Geocoding error:", err);
+                setSearchState('error');
+                // Fallback to map after showing error
+                setTimeout(() => {
+                    setSearchState('map');
+                }, 2000);
             });
-        } else {
-            console.error("Geocoder not loaded");
-            setSearchState('error');
-        }
     } else if (position) {
         setSearchState('map');
     } else {
