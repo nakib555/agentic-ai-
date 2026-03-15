@@ -5,12 +5,12 @@
  */
 
 import React, { useState } from 'react';
-import { motion as motionTyped, AnimatePresence } from 'framer-motion';
+import { motion as motionTyped } from 'framer-motion';
 
 const motion = motionTyped as any;
 
 export const Collapsible = ({ children, ...props }: any) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(props.open || false);
 
   // Extract Summary and Content from children
   const childrenArray = React.Children.toArray(children);
@@ -60,23 +60,18 @@ export const Collapsible = ({ children, ...props }: any) => {
         </svg>
       </button>
 
-      <AnimatePresence initial={false}>
-        {isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
-            className="overflow-hidden"
-          >
-            <div className="px-3 pb-3 pt-0 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                <div className="pt-2 border-t border-slate-100 dark:border-white/5 markdown-content">
-                    {contentNodes}
-                </div>
+      <motion.div
+        initial={false}
+        animate={{ height: isOpen ? 'auto' : 0, opacity: isOpen ? 1 : 0 }}
+        transition={{ duration: 0.2, ease: "easeInOut" }}
+        className="overflow-hidden"
+      >
+        <div className="px-3 pb-3 pt-0 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+            <div className="pt-2 border-t border-slate-100 dark:border-white/5 markdown-content">
+                {contentNodes}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        </div>
+      </motion.div>
     </div>
   );
 };

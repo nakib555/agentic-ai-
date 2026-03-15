@@ -41,15 +41,26 @@ const processHighlights = (content: string): string => {
         let processed = part;
 
         // 1. Transform Custom Collapsible Syntax:
-        // :::details Title
+        // :::details [Title]
         // Content
         // :::
         // Regex looks for :::details [Title] (newline) [Content] (newline) :::
         // Uses [\s\S]*? for non-greedy multiline matching of content.
-        // Updated regex to handle loose spacing and newlines more robustly
+        // Updated regex to handle loose spacing, newlines more robustly, optional brackets, optional 'open' state, and unclosed blocks during streaming.
         processed = processed.replace(
-            /:::details\s+([^\n]+)\n([\s\S]*?)\n:::/g, 
-            '<details><summary>$1</summary>\n\n$2\n</details>'
+            /:::details\s+([^\n]+)\n([\s\S]*?)(?:\n:::|$)/g, 
+            (match, p1, p2) => {
+                let title = p1.trim();
+                let isOpen = '';
+                if (title.endsWith(' open')) {
+                    title = title.slice(0, -5).trim();
+                    isOpen = ' open';
+                }
+                if (title.startsWith('[') && title.endsWith(']')) {
+                    title = title.slice(1, -1).trim();
+                }
+                return `<details${isOpen}><summary>${title}</summary>\n\n${p2}\n</details>`;
+            }
         );
 
         // 2. Apply text transformations to regular text segments

@@ -4,11 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+// FormattedBlock.tsx
+import React, { useState } from 'react';
 import { motion as motionTyped, AnimatePresence } from 'framer-motion';
 import { ManualCodeRenderer } from './ManualCodeRenderer';
 import { MarkdownComponents } from './markdownComponents';
-import { FlowToken } from '../AI/FlowToken';
 
 const motion = motionTyped as any;
 
@@ -19,14 +19,7 @@ type FormattedBlockProps = {
 
 export const FormattedBlock: React.FC<FormattedBlockProps> = ({ content, isStreaming }) => {
   const [isRawVisible, setIsRawVisible] = useState(false);
-  const [animationComplete, setAnimationComplete] = useState(false);
   const cleanContent = content.trim();
-
-  useEffect(() => {
-    setAnimationComplete(false);
-  }, [cleanContent]);
-
-  const showFinalContent = !isStreaming || animationComplete;
 
   return (
     <div className="my-4 rounded-lg text-sm overflow-hidden shadow-lg dark:shadow-2xl dark:shadow-black/30 border border-slate-200 dark:border-slate-700">
@@ -60,13 +53,7 @@ export const FormattedBlock: React.FC<FormattedBlockProps> = ({ content, isStrea
                     </pre>
                 ) : (
                     <div className="p-4 bg-white dark:bg-[#121212]">
-                       {isStreaming && !showFinalContent ? (
-                           <FlowToken tps={10} onComplete={() => setAnimationComplete(true)}>
-                               {cleanContent}
-                           </FlowToken>
-                       ) : (
-                           <ManualCodeRenderer text={cleanContent} components={MarkdownComponents} isStreaming={false} />
-                       )}
+                        <ManualCodeRenderer text={cleanContent} components={MarkdownComponents} isStreaming={isStreaming} />
                     </div>
                 )}
             </motion.div>

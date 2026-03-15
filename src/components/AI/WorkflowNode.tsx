@@ -47,24 +47,10 @@ const ErrorIcon = () => (
 const DetailsRenderer: React.FC<{ node: WorkflowNodeData }> = ({ node }) => {
     const detailsText = node.details as string;
     const isStreaming = node.status === 'active';
-    const [animationComplete, setAnimationComplete] = useState(false);
-
-    useEffect(() => {
-        setAnimationComplete(false);
-    }, [detailsText]);
-
-    const showFinalContent = !isStreaming || animationComplete;
 
     return (
         <div className="text-sm text-slate-600 dark:text-slate-300 workflow-markdown leading-relaxed pt-2 pl-1">
-            {isStreaming && !showFinalContent && (
-                <FlowToken tps={40} onComplete={() => setAnimationComplete(true)}>
-                    {detailsText}
-                </FlowToken>
-            )}
-            {showFinalContent && (
-                <ManualCodeRenderer text={detailsText} components={WorkflowMarkdownComponents} isStreaming={false} />
-            )}
+            <ManualCodeRenderer text={detailsText} components={WorkflowMarkdownComponents} isStreaming={isStreaming} />
         </div>
     );
 };
