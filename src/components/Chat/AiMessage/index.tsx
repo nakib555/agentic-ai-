@@ -17,6 +17,7 @@ import { McqComponent } from '../../AI/McqComponent';
 import { FileAttachment } from '../../AI/FileAttachment';
 
 const ManualCodeRenderer = React.lazy(() => import('../../Markdown/ManualCodeRenderer').then(m => ({ default: m.ManualCodeRenderer })));
+import { useTypewriter } from '../../../hooks/useTypewriter';
 import { SuggestedActions } from '../SuggestedActions';
 import type { MessageFormHandle } from '../MessageForm/index';
 import { useAiMessageLogic } from './useAiMessageLogic';
@@ -94,7 +95,7 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
   const logic = useAiMessageLogic(msg, ttsVoice, ttsModel, sendMessage, isLoading);
   const { activeResponse, finalAnswerText } = logic;
   
-  const typedFinalAnswer = finalAnswerText || '';
+  const typedFinalAnswer = useTypewriter(finalAnswerText || '', msg.isThinking ?? false, 15);
   
   // Handler for Fixing Code Snippets (Charts, etc)
   const handleFixCode = async (badCode: string, errorMsg?: string) => {
