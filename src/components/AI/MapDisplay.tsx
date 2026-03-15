@@ -56,6 +56,31 @@ const MapController = ({
         }
     }, [center, zoom, map]);
 
+    // Fix for gray map / tiles not loading due to container size changes or CSS loading delays
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            map.invalidateSize();
+        }, 250);
+        
+        // Also add a resize observer to the map container
+        const resizeObserver = new ResizeObserver(() => {
+            map.invalidateSize();
+        });
+        
+        const container = map.getContainer();
+        if (container) {
+            resizeObserver.observe(container);
+        }
+        
+        return () => {
+            clearTimeout(timer);
+            if (container) {
+                resizeObserver.unobserve(container);
+            }
+            resizeObserver.disconnect();
+        };
+    }, [map]);
+
     return null;
 };
 
@@ -182,7 +207,11 @@ export const MapDisplay = ({ location, latitude, longitude, zoom = 13, markerTex
         }
     } else if (position) {
         setSearchState('map');
+    } else {
+        // Fallback if no location or coordinates provided
+        setSearchState('map');
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location, latitude, longitude]);
 
 
