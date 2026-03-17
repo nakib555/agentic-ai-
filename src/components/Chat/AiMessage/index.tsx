@@ -17,7 +17,6 @@ import { McqComponent } from '../../AI/McqComponent';
 import { FileAttachment } from '../../AI/FileAttachment';
 
 const ManualCodeRenderer = React.lazy(() => import('../../Markdown/ManualCodeRenderer').then(m => ({ default: m.ManualCodeRenderer })));
-import { useTypewriter } from '../../../hooks/useTypewriter';
 import { SuggestedActions } from '../SuggestedActions';
 import type { MessageFormHandle } from '../MessageForm/index';
 import { useAiMessageLogic } from './useAiMessageLogic';
@@ -95,8 +94,6 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
   const logic = useAiMessageLogic(msg, ttsVoice, ttsModel, sendMessage, isLoading);
   const { activeResponse, finalAnswerText } = logic;
   
-  const typedFinalAnswer = useTypewriter(finalAnswerText || '', msg.isThinking ?? false, 15);
-  
   // Handler for Fixing Code Snippets (Charts, etc)
   const handleFixCode = async (badCode: string, errorMsg?: string) => {
       if (!onEditMessage) return;
@@ -169,7 +166,7 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
 
   const displaySegments = useMemo(() => {
       // Enhanced parsing to detect artifact tags
-      const segments = parseContentSegments(typedFinalAnswer);
+      const segments = parseContentSegments(finalAnswerText || '');
       
       const enhancedSegments = [];
       for (const segment of segments) {
@@ -211,7 +208,7 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
       }
       return enhancedSegments;
 
-  }, [typedFinalAnswer]);
+  }, [finalAnswerText]);
 
   const handleEditImage = (blob: Blob, editKey: string) => {
       const file = new File([blob], "image-to-edit.png", { type: blob.type });
@@ -221,13 +218,9 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
 
   const isStoppedByUser = activeResponse?.error?.code === 'STOPPED_BY_USER';
   
-  // Only show toolbar when generation AND typing effect are fully complete.
-  // We use >= to be robust against potential length mismatches (e.g. carriage returns)
-  const isTypingComplete = typedFinalAnswer.length >= (finalAnswerText?.length || 0);
-  
   const shouldRenderContent = logic.hasFinalAnswer || activeResponse?.error || logic.isWaitingForFinalAnswer || isStoppedByUser || (!msg.isThinking && !finalAnswerText && logic.hasThinkingText);
   
-  const showToolbar = logic.thinkingIsComplete && isTypingComplete && shouldRenderContent;
+  const showToolbar = logic.thinkingIsComplete && shouldRenderContent && !msg.isThinking;
 
   if (logic.isInitialWait) return <TypingIndicator />;
 
@@ -275,7 +268,7 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
           
           {/* Main Content Area */}
           <div className="markdown-content max-w-none w-full text-slate-800 dark:text-gray-100 leading-relaxed break-words min-w-0">
-            {(!typedFinalAnswer && !msg.isThinking && !activeResponse?.error && logic.hasThinkingText) ? (
+            {(!finalAnswerText && !msg.isThinking && !activeResponse?.error && logic.hasThinkingText) ? (
                  <div className="text-sm text-slate-500 italic p-2 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg">
                     No final answer generated. Please check the reasoning logs.
                  </div>
@@ -377,7 +370,7 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
 
       {/* Conditionally render suggestions only if this is the last message */}
       <AnimatePresence>
-        {isLast && logic.thinkingIsComplete && isTypingComplete && activeResponse?.suggestedActions && activeResponse.suggestedActions.length > 0 && !activeResponse.error && (
+        {isLast && logic.thinkingIsComplete && !msg.isThinking && activeResponse?.suggestedActions && activeResponse.suggestedActions.length > 0 && !activeResponse.error && (
             <motion.div
                 initial={{ opacity: 0, height: 0, marginTop: 0 }}
                 animate={{ opacity: 1, height: 'auto', marginTop: 12 }}

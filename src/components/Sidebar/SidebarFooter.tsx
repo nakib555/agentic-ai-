@@ -6,6 +6,7 @@
 
 import React from 'react';
 import { NavItem } from './NavItem';
+import { usePWAInstall } from '../../hooks/usePWAInstall';
 
 type SidebarFooterProps = {
   isCollapsed: boolean;
@@ -14,8 +15,25 @@ type SidebarFooterProps = {
 };
 
 export const SidebarFooter = ({ isCollapsed, isDesktop, onSettingsClick }: SidebarFooterProps) => {
+  const { isInstallable, installPWA } = usePWAInstall();
+
   return (
-    <div className="mt-auto pt-4 border-t border-gray-200/50 dark:border-white/10">
+    <div className="mt-auto pt-4 border-t border-gray-200/50 dark:border-white/10 flex flex-col gap-1">
+        {isInstallable && (
+            <NavItem 
+                icon={
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                }
+                text="Install App"
+                isCollapsed={isCollapsed}
+                isDesktop={isDesktop}
+                onClick={installPWA}
+            />
+        )}
         <NavItem 
             icon={
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">

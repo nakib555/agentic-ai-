@@ -8,7 +8,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion as motionTyped, AnimatePresence } from 'framer-motion';
 import { ManualCodeRenderer } from '../../Markdown/ManualCodeRenderer';
 import { WorkflowMarkdownComponents } from '../../Markdown/markdownComponents';
-import { useTypewriter } from '../../../hooks/useTypewriter';
 
 const motion = motionTyped as any;
 
@@ -52,7 +51,6 @@ export const ThinkingProcess: React.FC<ThinkingProcessProps> = ({ thinkingText, 
     const [isOpen, setIsOpen] = useState(false);
     // Auto-open only on initial mount if actively thinking, but respect user toggling afterwards
     const hasAutoOpened = useRef(false);
-    const typedThinkingText = useTypewriter(thinkingText, isThinking, 10); // slightly faster for thinking
 
     useEffect(() => {
         if (isThinking && !hasAutoOpened.current && thinkingText.length > 0) {
@@ -138,7 +136,7 @@ export const ThinkingProcess: React.FC<ThinkingProcessProps> = ({ thinkingText, 
                         <div className="p-4 pt-3">
                             <div className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 workflow-markdown leading-relaxed">
                                 <ManualCodeRenderer 
-                                    text={typedThinkingText} 
+                                    text={thinkingText} 
                                     components={WorkflowMarkdownComponents} 
                                     isStreaming={isThinking} 
                                 />

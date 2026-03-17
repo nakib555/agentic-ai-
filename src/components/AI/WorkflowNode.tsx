@@ -12,7 +12,6 @@ import { ManualCodeRenderer } from '../Markdown/ManualCodeRenderer';
 import { WorkflowMarkdownComponents } from '../Markdown/markdownComponents';
 import { SearchIcon } from './icons';
 import { SearchToolResult } from './SearchToolResult';
-import { FlowToken } from './FlowToken';
 
 type WorkflowNodeProps = {
   node: WorkflowNodeData;
