@@ -31,6 +31,7 @@ export const UploadMenu: React.FC<UploadMenuProps> = ({ menuRef, onFileClick, on
     <div className="flex flex-col gap-1">
       <button
         onClick={onFileClick}
+        aria-label="Upload files"
         className="group flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-200 hover:bg-slate-50 dark:hover:bg-white/5 text-left"
       >
         <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform border border-blue-100 dark:border-blue-500/30">
@@ -47,6 +48,7 @@ export const UploadMenu: React.FC<UploadMenuProps> = ({ menuRef, onFileClick, on
 
       <button
         onClick={onFolderClick}
+        aria-label="Upload folder"
         className="group flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-200 hover:bg-slate-50 dark:hover:bg-white/5 text-left"
       >
         <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:scale-110 transition-transform border border-amber-100 dark:border-amber-500/30">

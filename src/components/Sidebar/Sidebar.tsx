@@ -68,7 +68,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
     };
 
     return (
-        <aside className={`h-full flex-shrink-0 ${isDesktop ? 'relative z-20 w-full' : 'fixed inset-0 z-40 pointer-events-none'}`}>
+        <aside aria-label="Sidebar" className={`h-full flex-shrink-0 ${isDesktop ? 'relative z-20 w-full' : 'fixed inset-0 z-40 pointer-events-none'}`}>
             <AnimatePresence>
                 {!isDesktop && isOpen && (
                     <motion.div 

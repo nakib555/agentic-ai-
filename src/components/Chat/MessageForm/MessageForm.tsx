@@ -240,6 +240,7 @@ export const MessageForm = forwardRef<MessageFormHandle, MessageFormProps>((prop
                         ref={logic.attachButtonRef}
                         onClick={() => logic.setIsUploadMenuOpen(!logic.isUploadMenuOpen)}
                         disabled={isGeneratingResponse}
+                        aria-label="Attach files"
                         className="relative p-2 rounded-xl text-content-secondary hover:text-primary-main hover:bg-layer-2 transition-colors disabled:opacity-50"
                     >
                         <Paperclip className="w-5 h-5" />
@@ -252,6 +253,7 @@ export const MessageForm = forwardRef<MessageFormHandle, MessageFormProps>((prop
                     <button
                         onClick={logic.handleMicClick}
                         disabled={isGeneratingResponse || !logic.isSupported}
+                        aria-label={logic.isRecording ? "Stop voice input" : "Start voice input"}
                         className={`
                             p-2 rounded-xl transition-colors disabled:opacity-50
                             ${logic.isRecording 
@@ -268,6 +270,7 @@ export const MessageForm = forwardRef<MessageFormHandle, MessageFormProps>((prop
                     <button
                         onClick={logic.handleEnhancePrompt}
                         disabled={isGeneratingResponse || !logic.inputValue.trim() || logic.isEnhancing}
+                        aria-label="Enhance prompt"
                         className={`
                             p-2 rounded-xl transition-all duration-300 disabled:opacity-50
                             ${logic.isEnhancing 
@@ -289,6 +292,7 @@ export const MessageForm = forwardRef<MessageFormHandle, MessageFormProps>((prop
                         type="button"
                         onClick={handleSendClick}
                         disabled={!isGeneratingResponse && isSendDisabled}
+                        aria-label={isGeneratingResponse ? "Stop generating" : "Send message"}
                         className={`
                             w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 shadow-sm group border
                             ${isGeneratingResponse 

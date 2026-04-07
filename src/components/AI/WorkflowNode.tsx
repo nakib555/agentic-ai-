@@ -119,8 +119,18 @@ const WorkflowNodeRaw = ({ node, sendMessage, onRegenerate, messageId, isLast }:
             <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-lg overflow-hidden transition-shadow hover:shadow-sm">
                 {/* Header (Click to Toggle) */}
                 <div 
-                    className="flex items-center gap-3 px-3 py-2 cursor-pointer select-none"
+                    className="flex items-center gap-3 px-3 py-2 cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-t-lg"
                     onClick={() => setIsExpanded(!isExpanded)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setIsExpanded(!isExpanded);
+                        }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={isExpanded}
+                    aria-label={`${isExpanded ? 'Collapse' : 'Expand'} details for ${title}`}
                 >
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">

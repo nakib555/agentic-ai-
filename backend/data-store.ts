@@ -17,9 +17,18 @@ export const SETTINGS_FILE_PATH = path.join(DATA_DIR, 'settings.json');
 export const MEMORY_CONTENT_PATH = path.join(DATA_DIR, 'memory.txt');
 export const MEMORY_FILES_DIR = path.join(DATA_DIR, 'memory_files');
 
+let settingsCache: any = null;
+
 export async function readData<T>(filePath: string): Promise<T> {
+    if (filePath === SETTINGS_FILE_PATH && settingsCache) {
+        return settingsCache as T;
+    }
     const data = await fs.readFile(filePath, 'utf-8');
-    return JSON.parse(data) as T;
+    const parsed = JSON.parse(data);
+    if (filePath === SETTINGS_FILE_PATH) {
+        settingsCache = parsed;
+    }
+    return parsed as T;
 }
 
 /**
@@ -40,6 +49,13 @@ export async function writeFileAtomic(filePath: string, data: string | Buffer): 
         
         // Atomic rename (replace)
         await fs.rename(tempPath, filePath);
+
+        // Update cache if it's the settings file
+        if (filePath === SETTINGS_FILE_PATH && typeof data === 'string') {
+            try {
+                settingsCache = JSON.parse(data);
+            } catch (e) {}
+        }
     };
 
     try {

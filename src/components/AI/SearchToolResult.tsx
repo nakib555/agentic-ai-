@@ -88,6 +88,8 @@ export const SearchToolResult = ({ query, sources }: SearchToolResultProps) => {
                     <button
                         onClick={() => setShowAll(true)}
                         className="text-xs font-semibold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300 px-2 py-1 transition-colors"
+                        aria-expanded={showAll}
+                        aria-label={`Show ${hiddenCount} more sources`}
                     >
                         + {hiddenCount} more
                     </button>

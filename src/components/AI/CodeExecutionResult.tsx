@@ -71,8 +71,12 @@ export const CodeExecutionResult: React.FC<CodeExecutionResultProps> = ({ output
             </div>
             
             {/* Tabs */}
-            <div className="flex p-0.5 bg-gray-200/50 dark:bg-white/5 rounded-lg ml-2">
+            <div className="flex p-0.5 bg-gray-200/50 dark:bg-white/5 rounded-lg ml-2" role="tablist" aria-label="Code Execution Views">
                 <button
+                    id={`tab-visual-${outputId}`}
+                    role="tab"
+                    aria-selected={activeTab === 'visual'}
+                    aria-controls={`panel-visual-${outputId}`}
                     onClick={() => setActiveTab('visual')}
                     className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all ${activeTab === 'visual' ? 'bg-white dark:bg-[#2a2a2a] text-indigo-600 dark:text-indigo-300 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
                 >
@@ -80,6 +84,10 @@ export const CodeExecutionResult: React.FC<CodeExecutionResultProps> = ({ output
                     Preview
                 </button>
                 <button
+                    id={`tab-text-${outputId}`}
+                    role="tab"
+                    aria-selected={activeTab === 'text'}
+                    aria-controls={`panel-text-${outputId}`}
                     onClick={() => setActiveTab('text')}
                     className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all ${activeTab === 'text' ? 'bg-white dark:bg-[#2a2a2a] text-indigo-600 dark:text-indigo-300 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
                 >
@@ -113,7 +121,7 @@ export const CodeExecutionResult: React.FC<CodeExecutionResultProps> = ({ output
             className="h-full"
           >
             {activeTab === 'visual' ? (
-              <div id={outputId} className="w-full h-full bg-white relative">
+              <div id={`panel-visual-${outputId}`} role="tabpanel" aria-labelledby={`tab-visual-${outputId}`} className="w-full h-full bg-white relative">
                  {/* Checkerboard background for transparency simulation */}
                 <div className="absolute inset-0 opacity-5 pointer-events-none" 
                      style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
@@ -126,7 +134,7 @@ export const CodeExecutionResult: React.FC<CodeExecutionResultProps> = ({ output
                 />
               </div>
             ) : (
-              <div className="max-h-96 overflow-y-auto custom-scrollbar bg-[#0c0c0c] text-gray-300 p-1">
+              <div id={`panel-text-${outputId}`} role="tabpanel" aria-labelledby={`tab-text-${outputId}`} className="max-h-96 overflow-y-auto custom-scrollbar bg-[#0c0c0c] text-gray-300 p-1">
                 {/* Terminal Window content */}
                 <pre className="p-4 font-mono text-[13px] leading-relaxed whitespace-pre-wrap break-all">
                     <span className="text-green-500 select-none mr-2">➜</span>

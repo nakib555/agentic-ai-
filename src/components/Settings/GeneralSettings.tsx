@@ -92,6 +92,7 @@ const ApiKeyForm = ({ label, value, placeholder, onSave, description, optional =
                             autoCorrect="off"
                             spellCheck="false"
                             className={`pr-10 ${errors.key ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                            aria-label={label}
                         />
                         <button
                             type="button"
@@ -159,6 +160,7 @@ const OllamaHostForm = ({ value, onSave }: { value: string, onSave: (host: strin
                     autoCorrect="off"
                     spellCheck="false"
                     onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleSave()}
+                    aria-label="Ollama Host URL"
                 />
                 <Button
                     onClick={handleSave}
@@ -327,6 +329,7 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
                             spellCheck="false"
                             onBlur={(e: React.FocusEvent<HTMLInputElement>) => onSaveServerUrl(e.target.value)}
                             className={isCustomUrl ? 'border-amber-400 bg-amber-50 dark:bg-amber-900/10' : ''}
+                            aria-label="Backend Server URL"
                         />
                         {isCustomUrl && (
                              <Button

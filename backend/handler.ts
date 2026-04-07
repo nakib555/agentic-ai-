@@ -5,205 +5,19 @@
  */
 
 import { Request as ExpressRequest, Response as ExpressResponse } from 'express';
-import { promises as fs } from 'fs';
 import path from 'path';
 import { CHAT_PERSONA_AND_UI_FORMATTING as chatModeSystemInstruction } from './prompts/chatPersona';
 import { parseApiError } from './utils/apiError';
-import { executeTextToSpeech } from "./tools/tts";
-import { executeExtractMemorySuggestions, executeConsolidateMemory } from "./tools/memory";
-import { executeWithPiston } from "./tools/piston";
 import { getApiKey, getProvider, getGeminiKey } from './settingsHandler';
-import { generateProviderCompletion } from './utils/generateProviderCompletion';
 import { historyControl } from './services/historyControl';
 import { vectorMemory } from './services/vectorMemory';
 import { readData, SETTINGS_FILE_PATH } from './data-store';
 import { providerRegistry } from './providers/registry'; 
 import { GoogleGenAI } from "@google/genai";
-
-// --- JOB MANAGEMENT SYSTEM ---
-
-interface Job {
-    chatId: string;
-    messageId: string;
-    controller: AbortController;
-    clients: Set<any>; 
-    eventBuffer: string[]; 
-    persistence: ChatPersistenceManager;
-    createdAt: number;
-}
-
-const activeJobs = new Map<string, Job>();
-
-const writeToClient = (job: Job, type: string, payload: any) => {
-    const data = JSON.stringify({ type, payload }) + '\n';
-    job.eventBuffer.push(data);
-    job.clients.forEach(client => {
-        if (!client.writableEnded && !client.closed && !client.destroyed) {
-            try {
-                client.write(data);
-            } catch (e) {
-                console.error(`[JOB] Failed to write to client for chat ${job.chatId}`, e);
-                job.clients.delete(client);
-            }
-        } else {
-             job.clients.delete(client);
-        }
-    });
-};
-
-const cleanupJob = (chatId: string) => {
-    const job = activeJobs.get(chatId);
-    if (job) {
-        job.clients.forEach(c => {
-            if (!c.writableEnded) c.end();
-        });
-        activeJobs.delete(chatId);
-    }
-};
-
-const generateId = () => `req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-
-async function generateAsciiTree(dirPath: string, prefix: string = ''): Promise<string> {
-    let output = '';
-    let entries;
-    try {
-        entries = await fs.readdir(dirPath, { withFileTypes: true });
-    } catch (e) {
-        return `${prefix} [Error reading directory]\n`;
-    }
-    entries = entries.filter(e => !e.name.startsWith('.'));
-    entries.sort((a, b) => {
-        if (a.isDirectory() === b.isDirectory()) {
-            return a.name.localeCompare(b.name);
-        }
-        return a.isDirectory() ? -1 : 1;
-    });
-    for (let i = 0; i < entries.length; i++) {
-        const entry = entries[i];
-        const isLast = i === entries.length - 1;
-        const connector = isLast ? '└── ' : '├── ';
-        output += `${prefix}${connector}${entry.name}\n`;
-        if (entry.isDirectory()) {
-            const childPrefix = prefix + (isLast ? '    ' : '│   ');
-            output += await generateAsciiTree(path.join(dirPath, entry.name), childPrefix);
-        }
-    }
-    return output;
-}
-
-async function generateDirectoryStructure(dirPath: string): Promise<any> {
-    const name = path.basename(dirPath);
-    let stats;
-    try { stats = await fs.stat(dirPath); } catch { return null; }
-    if (stats.isDirectory()) {
-        let entries;
-        try { entries = await fs.readdir(dirPath, { withFileTypes: true }); } catch { return null; }
-        const children = [];
-        entries.sort((a, b) => {
-            if (a.isDirectory() === b.isDirectory()) { return a.name.localeCompare(b.name); }
-            return a.isDirectory() ? -1 : 1;
-        });
-        for (const entry of entries) {
-            if (entry.name.startsWith('.')) continue;
-            const childPath = path.join(dirPath, entry.name);
-            const childNode = await generateDirectoryStructure(childPath);
-            if (childNode) children.push(childNode);
-        }
-        return { name, type: 'directory', children };
-    } else {
-        return { name, type: 'file' };
-    }
-}
-
-class ChatPersistenceManager {
-    private chatId: string;
-    private messageId: string;
-    private buffer: { text: string } | null = null;
-    private saveTimeout: ReturnType<typeof setTimeout> | null = null;
-    // Reduced from 1500ms to 200ms to minimize data loss on crash
-    private readonly FLUSH_DELAY_MS = 200; 
-
-    constructor(chatId: string, messageId: string) {
-        this.chatId = chatId;
-        this.messageId = messageId;
-    }
-    addText(delta: string) {
-        if (!this.buffer) this.buffer = { text: '' };
-        this.buffer.text += delta;
-        this.scheduleSave();
-    }
-    async update(modifier: (response: any) => void) {
-        if (this.saveTimeout) {
-            clearTimeout(this.saveTimeout);
-            this.saveTimeout = null;
-        }
-        try {
-            const chat = await historyControl.getChat(this.chatId);
-            if (!chat) return;
-            const msgIndex = chat.messages.findIndex((m: any) => m.id === this.messageId);
-            if (msgIndex !== -1) {
-                const message = chat.messages[msgIndex];
-                if (message.responses && message.responses[message.activeResponseIndex]) {
-                    const activeResponse = message.responses[message.activeResponseIndex];
-                    if (this.buffer) {
-                        activeResponse.text = (activeResponse.text || '') + this.buffer.text;
-                        this.buffer = null;
-                    }
-                    modifier(activeResponse);
-                    await historyControl.updateChat(this.chatId, { messages: chat.messages });
-                }
-            }
-        } catch (e) {
-            console.error(`[PERSISTENCE] Failed to update chat ${this.chatId}:`, e);
-        }
-    }
-    private scheduleSave() {
-        if (this.saveTimeout) return;
-        this.saveTimeout = setTimeout(() => this.flush(), this.FLUSH_DELAY_MS); 
-    }
-    private async flush() {
-        this.saveTimeout = null;
-        if (!this.buffer) return;
-        const textToAppend = this.buffer.text;
-        this.buffer = null; 
-        try {
-            const chat = await historyControl.getChat(this.chatId);
-            if (!chat) return;
-            const msgIndex = chat.messages.findIndex((m: any) => m.id === this.messageId);
-            if (msgIndex !== -1) {
-                const message = chat.messages[msgIndex];
-                if (message.responses && message.responses[message.activeResponseIndex]) {
-                    const activeResponse = message.responses[message.activeResponseIndex];
-                    activeResponse.text = (activeResponse.text || '') + textToAppend;
-                    await historyControl.updateChat(this.chatId, { messages: chat.messages });
-                }
-            }
-        } catch (e) { }
-    }
-    async complete(finalModifier?: (response: any) => void) {
-        if (this.saveTimeout) clearTimeout(this.saveTimeout);
-        try {
-            const chat = await historyControl.getChat(this.chatId);
-            if (!chat) return;
-            const msgIndex = chat.messages.findIndex((m: any) => m.id === this.messageId);
-            if (msgIndex !== -1) {
-                const message = chat.messages[msgIndex];
-                if (message.responses && message.responses[message.activeResponseIndex]) {
-                    const activeResponse = message.responses[message.activeResponseIndex];
-                    if (this.buffer) {
-                        activeResponse.text = (activeResponse.text || '') + this.buffer.text;
-                        this.buffer = null;
-                    }
-                    if (finalModifier) finalModifier(activeResponse);
-                    message.isThinking = false;
-                    await historyControl.updateChat(this.chatId, { messages: chat.messages });
-                }
-            }
-        } catch (e) {
-            console.error(`[PERSISTENCE] Failed to complete save for chat ${this.chatId}:`, e);
-        }
-    }
-}
+import { jobManager, Job } from './services/jobManager';
+import { ChatPersistenceManager } from './services/persistence';
+import * as taskHandlers from './services/taskHandlers';
+import { generateAsciiTree, generateDirectoryStructure } from './utils/fileTree';
 
 export const apiHandler = async (req: any, res: any) => {
     const task = req.query.task as string;
@@ -211,7 +25,7 @@ export const apiHandler = async (req: any, res: any) => {
     // --- RECONNECTION HANDLING ---
     if (task === 'connect') {
         const { chatId } = req.body; 
-        const job = activeJobs.get(chatId);
+        const job = jobManager.get(chatId);
         
         if (!job) {
             return res.status(200).json({ status: "stream_not_found" });
@@ -240,76 +54,44 @@ export const apiHandler = async (req: any, res: any) => {
     }
 
     // --- CONTEXT SETUP ---
-    // Prefer explicit overrides from the request body (sent by updated frontend)
-    // This fixes race conditions where settings are updated but not yet persisted on disk
-    let activeProviderName = req.body.provider;
-    if (!activeProviderName) {
-        activeProviderName = await getProvider();
-    }
-    
-    // Resolve the API key based on the active provider
+    let activeProviderName = req.body.provider || await getProvider();
     let chatApiKey = req.body.apiKey;
     
-    // If no key provided in body, fall back to stored settings or env vars
     if (!chatApiKey) {
-        // Only use the standard helper if the provider matches what's on disk,
-        // otherwise manually fetch the correct key for the requested provider.
         if (activeProviderName === await getProvider()) {
             chatApiKey = await getApiKey();
         } else {
-            // We switched provider via payload but didn't provide a key.
-            // Try to fetch specific key from settings based on the *requested* provider name.
             try {
                 const settings: any = await readData(SETTINGS_FILE_PATH);
-                if (activeProviderName === 'openrouter') {
-                    chatApiKey = settings.openRouterApiKey || process.env.OPENROUTER_API_KEY;
-                }
-                else if (activeProviderName === 'ollama') {
-                    chatApiKey = settings.ollamaApiKey || process.env.OLLAMA_API_KEY;
-                }
-                else {
-                    chatApiKey = settings.apiKey || process.env.API_KEY || process.env.GEMINI_API_KEY;
-                }
+                if (activeProviderName === 'openrouter') chatApiKey = settings.openRouterApiKey || process.env.OPENROUTER_API_KEY;
+                else if (activeProviderName === 'ollama') chatApiKey = settings.ollamaApiKey || process.env.OLLAMA_API_KEY;
+                else chatApiKey = settings.apiKey || process.env.API_KEY || process.env.GEMINI_API_KEY;
             } catch (e) {
-                // Fallback
                 chatApiKey = await getApiKey();
             }
         }
     }
     
-    // geminiKey is specifically for auxiliary services (TTS, Embeddings, Memory)
-    // We try to get it even if the main provider is OpenRouter/Ollama
     const geminiKey = await getGeminiKey();
-    
     const globalSettings: any = await readData(SETTINGS_FILE_PATH);
     const defaultModel = globalSettings.activeModel || 'gemini-2.5-flash';
 
     const isSuggestionTask = ['title', 'suggestions', 'enhance', 'memory_suggest', 'memory_consolidate', 'run_piston', 'fix_code'].includes(task);
     const BYPASS_TASKS = ['cancel', 'debug_data_tree', 'feedback', 'count_tokens', 'tool_exec', 'tool_response'];
     
-    // Validation: Require key for paid providers, skip for Ollama/bypass
     if (!chatApiKey && !BYPASS_TASKS.includes(task) && !isSuggestionTask && activeProviderName !== 'ollama') {
         return res.status(401).json({ error: "API key not configured for the selected provider." });
     }
     
-    // Initialize Auxiliary AI (Gemini) for TTS/Memory if available
     const auxAi = (geminiKey) ? new GoogleGenAI({ apiKey: geminiKey }) : null;
-
-    if (auxAi) {
-        await vectorMemory.init(auxAi);
-    }
+    if (auxAi) await vectorMemory.init(auxAi);
 
     try {
         switch (task) {
             case 'chat': 
             case 'regenerate': {
                 const { chatId, settings, newMessage, messageId } = req.body;
-                let { model } = req.body;
-                
-                // Fallback for model if undefined in request body
-                if (!model) {
-                    model = defaultModel;
-                }
+                let model = req.body.model || defaultModel;
                 
                 let savedChat = await historyControl.getChat(chatId);
                 if (!savedChat) return res.status(404).json({ error: "Chat not found" });
@@ -319,7 +101,6 @@ export const apiHandler = async (req: any, res: any) => {
 
                 if (task === 'chat' && newMessage) {
                     historyMessages.push(newMessage);
-                    // Only add vector memory if we have a Gemini Client (auxAi)
                     if (auxAi && newMessage.text && newMessage.text.length > 10) {
                         vectorMemory.addMemory(newMessage.text, { chatId, role: 'user' }).catch(console.error);
                     }
@@ -340,7 +121,6 @@ export const apiHandler = async (req: any, res: any) => {
                      if (targetIndex !== -1) {
                          historyForAI = historyMessages.slice(0, targetIndex);
                      } else {
-                         // Fallback creation
                          const modelPlaceholder = {
                             id: messageId,
                             role: 'model' as const,
@@ -356,11 +136,8 @@ export const apiHandler = async (req: any, res: any) => {
                      }
                 }
 
-                if (activeJobs.has(chatId)) {
-                    console.log(`[HANDLER] Cancelling existing job for ${chatId}`);
-                    const oldJob = activeJobs.get(chatId);
-                    oldJob?.controller.abort();
-                    activeJobs.delete(chatId);
+                if (jobManager.has(chatId)) {
+                    jobManager.cleanup(chatId);
                 }
 
                 const persistence = new ChatPersistenceManager(chatId, messageId);
@@ -374,9 +151,8 @@ export const apiHandler = async (req: any, res: any) => {
                     persistence,
                     createdAt: Date.now()
                 };
-                activeJobs.set(chatId, job);
+                jobManager.set(chatId, job);
 
-                // Set headers to force no-buffering streaming
                 res.setHeader('Content-Type', 'application/x-ndjson');
                 res.setHeader('Cache-Control', 'no-cache, no-transform');
                 res.setHeader('X-Accel-Buffering', 'no');
@@ -384,13 +160,12 @@ export const apiHandler = async (req: any, res: any) => {
                 res.setHeader('Transfer-Encoding', 'chunked');
                 res.flushHeaders();
 
-                writeToClient(job, 'start', { requestId: chatId });
-                const pingInterval = setInterval(() => writeToClient(job, 'ping', {}), 10000);
+                jobManager.writeToClient(job, 'start', { requestId: chatId });
+                const pingInterval = setInterval(() => jobManager.writeToClient(job, 'ping', {}), 10000);
                 
                 req.on('close', () => { job.clients.delete(res); });
 
                 let ragContext = "";
-                // RAG only available if auxAi (Gemini) is initialized
                 if (auxAi && newMessage && newMessage.text) {
                     try {
                         const relevantMemories = await vectorMemory.retrieveRelevant(newMessage.text);
@@ -414,21 +189,11 @@ export const apiHandler = async (req: any, res: any) => {
 
                 let finalSystemInstruction = coreInstruction;
                 if (personalizationSection) {
-                    finalSystemInstruction = `
-# ⚙️ SYSTEM KERNEL (IMMUTABLE PROTOCOLS)
-${coreInstruction}
-
-================================================================================
-
-# 🧩 CONTEXTUAL LAYER (PERSONALIZATION)
-${personalizationSection}
-`.trim();
+                    finalSystemInstruction = `# ⚙️ SYSTEM KERNEL (IMMUTABLE PROTOCOLS)\n${coreInstruction}\n\n================================================================================\n\n# 🧩 CONTEXTUAL LAYER (PERSONALIZATION)\n${personalizationSection}`.trim();
                 }
 
-                // --- PROVIDER DISPATCH ---
                 try {
                     const provider = await providerRegistry.getProvider(activeProviderName);
-
                     await provider.chat({
                         model,
                         messages: historyForAI,
@@ -436,63 +201,54 @@ ${personalizationSection}
                         systemInstruction: finalSystemInstruction,
                         temperature: settings.temperature,
                         maxTokens: settings.maxOutputTokens,
-                        apiKey: chatApiKey, // Use the provider-specific key
+                        apiKey: chatApiKey,
                         isAgentMode: false,
                         signal: abortController.signal,
                         chatId,
                         callbacks: {
                             onTextChunk: (text) => {
-                                writeToClient(job, 'text-chunk', text);
+                                jobManager.writeToClient(job, 'text-chunk', text);
                                 persistence.addText(text);
                             },
-                            onNewToolCalls: (events) => {
-                                // No-op in pure chat mode, but kept interface compatible
-                            },
-                            onToolResult: (id, result) => {
-                                // No-op
-                            },
-                            onPlanReady: (plan) => {
-                                return Promise.resolve(false);
-                            },
-                            onFrontendToolRequest: (callId, name, args) => {},
+                            onNewToolCalls: () => {},
+                            onToolResult: () => {},
+                            onPlanReady: () => Promise.resolve(false),
+                            onFrontendToolRequest: () => {},
                             onComplete: (data) => {
-                                writeToClient(job, 'complete', data);
+                                jobManager.writeToClient(job, 'complete', data);
                                 persistence.complete((r) => {
                                     r.endTime = Date.now();
                                     if (data.groundingMetadata) r.groundingMetadata = data.groundingMetadata;
                                 });
-                                // Only vectorize if Gemini is available
                                 if (data.finalText.length > 50 && auxAi) {
                                     vectorMemory.addMemory(data.finalText, { chatId, role: 'model' }).catch(console.error);
                                 }
                             },
                             onError: (err) => {
                                 const parsed = parseApiError(err);
-                                writeToClient(job, 'error', parsed);
+                                jobManager.writeToClient(job, 'error', parsed);
                                 persistence.complete((r) => { r.error = parsed; r.endTime = Date.now(); });
                             },
                             onCancel: () => {
-                                writeToClient(job, 'cancel', {});
+                                jobManager.writeToClient(job, 'cancel', {});
                                 persistence.complete();
                             }
                         }
                     });
 
                 } catch (e: any) {
-                    console.error(`[HANDLER] Chat logic failed:`, e);
                     const parsedError = parseApiError(e);
-                    // Explicitly write to the stream even if headers are sent
-                    writeToClient(job, 'error', parsedError);
+                    jobManager.writeToClient(job, 'error', parsedError);
                     persistence.complete((response) => { response.error = parsedError; });
                 } finally {
                     clearInterval(pingInterval);
-                    cleanupJob(chatId);
+                    jobManager.cleanup(chatId);
                 }
                 break;
             }
             case 'cancel': {
                 const { requestId } = req.body;
-                let job = activeJobs.get(requestId);
+                let job = jobManager.get(requestId);
                 if (job) {
                     job.controller.abort();
                     res.status(200).send({ message: 'Cancellation request received.' });
@@ -502,150 +258,18 @@ ${personalizationSection}
                 break;
             }
             case 'feedback': {
-                const { chatId, messageId, feedback } = req.body;
-                console.log(`[FEEDBACK] Chat: ${chatId}, Msg: ${messageId}, Rating: ${feedback}`);
                 res.status(200).json({ status: 'ok' });
                 break;
             }
-            case 'title': {
-                const { messages, model } = req.body;
-                // Robustly format history: truncate text and handle potential missing content
-                const historyText = (messages || [])
-                    .filter((m: any) => !m.isHidden)
-                    .slice(0, 5)
-                    .map((m: any) => {
-                        const role = m.role === 'model' ? 'Assistant' : 'User';
-                        // Limit context per message to prevent overflow on long logs
-                        const text = (m.text || '').substring(0, 500); 
-                        return `${role}: ${text}`;
-                    })
-                    .join('\n');
-                
-                const systemPrompt = "You are a specialized title generator. Output a concise title (3-6 words) for the conversation. Do not use quotes, prefixes, or periods.";
-                const userPrompt = `Generate a short, descriptive title for this conversation:\n\n${historyText}`;
-                
-                let title = await generateProviderCompletion(activeProviderName, chatApiKey, model || defaultModel, userPrompt, systemPrompt);
-                
-                // Robust Cleanup
-                title = title.trim();
-                title = title.replace(/^["']|["']$/g, ''); // Remove surrounding quotes
-                title = title.replace(/^(Title:|Subject:|Topic:)\s*/i, ''); // Remove common prefixes
-                title = title.replace(/\.$/, ''); // Remove trailing dot
-                
-                // Fallback truncation if model ignored instructions
-                if (title.length > 60) {
-                     title = title.substring(0, 57) + '...';
-                }
-
-                res.status(200).json({ title: title || 'New Chat' });
-                break;
-            }
-            case 'suggestions': {
-                const { conversation, model } = req.body;
-                const recentHistory = conversation.slice(-5).map((m: any) => `${m.role}: ${(m.text || '').substring(0, 200)}`).join('\n');
-                const prompt = `Suggest 3 short follow-up questions. Return JSON array of strings. Do not use markdown code blocks.\n\nCONVERSATION:\n${recentHistory}\n\nJSON SUGGESTIONS:`;
-                try {
-                    const text = await generateProviderCompletion(activeProviderName, chatApiKey, model || defaultModel, prompt, undefined, true);
-                    let suggestions = [];
-                    try { 
-                        const cleanText = text.replace(/```json\n?|\n?```/g, '').trim();
-                        suggestions = JSON.parse(cleanText || '[]'); 
-                    } catch (e) {}
-                    if (!Array.isArray(suggestions)) suggestions = [];
-                    res.status(200).json({ suggestions });
-                } catch (e) { res.status(200).json({ suggestions: [] }); }
-                break;
-            }
-            case 'tts': {
-                if (!auxAi) throw new Error("TTS Unavailable: Google Gemini API key not configured in settings.");
-                const { text, voice, model } = req.body;
-                try {
-                    const audio = await executeTextToSpeech(auxAi, text, voice, model);
-                    res.status(200).json({ audio });
-                } catch (e) {
-                    res.status(500).json({ error: parseApiError(e) });
-                }
-                break;
-            }
-            case 'enhance': {
-                const { userInput, prompt } = req.body;
-                // Support both userInput (legacy) and prompt (AI SDK compatible)
-                const input = userInput || prompt;
-                
-                const enhancementPrompt = `
-You are an expert Prompt Engineer. Rewrite this input into a highly effective prompt.
-
-USER INPUT: "${input}"
-
-Output ONLY the raw text of the improved prompt.
-`;
-                res.setHeader('Content-Type', 'text/plain');
-                try {
-                    const text = await generateProviderCompletion(activeProviderName, chatApiKey, 'gemini-3-flash-preview', enhancementPrompt); 
-                    res.write(text);
-                } catch (e) { res.write(input); }
-                res.end();
-                break;
-            }
-            case 'fix_code': {
-                const { code, error, context, model } = req.body;
-                
-                const fixPrompt = `
-You are an expert code debugger specializing in ECharts and data visualization.
-The user provided the following ECharts code which failed to parse or render.
-
-INVALID CODE:
-${code}
-
-ERROR DETAILS (Optional):
-${error || "Syntax or Logic Error"}
-
-CONTEXT (Optional):
-${context || ""}
-
-TASK:
-1. Fix the syntax errors (e.g. trailing commas, missing braces, unquoted keys).
-2. Ensure it is valid JSON/JavaScript object structure.
-3. If it's ECharts, ensure the "option" object is correctly structured.
-4. Output ONLY the fixed XML block: <echarts>{ ... }</echarts>
-5. Do NOT use markdown code blocks (\`\`\`) inside or outside the XML tags.
-6. Ensure all keys in JSON are double-quoted.
-`;
-                try {
-                    const result = await generateProviderCompletion(activeProviderName, chatApiKey, model || defaultModel, fixPrompt);
-                    res.status(200).json({ fixedCode: result });
-                } catch (e) {
-                    res.status(500).json({ error: parseApiError(e) });
-                }
-                break;
-            }
-            case 'memory_suggest': {
-                const { conversation } = req.body;
-                try {
-                    const suggestions = await executeExtractMemorySuggestions(activeProviderName, chatApiKey, defaultModel, conversation);
-                    res.status(200).json({ suggestions });
-                } catch (e) { res.status(200).json({ suggestions: [] }); }
-                break;
-            }
-            case 'memory_consolidate': {
-                const { currentMemory, suggestions } = req.body;
-                try {
-                    const memory = await executeConsolidateMemory(activeProviderName, chatApiKey, defaultModel, currentMemory, suggestions);
-                    res.status(200).json({ memory });
-                } catch (e) { res.status(200).json({ memory: [currentMemory, ...suggestions].filter(Boolean).join('\n') }); }
-                break;
-            }
-            case 'run_piston': {
-                const { language, code } = req.body;
-                try {
-                    const result = await executeWithPiston(language, code);
-                    res.status(200).json({ result });
-                } catch (e) {
-                    const parsedError = parseApiError(e);
-                    res.status(500).json({ error: parsedError.message });
-                }
-                break;
-            }
+            case 'title': return taskHandlers.handleTitle(req, res, activeProviderName, chatApiKey, defaultModel);
+            case 'suggestions': return taskHandlers.handleSuggestions(req, res, activeProviderName, chatApiKey, defaultModel);
+            case 'tts': return taskHandlers.handleTTS(req, res, auxAi);
+            case 'enhance': return taskHandlers.handleEnhance(req, res, activeProviderName, chatApiKey);
+            case 'fix_code': return taskHandlers.handleFixCode(req, res, activeProviderName, chatApiKey, defaultModel);
+            case 'memory_suggest': return taskHandlers.handleMemorySuggest(req, res, activeProviderName, chatApiKey, defaultModel);
+            case 'memory_consolidate': return taskHandlers.handleMemoryConsolidate(req, res, activeProviderName, chatApiKey, defaultModel);
+            case 'run_piston': return taskHandlers.handleRunPiston(req, res);
+            case 'count_tokens': return taskHandlers.handleCountTokens(req, res, activeProviderName, chatApiKey, defaultModel);
             case 'debug_data_tree': {
                 const dataPath = path.join((process as any).cwd(), 'data');
                 const ascii = `data/\n` + await generateAsciiTree(dataPath);
@@ -653,79 +277,24 @@ TASK:
                 res.status(200).json({ ascii, json: structure });
                 break;
             }
-            // Count Tokens Task
-            case 'count_tokens': {
-                const { newMessage, model } = req.body;
-                let textToCount = "";
-                
-                if (newMessage) {
-                    if (newMessage.text) textToCount += newMessage.text;
-                    // Approximate token count for images/files if exact not possible easily
-                    // This is a rough estimation for UX purposes
-                    if (newMessage.attachments) textToCount += ` [${newMessage.attachments.length} attachments]`;
-                }
-
-                try {
-                    // If using Gemini, we can use countTokens API. 
-                    // For others, we might need a local estimator or just return 0/mock.
-                    if (activeProviderName === 'gemini' && chatApiKey) {
-                         const ai = new GoogleGenAI({ apiKey: chatApiKey });
-                         // Updated to use ai.models.countTokens instead of deprecated getGenerativeModel
-                         const countResult = await ai.models.countTokens({
-                             model: model || defaultModel,
-                             contents: [{ parts: [{ text: textToCount }] }]
-                         });
-                         res.status(200).json({ totalTokens: countResult.totalTokens });
-                    } else {
-                         // Fallback estimation: ~4 chars per token
-                         const estimated = Math.ceil(textToCount.length / 4);
-                         res.status(200).json({ totalTokens: estimated });
-                    }
-                } catch (e) {
-                    // Fallback on error
-                    res.status(200).json({ totalTokens: Math.ceil(textToCount.length / 4) });
-                }
-                break;
-            }
-            // Tool Execution (Frontend Tools or Secure Backend Tools)
             case 'tool_exec': {
-                 // Secure endpoint for executing sensitive tools on backend (like Veo video gen)
-                 // This ensures the frontend doesn't need to import heavy SDKs or handle keys directly for these specific tasks
                  const { toolName, toolArgs } = req.body;
-                 
-                 // Import the backend tool registry on demand
                  const { createToolExecutor } = await import('./tools/index');
-                 
                  if (!toolName) return res.status(400).json({ error: { message: "Tool name is required" } });
-                 
-                 // Setup context
                  const ai = new GoogleGenAI({ apiKey: chatApiKey! });
-                 const executor = createToolExecutor(
-                     ai, 
-                     globalSettings.imageModel, 
-                     globalSettings.videoModel, 
-                     chatApiKey!, 
-                     "temp_id", // ChatId not strictly needed for non-filesystem tools, but good to have context
-                     async () => ({ error: "Frontend tools not supported in direct exec mode" }) // No frontend fallback here
-                 );
-                 
+                 const executor = createToolExecutor(ai, globalSettings.imageModel, globalSettings.videoModel, chatApiKey!, "temp_id", async () => ({ error: "Frontend tools not supported" }));
                  try {
                      const result = await executor(toolName, toolArgs, "direct-call");
                      res.status(200).json({ result });
                  } catch (e: any) {
-                     const parsed = parseApiError(e);
-                     res.status(500).json({ error: parsed });
+                     res.status(500).json({ error: parseApiError(e) });
                  }
                  break;
             }
-            default:
-                res.status(404).json({ error: `Unknown task: ${task}` });
+            default: res.status(404).json({ error: `Unknown task: ${task}` });
         }
     } catch (error) {
-        console.error(`[HANDLER] Error processing task "${task}":`, error);
         const parsedError = parseApiError(error);
-        if (!res.headersSent) {
-            res.status(500).json({ error: parsedError });
-        }
+        if (!res.headersSent) res.status(500).json({ error: parsedError });
     }
 };

@@ -51,7 +51,7 @@ export const SelectDropdown: React.FC<SelectDropdownProps> = React.memo(({
             )}
             
             <Select value={value} onValueChange={onChange} disabled={disabled}>
-                <SelectTrigger className={cn("w-full h-12", triggerClassName)}>
+                <SelectTrigger className={cn("w-full h-12", triggerClassName)} aria-label={label || placeholder}>
                     <div className="flex items-center gap-2.5 truncate">
                         {startIcon && (
                             <span className="flex-shrink-0 text-indigo-600 dark:text-indigo-400">

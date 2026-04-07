@@ -274,6 +274,7 @@ export const FilePreviewSidebar: React.FC<FilePreviewSidebarProps> = ({
                                             onClick={handleCopy}
                                             className="p-2 rounded-lg text-content-secondary hover:text-content-primary hover:bg-layer-3 transition-colors"
                                             title="Copy content"
+                                            aria-label="Copy content"
                                         >
                                             {isCopied ? (
                                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-green-500"><polyline points="20 6 9 17 4 12"/></svg>
@@ -287,6 +288,7 @@ export const FilePreviewSidebar: React.FC<FilePreviewSidebarProps> = ({
                                         onClick={handleDownload}
                                         className="p-2 rounded-lg text-content-secondary hover:text-content-primary hover:bg-layer-3 transition-colors"
                                         title="Download file"
+                                        aria-label="Download file"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                                     </button>

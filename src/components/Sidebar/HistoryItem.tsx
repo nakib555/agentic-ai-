@@ -242,6 +242,9 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ text, model, isCollaps
                         <button
                             ref={buttonRef}
                             onClick={(e) => { e.stopPropagation(); setIsMenuOpen(prev => !prev); }}
+                            aria-label="More options"
+                            aria-haspopup="true"
+                            aria-expanded={isMenuOpen}
                             className={`p-1 rounded-md text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-white/10 transition-colors ${isMenuOpen ? 'bg-slate-200/50 dark:bg-white/10 text-slate-700 dark:text-slate-200 opacity-100' : ''}`}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4"><path d="M8 3a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3ZM8 9a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3ZM8 15a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z" /></svg>
@@ -268,15 +271,15 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ text, model, isCollaps
                             className="w-32 bg-white dark:bg-[#252525] rounded-xl shadow-xl border border-gray-200 dark:border-white/10 p-1 overflow-hidden"
                             onClick={(e: React.MouseEvent) => e.stopPropagation()}
                         >
-                            <ul className="flex flex-col gap-0.5">
-                                <li>
-                                    <button onClick={handleEditClick} className="w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-slate-200 transition-colors">
+                            <ul className="flex flex-col gap-0.5" role="menu" aria-label="History item options">
+                                <li role="none">
+                                    <button role="menuitem" onClick={handleEditClick} className="w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-slate-200 transition-colors">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5"><path d="M11.355 2.212a.75.75 0 0 1 1.06 0l1.373 1.373a.75.75 0 0 1 0 1.06L5.435 13H3.25A.75.75 0 0 1 2.5 12.25V10l8.293-8.293a.75.75 0 0 1 .562-.294Z" /></svg>
                                         <span>Rename</span>
                                     </button>
                                 </li>
-                                <li>
-                                    <button onClick={handleDelete} className="w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium hover:bg-red-50 dark:hover:bg-red-500/10 text-red-600 dark:text-red-400 transition-colors">
+                                <li role="none">
+                                    <button role="menuitem" onClick={handleDelete} className="w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium hover:bg-red-50 dark:hover:bg-red-500/10 text-red-600 dark:text-red-400 transition-colors">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M5 3.25V4H2.75a.75.75 0 0 0 0 1.5h.3l.815 8.15A1.5 1.5 0 0 0 5.357 15h5.285a1.5 1.5 0 0 0 1.493-1.35l.815-8.15h.3a.75.75 0 0 0 0-1.5H11v-.75A2.25 2.25 0 0 0 8.75 1h-1.5A2.25 2.25 0 0 0 5 3.25Zm2.25-.75a.75.75 0 0 0-.75.75V4h3v-.75a.75.75 0 0 0-.75-.75h-1.5ZM6.05 6a.75.75 0 0 1 .787.713l.275 5.5a.75.75 0 0 1-1.498.075l-.275-5.5A.75.75 0 0 1 6.05 6Zm3.9 0a.75.75 0 0 1 .712.787l-.275 5.5a.75.75 0 0 1-1.498-.075l.275-5.5a.75.75 0 0 1 .786-.711Z" clipRule="evenodd" /></svg>
                                         <span>Delete</span>
                                     </button>

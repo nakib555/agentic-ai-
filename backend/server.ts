@@ -3,6 +3,8 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { fileURLToPath } from 'url';
 import { apiHandler } from './handler';
 import * as crudHandler from './crudHandler';
@@ -36,6 +38,21 @@ async function startServer() {
   const app = express();
   const PORT = process.env.PORT || 3001;
 
+  // Security Middlewares
+  app.use(helmet({
+    contentSecurityPolicy: false, // Disable CSP to allow inline scripts/styles if needed, or configure properly
+    crossOriginEmbedderPolicy: false, // Required for FFmpeg.wasm if not using COOP/COEP headers manually
+  }) as any);
+
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 1000, // Limit each IP to 1000 requests per windowMs
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please try again later.' }
+  });
+  app.use('/api/', limiter as any);
+
   // Middlewares
   const corsOptions = {
     origin: '*', // Allow all origins to support split frontend/backend hosting (e.g. Cloudflare + Render)
@@ -55,7 +72,11 @@ async function startServer() {
   
   // Request Logger Middleware
   app.use(((req: any, res: any, next: any) => {
-      console.log(`[SERVER] ${req.method} ${req.url}`);
+      const start = Date.now();
+      res.on('finish', () => {
+          const duration = Date.now() - start;
+          console.log(`[SERVER] ${req.method} ${req.url} ${res.statusCode} - ${duration}ms`);
+      });
       next();
   }) as any);
 

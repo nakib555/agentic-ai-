@@ -40,6 +40,7 @@ export const SourcesPills: React.FC<SourcesPillsProps> = ({ sources, onShowSourc
         onClick={onShowSources}
         className="flex items-center gap-2 rounded-full px-3 py-1.5 bg-gray-100 dark:bg-black/20 hover:bg-gray-200 dark:hover:bg-black/40 transition-colors"
         title="View sources"
+        aria-label="View sources"
     >
         <div className="flex -space-x-2">
             {sources.slice(0, 3).map((source, index) => (

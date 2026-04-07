@@ -19,8 +19,11 @@ export const ChecklistItem: React.FC<ChecklistItemProps> = ({ initialChecked, ch
     <motion.div
       layout
       initial={false}
+      role="checkbox"
+      aria-checked={isChecked}
+      tabIndex={0}
       className={`
-        group flex items-start gap-3 p-3 my-1 rounded-xl cursor-pointer border transition-all duration-200 select-none
+        group flex items-start gap-3 p-3 my-1 rounded-xl cursor-pointer border transition-all duration-200 select-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-[#121212]
         ${isChecked 
           ? 'bg-slate-50/50 dark:bg-white/[0.02] border-transparent' 
           : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/5 hover:border-indigo-300 dark:hover:border-indigo-500/50 hover:shadow-sm'
@@ -29,6 +32,13 @@ export const ChecklistItem: React.FC<ChecklistItemProps> = ({ initialChecked, ch
       onClick={(e) => {
         e.stopPropagation();
         setIsChecked(!isChecked);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsChecked(!isChecked);
+        }
       }}
     >
       <div className="relative flex-shrink-0 mt-0.5">

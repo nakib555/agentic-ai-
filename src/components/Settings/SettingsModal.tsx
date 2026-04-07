@@ -136,11 +136,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = (props) => {
             </div>
             
             <div className="px-4 pb-2">
-                <nav className="flex gap-1 overflow-x-auto scrollbar-hide py-1">
+                <nav className="flex gap-1 overflow-x-auto scrollbar-hide py-1" role="tablist" aria-label="Settings Categories">
                     <LayoutGroup>
                         {CATEGORIES.map((cat) => (
                         <SettingsCategoryButton
                             key={cat.id}
+                            id={cat.id}
                             icon={cat.icon}
                             label={cat.label}
                             isActive={activeTab === cat.id}
@@ -165,6 +166,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = (props) => {
                 className="w-full"
               >
                 {activeTab === 'general' && (
+                  <div role="tabpanel" id="panel-general" aria-labelledby="tab-general">
                   <GeneralSettings 
                     onClearAllChats={props.onClearAllChats}
                     onRunTests={props.onRunTests}
@@ -184,8 +186,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = (props) => {
                     ollamaHost={props.ollamaHost}
                     onSaveOllamaHost={props.onSaveOllamaHost}
                   />
+                  </div>
                 )}
                 {activeTab === 'model' && (
+                  <div role="tabpanel" id="panel-model" aria-labelledby="tab-model">
                   <ModelSettings 
                     key={`${props.models.length}-${props.imageModels.length}-${props.videoModels.length}`} // Force remount on model updates
                     models={props.models}
@@ -209,8 +213,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = (props) => {
                     disabled={props.disabled}
                     provider={props.provider}
                   />
+                  </div>
                 )}
                 {activeTab === 'personalize' && (
+                  <div role="tabpanel" id="panel-personalize" aria-labelledby="tab-personalize">
                   <PersonalizeSettings 
                     aboutUser={props.aboutUser}
                     setAboutUser={props.setAboutUser}
@@ -218,8 +224,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = (props) => {
                     setAboutResponse={props.setAboutResponse}
                     disabled={props.disabled}
                   />
+                  </div>
                 )}
                 {activeTab === 'speech' && (
+                  <div role="tabpanel" id="panel-speech" aria-labelledby="tab-speech">
                   <SpeechMemorySettings 
                     isMemoryEnabled={props.isMemoryEnabled}
                     setIsMemoryEnabled={props.setIsMemoryEnabled}
@@ -231,6 +239,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = (props) => {
                     ttsModel={props.ttsModel}
                     onTtsModelChange={props.onTtsModelChange}
                   />
+                  </div>
                 )}
               </motion.div>
             </AnimatePresence>

@@ -11,6 +11,7 @@ const motion = motionTyped as any;
 
 export const Collapsible = ({ children, ...props }: any) => {
   const [isOpen, setIsOpen] = useState(props.open || false);
+  const id = React.useId();
 
   // Extract Summary and Content from children
   const childrenArray = React.Children.toArray(children);
@@ -44,6 +45,8 @@ export const Collapsible = ({ children, ...props }: any) => {
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between px-3 py-2 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors text-left focus:outline-none select-none"
         aria-expanded={isOpen}
+        aria-controls={`collapsible-content-${id}`}
+        id={`collapsible-button-${id}`}
       >
         <span className="font-medium text-xs text-slate-700 dark:text-slate-300">
           {title}
@@ -61,6 +64,9 @@ export const Collapsible = ({ children, ...props }: any) => {
       </button>
 
       <motion.div
+        id={`collapsible-content-${id}`}
+        role="region"
+        aria-labelledby={`collapsible-button-${id}`}
         initial={false}
         animate={{ height: isOpen ? 'auto' : 0, opacity: isOpen ? 1 : 0 }}
         transition={{ duration: 0.2, ease: "easeInOut" }}

@@ -101,6 +101,7 @@ export const UserMessage = ({
                         value={editText}
                         onChange={(e) => setEditedText(e.target.value)}
                         onKeyDown={handleKeyDown}
+                        aria-label="Edit message text"
                         className="w-full bg-transparent text-content-primary resize-none focus:outline-none text-base leading-relaxed p-1 col-start-1 row-start-1 h-full overflow-hidden"
                         rows={1}
                    />
@@ -108,6 +109,7 @@ export const UserMessage = ({
                <div className="flex justify-end gap-2 mt-1">
                    <button 
                         onClick={handleEditCancel}
+                        aria-label="Cancel edit"
                         className="px-3 py-1.5 text-xs font-semibold text-content-secondary hover:text-content-primary hover:bg-layer-3 rounded-lg transition-colors border border-border-default"
                    >
                        Cancel
@@ -115,6 +117,7 @@ export const UserMessage = ({
                    <button 
                         onClick={handleEditSave}
                         disabled={editText.trim().length === 0}
+                        aria-label="Save and submit edit"
                         className="px-3 py-1.5 text-xs font-semibold text-text-inverted bg-primary-main hover:bg-primary-hover rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                    >
                        Save & Submit

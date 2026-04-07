@@ -73,6 +73,8 @@ export const ThemeToggle = ({ theme, setTheme, variant = 'compact' }: ThemeToggl
                         <button
                             key={option.value}
                             onClick={() => setTheme(option.value as Theme)}
+                            aria-pressed={isActive}
+                            aria-label={`Theme: ${option.label}`}
                             className={`
                                 group relative flex flex-col items-center text-left rounded-xl border-2 transition-all duration-200 overflow-hidden outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-[#09090b]
                                 ${isActive 
@@ -115,6 +117,8 @@ export const ThemeToggle = ({ theme, setTheme, variant = 'compact' }: ThemeToggl
                     <button
                         key={option.value}
                         onClick={() => setTheme(option.value as Theme)}
+                        aria-pressed={isActive}
+                        aria-label={`Theme: ${option.label}`}
                         className={`
                             relative z-10 flex-1 flex items-center justify-center gap-2 py-1.5 px-2 rounded-lg text-xs font-medium transition-all duration-200 focus:outline-none touch-manipulation
                             ${isActive ? 'text-gray-900 dark:text-white font-semibold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}

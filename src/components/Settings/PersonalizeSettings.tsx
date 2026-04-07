@@ -51,7 +51,7 @@ const SegmentedControl: React.FC<{
     const id = React.useId();
     
     return (
-        <div className={`flex flex-col gap-2 w-full ${className || ''}`}>
+        <div className={`flex flex-col gap-2 w-full ${className || ''}`} role="radiogroup" aria-label={label}>
             <div className="flex items-center gap-2 px-1">
                 {icon && <span className="flex-shrink-0 opacity-70 scale-90">{icon}</span>}
                 <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{label}</span>
@@ -63,6 +63,8 @@ const SegmentedControl: React.FC<{
                     return (
                         <button
                             key={opt.id}
+                            role="radio"
+                            aria-checked={isActive}
                             onClick={() => !disabled && onChange(opt.id)}
                             disabled={disabled}
                             className={`
@@ -113,6 +115,7 @@ const TextInput: React.FC<{
                     onBlur={onBlur}
                     placeholder={placeholder}
                     disabled={disabled}
+                    aria-label={label}
                     className="w-full px-4 py-3 bg-transparent border border-slate-200 dark:border-white/10 rounded-xl text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600 min-h-[120px] resize-none leading-relaxed"
                 />
             ) : (
@@ -123,6 +126,7 @@ const TextInput: React.FC<{
                     onBlur={onBlur}
                     placeholder={placeholder}
                     disabled={disabled}
+                    aria-label={label}
                     className="w-full py-2.5 px-4 bg-transparent border border-slate-200 dark:border-white/10 rounded-xl text-sm font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600"
                 />
             )}

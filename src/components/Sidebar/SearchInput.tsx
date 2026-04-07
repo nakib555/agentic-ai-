@@ -49,6 +49,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
               ref={ref}
               type="text" 
               placeholder="Search..." 
+              aria-label="Search chat history"
               className={`
                 w-full pl-9 pr-14 py-2.5 rounded-xl text-sm transition-all duration-200 shadow-sm outline-none
                 ${isFocused

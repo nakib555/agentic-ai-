@@ -47,8 +47,9 @@ const CodeIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 
 const PdfIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>);
 
 const MenuItem: React.FC<{ onClick: () => void; disabled: boolean; children: React.ReactNode; label: string }> = ({ onClick, disabled, children, label }) => (
-    <li>
+    <li role="none">
         <motion.button 
+            role="menuitem"
             onClick={onClick}
             disabled={disabled}
             className="w-full text-left flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-all text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
@@ -161,6 +162,7 @@ export const ChatHeader = ({
                         <Tooltip content="Open Sidebar" position="bottom" delay={500}>
                             <button
                                 onClick={handleToggleSidebar}
+                                aria-label="Toggle sidebar"
                                 className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/10 transition-colors"
                             >
                                 <PanelLeftIcon />
@@ -236,7 +238,7 @@ export const ChatHeader = ({
                                     transition={{ type: "spring", stiffness: 300, damping: 20 }}
                                     className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-2xl border border-gray-200 dark:border-white/10 p-2 z-20 origin-top-right overflow-hidden"
                                 >
-                                    <ul className="flex flex-col">
+                                    <ul className="flex flex-col" role="menu" aria-label="Chat options menu">
                                         <MenuSectionTitle>Actions</MenuSectionTitle>
                                         <MenuItem onClick={onShareChat} disabled={!isChatActive} label="Share to Clipboard">
                                             <ShareIcon />

@@ -117,6 +117,8 @@ export const BrowserSessionDisplay: React.FC<BrowserSessionDisplayProps> = ({ ur
                 <button 
                     onClick={() => setIsLogsOpen(!isLogsOpen)}
                     className="w-full flex items-center justify-between px-4 py-2 text-xs font-medium text-slate-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+                    aria-expanded={isLogsOpen}
+                    aria-label="Toggle Activity Log"
                 >
                     <div className="flex items-center gap-2">
                         {isLoading ? (

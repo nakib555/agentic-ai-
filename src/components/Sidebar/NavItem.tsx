@@ -41,6 +41,7 @@ export const NavItem = ({ icon, text, active, isCollapsed, isDesktop, onClick, d
         <button 
             onClick={onClick} 
             disabled={disabled}
+            aria-label={text}
             className={`${baseClasses} ${active ? activeClasses : inactiveClasses} ${layoutClasses} ${disabled ? disabledClasses : ''}`}
         >
             <div className={`flex-shrink-0 w-5 h-5 flex items-center justify-center transition-colors ${active ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300'}`}>

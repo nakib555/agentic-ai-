@@ -216,6 +216,7 @@ const SpeechMemorySettings: React.FC<SpeechMemorySettingsProps> = ({
                                     }
                                 `}
                                 title={isPlayingPreview ? "Stop Preview" : "Preview Selected Voice"}
+                                aria-label={isPlayingPreview ? "Stop Preview" : "Preview Selected Voice"}
                             >
                                 {isLoadingPreview ? <SpinnerIcon /> : isPlayingPreview ? <StopIcon /> : <PlayIcon />}
                             </button>

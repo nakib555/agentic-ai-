@@ -59,6 +59,7 @@ const IconButton: React.FC<{
             type="button"
             onClick={onClick}
             disabled={disabled}
+            aria-label={title}
             className={`
                 flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 
                 ${active 
