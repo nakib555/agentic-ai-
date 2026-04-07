@@ -5,6 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import compression from 'compression';
 import { fileURLToPath } from 'url';
 import { apiHandler } from './handler';
 import * as crudHandler from './crudHandler';
@@ -52,6 +53,9 @@ async function startServer() {
     message: { error: 'Too many requests, please try again later.' }
   });
   app.use('/api/', limiter as any);
+
+  // Performance Middleware
+  app.use(compression() as any);
 
   // Middlewares
   const corsOptions = {
@@ -220,6 +224,24 @@ async function startServer() {
       console.error('[SERVER] Failed to initialize WebSocket server:', err);
     }
   });
+
+  // Graceful Shutdown
+  const shutdown = () => {
+    console.log('[SERVER] Shutting down gracefully...');
+    server.close(() => {
+      console.log('[SERVER] Closed out remaining connections.');
+      process.exit(0);
+    });
+    
+    // Force shutdown after 10s
+    setTimeout(() => {
+      console.error('[SERVER] Could not close connections in time, forcefully shutting down');
+      process.exit(1);
+    }, 10000);
+  };
+
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 }
 
 startServer().catch(err => {

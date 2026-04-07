@@ -18,15 +18,22 @@ export const MEMORY_CONTENT_PATH = path.join(DATA_DIR, 'memory.txt');
 export const MEMORY_FILES_DIR = path.join(DATA_DIR, 'memory_files');
 
 let settingsCache: any = null;
+let historyIndexCache: any = null;
 
 export async function readData<T>(filePath: string): Promise<T> {
     if (filePath === SETTINGS_FILE_PATH && settingsCache) {
         return settingsCache as T;
     }
+    if (filePath === HISTORY_INDEX_PATH && historyIndexCache) {
+        return historyIndexCache as T;
+    }
     const data = await fs.readFile(filePath, 'utf-8');
     const parsed = JSON.parse(data);
     if (filePath === SETTINGS_FILE_PATH) {
         settingsCache = parsed;
+    }
+    if (filePath === HISTORY_INDEX_PATH) {
+        historyIndexCache = parsed;
     }
     return parsed as T;
 }
@@ -50,11 +57,13 @@ export async function writeFileAtomic(filePath: string, data: string | Buffer): 
         // Atomic rename (replace)
         await fs.rename(tempPath, filePath);
 
-        // Update cache if it's the settings file
-        if (filePath === SETTINGS_FILE_PATH && typeof data === 'string') {
-            try {
-                settingsCache = JSON.parse(data);
-            } catch (e) {}
+        // Update cache if it's the settings file or history index
+        if (typeof data === 'string') {
+            if (filePath === SETTINGS_FILE_PATH) {
+                try { settingsCache = JSON.parse(data); } catch (e) {}
+            } else if (filePath === HISTORY_INDEX_PATH) {
+                try { historyIndexCache = JSON.parse(data); } catch (e) {}
+            }
         }
     };
 
