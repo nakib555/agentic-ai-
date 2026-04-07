@@ -91,7 +91,7 @@ export const UserMessage = ({
             <div className="w-full max-w-[85%] sm:max-w-[80%] bg-layer-2 rounded-2xl border border-primary-main shadow-md p-3 flex flex-col gap-2">
                <div className="grid w-full">
                    <div 
-                       className="w-full bg-transparent text-content-primary text-[1.125rem] leading-[1.75] p-1 invisible whitespace-pre-wrap break-words col-start-1 row-start-1"
+                       className="w-full bg-transparent text-content-primary text-[1.25rem] leading-[1.75] p-1 invisible whitespace-pre-wrap break-words col-start-1 row-start-1"
                        aria-hidden="true"
                    >
                        {editText + ' '}
@@ -101,7 +101,7 @@ export const UserMessage = ({
                         value={editText}
                         onChange={(e) => setEditedText(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        className="w-full bg-transparent text-content-primary resize-none focus:outline-none text-[1.125rem] leading-[1.75] p-1 col-start-1 row-start-1 h-full overflow-hidden"
+                        className="w-full bg-transparent text-content-primary resize-none focus:outline-none text-[1.25rem] leading-[1.75] p-1 col-start-1 row-start-1 h-full overflow-hidden"
                         rows={1}
                    />
                </div>

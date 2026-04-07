@@ -20,13 +20,18 @@ const getChatAsMarkdown = (chat: ChatSession): string => {
         if (message.isHidden) continue;
 
         if (message.role === 'user') {
-            markdownContent += `**You:**\n`;
+            markdownContent += `### You\n\n`;
             if (message.attachments && message.attachments.length > 0) {
-                markdownContent += `*Attached ${message.attachments.length} file(s): ${message.attachments.map(a => a.name).join(', ')}*\n\n`;
+                markdownContent += `> *Attached ${message.attachments.length} file(s): ${message.attachments.map(a => a.name).join(', ')}*\n\n`;
             }
             markdownContent += `${message.text}\n\n`;
         } else if (message.role === 'model') {
-            markdownContent += `**AI (Response ${message.activeResponseIndex + 1} of ${message.responses?.length || 1}):**\n`;
+            markdownContent += `### AI\n`;
+            if ((message.responses?.length || 1) > 1) {
+                markdownContent += `*(Response ${message.activeResponseIndex + 1} of ${message.responses?.length})*\n\n`;
+            } else {
+                markdownContent += `\n`;
+            }
             
             const activeResponse = message.responses?.[message.activeResponseIndex];
             if (!activeResponse) continue;

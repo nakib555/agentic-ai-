@@ -291,6 +291,8 @@ export const App = () => {
               setAboutUser={logic.setAboutUser}
               aboutResponse={logic.aboutResponse}
               setAboutResponse={logic.setAboutResponse}
+              systemPrompt={logic.systemPrompt}
+              setSystemPrompt={logic.setSystemPrompt}
               temperature={logic.temperature}
               setTemperature={logic.setTemperature}
               maxTokens={logic.maxTokens}

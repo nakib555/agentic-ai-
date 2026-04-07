@@ -15,6 +15,8 @@ type PersonalizeSettingsProps = {
   setAboutUser: (prompt: string) => void;
   aboutResponse: string;
   setAboutResponse: (prompt: string) => void;
+  systemPrompt: string;
+  setSystemPrompt: (prompt: string) => void;
   disabled: boolean;
 };
 
@@ -153,7 +155,7 @@ const SectionHeader: React.FC<{
 );
 
 const PersonalizeSettings: React.FC<PersonalizeSettingsProps> = ({
-    aboutUser, setAboutUser, aboutResponse, setAboutResponse, disabled
+    aboutUser, setAboutUser, aboutResponse, setAboutResponse, systemPrompt, setSystemPrompt, disabled
 }) => {
     // Local state for UI controls
     const [tone, setTone] = useState('default');
@@ -208,13 +210,20 @@ const PersonalizeSettings: React.FC<PersonalizeSettingsProps> = ({
         setEnthusiasm(enthMatch ? enthMatch[1].toLowerCase().trim() : 'default');
         setStructure(structMatch ? structMatch[1].toLowerCase().trim() : 'default');
         setEmoji(emojiMatch ? emojiMatch[1].toLowerCase().trim() : 'default');
-        setCustomInstructions(cleanInstructions);
+        
+        return cleanInstructions;
     }, []);
 
     // --- Parsing Logic (Executed on Mount) ---
     useEffect(() => {
         parseAboutUser(aboutUser);
-        parseAboutResponse(aboutResponse);
+        const legacyInstructions = parseAboutResponse(aboutResponse);
+        if (!systemPrompt && legacyInstructions) {
+            setCustomInstructions(legacyInstructions);
+            setSystemPrompt(legacyInstructions);
+        } else {
+            setCustomInstructions(systemPrompt || '');
+        }
         setIsLoaded(true);
     }, []); // Run once on mount
 
@@ -253,7 +262,6 @@ const PersonalizeSettings: React.FC<PersonalizeSettingsProps> = ({
         const parts = [];
         if (tone !== 'default') parts.push(`Tone: ${tone}`);
         if (traits.length > 0) parts.push(`Traits: ${traits.join(', ')}`);
-        if (debouncedInstructions.trim()) parts.push(debouncedInstructions.trim());
 
         const finalString = parts.join('\n');
         
@@ -264,7 +272,22 @@ const PersonalizeSettings: React.FC<PersonalizeSettingsProps> = ({
             const timer = setTimeout(() => setSaveState('saved'), 500);
             return () => clearTimeout(timer);
         }
-    }, [debouncedInstructions, tone, warmth, enthusiasm, structure, emoji, isLoaded, aboutResponse, saveState, setAboutResponse]);
+    }, [tone, warmth, enthusiasm, structure, emoji, isLoaded, aboutResponse, saveState, setAboutResponse]);
+
+    // 3. System Prompt Sync
+    useEffect(() => {
+        if (!isLoaded) return;
+        
+        const finalString = debouncedInstructions.trim();
+        
+        if (finalString !== systemPrompt) {
+            setSaveState('saving');
+            setSystemPrompt(finalString);
+        } else if (saveState === 'saving') {
+            const timer = setTimeout(() => setSaveState('saved'), 500);
+            return () => clearTimeout(timer);
+        }
+    }, [debouncedInstructions, isLoaded, systemPrompt, saveState, setSystemPrompt]);
 
 
     const handleToneChange = (val: string) => setTone(val);

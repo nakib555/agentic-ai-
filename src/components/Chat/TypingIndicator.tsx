@@ -14,12 +14,27 @@ export const TypingIndicator = () => (
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className="flex items-center px-4 py-2"
+      className="flex items-center gap-1.5 px-4 py-2"
       aria-label="AI is thinking"
       role="status"
     >
-      <span className="text-lg font-medium shimmer-text select-none">
-        Thinking....
+      <span className="text-sm font-medium text-slate-500 dark:text-slate-400 select-none mr-1">
+        Thinking
       </span>
+      {[0, 1, 2].map((i) => (
+        <motion.div
+          key={i}
+          className="w-1.5 h-1.5 bg-slate-400 dark:bg-slate-500 rounded-full"
+          animate={{
+            y: ["0%", "-50%", "0%"],
+          }}
+          transition={{
+            duration: 0.6,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: i * 0.15,
+          }}
+        />
+      ))}
     </motion.div>
   );

@@ -69,14 +69,14 @@ export const useAppLogic = () => {
     
     // --- Chat Hook ---
     const chatSettings = useMemo(() => ({
-        systemPrompt: "",
+        systemPrompt: settings.systemPrompt,
         aboutUser: settings.aboutUser,
         aboutResponse: settings.aboutResponse,
         temperature: settings.temperature, 
         maxOutputTokens: settings.maxTokens,
         imageModel: settings.imageModel,
         videoModel: settings.videoModel
-    }), [settings.aboutUser, settings.aboutResponse, settings.temperature, settings.maxTokens, settings.imageModel, settings.videoModel]);
+    }), [settings.systemPrompt, settings.aboutUser, settings.aboutResponse, settings.temperature, settings.maxTokens, settings.imageModel, settings.videoModel]);
 
     const activeApiKey = settings.provider === 'openrouter' ? settings.openRouterApiKey : (settings.provider === 'ollama' ? settings.ollamaApiKey : settings.apiKey);
 
@@ -164,6 +164,7 @@ export const useAppLogic = () => {
 
     const handleSetAboutUser = createSettingUpdater(settings.setAboutUser, 'aboutUser');
     const handleSetAboutResponse = createSettingUpdater(settings.setAboutResponse, 'aboutResponse');
+    const handleSetSystemPrompt = createSettingUpdater(settings.setSystemPrompt, 'systemPrompt');
     const handleSetTemperature = createSettingUpdater(settings.setTemperature, 'temperature');
     const handleSetMaxTokens = createSettingUpdater(settings.setMaxTokens, 'maxTokens');
     const handleSetTtsVoice = createSettingUpdater(settings.setTtsVoice, 'ttsVoice');
@@ -482,7 +483,7 @@ export const useAppLogic = () => {
         fetchModels();
     }, [fetchModels]);
 
-    const handleExportChat = useCallback((format: 'md' | 'json' | 'pdf') => {
+    const handleExportChat = useCallback((format: 'md' | 'json') => {
         if (!chat.currentChatId) return;
         const currentChat = chat.chatHistory.find(c => c.id === chat.currentChatId);
         if (!currentChat) return;
@@ -490,7 +491,6 @@ export const useAppLogic = () => {
         import('../utils/exportUtils/index').then(mod => {
             if (format === 'json') mod.exportChatToJson(currentChat);
             else if (format === 'md') mod.exportChatToMarkdown(currentChat);
-            else if (format === 'pdf') mod.exportChatToPdf(currentChat);
         });
     }, [chat.currentChatId, chat.chatHistory]);
 
@@ -570,6 +570,8 @@ export const useAppLogic = () => {
         setAboutUser: handleSetAboutUser,
         aboutResponse: settings.aboutResponse, 
         setAboutResponse: handleSetAboutResponse,
+        systemPrompt: settings.systemPrompt,
+        setSystemPrompt: handleSetSystemPrompt,
         ttsVoice: settings.ttsVoice, 
         setTtsVoice: handleSetTtsVoice,
         

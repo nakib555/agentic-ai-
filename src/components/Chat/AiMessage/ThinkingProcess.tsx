@@ -105,8 +105,17 @@ export const ThinkingProcess: React.FC<ThinkingProcessProps> = ({ thinkingText, 
                         )}
                     </div>
                     <div className="flex flex-col items-start">
-                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                            {isThinking ? 'Reasoning...' : 'Reasoning Process'}
+                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center">
+                            {isThinking ? (
+                                <>
+                                    Reasoning
+                                    <span className="flex ml-0.5 space-x-[1px]">
+                                        <motion.span animate={{ y: [0, -3, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0, ease: "easeInOut" }}>.</motion.span>
+                                        <motion.span animate={{ y: [0, -3, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.15, ease: "easeInOut" }}>.</motion.span>
+                                        <motion.span animate={{ y: [0, -3, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.3, ease: "easeInOut" }}>.</motion.span>
+                                    </span>
+                                </>
+                            ) : 'Reasoning Process'}
                         </span>
                     </div>
                 </div>

@@ -5,4 +5,3 @@
 
 export { exportChatToJson, exportAllChatsToJson } from './json';
 export { exportChatToMarkdown, exportChatToClipboard } from './markdown';
-export { exportChatToPdf } from './pdf';

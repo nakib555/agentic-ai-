@@ -38,6 +38,8 @@ type SettingsModalProps = {
   setAboutUser: (prompt: string) => void;
   aboutResponse: string;
   setAboutResponse: (prompt: string) => void;
+  systemPrompt: string;
+  setSystemPrompt: (prompt: string) => void;
   temperature: number;
   setTemperature: (temp: number) => void;
   maxTokens: number;
@@ -222,6 +224,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = (props) => {
                     setAboutUser={props.setAboutUser}
                     aboutResponse={props.aboutResponse}
                     setAboutResponse={props.setAboutResponse}
+                    systemPrompt={props.systemPrompt}
+                    setSystemPrompt={props.setSystemPrompt}
                     disabled={props.disabled}
                   />
                   </div>

@@ -17,7 +17,7 @@ type ChatHeaderProps = {
   isSidebarOpen: boolean;
   isSidebarCollapsed: boolean;
   onImportChat: () => void;
-  onExportChat: (format: 'md' | 'json' | 'pdf') => void;
+  onExportChat: (format: 'md' | 'json') => void;
   onShareChat: () => void;
   isChatActive: boolean;
   isDesktop: boolean;
@@ -259,9 +259,6 @@ export const ChatHeader = ({
                                         </MenuItem>
                                         <MenuItem onClick={() => onExportChat('json')} disabled={!isChatActive} label="JSON">
                                             <CodeIcon />
-                                        </MenuItem>
-                                        <MenuItem onClick={() => onExportChat('pdf')} disabled={!isChatActive} label="PDF">
-                                            <PdfIcon />
                                         </MenuItem>
                                     </ul>
                                 </motion.div>

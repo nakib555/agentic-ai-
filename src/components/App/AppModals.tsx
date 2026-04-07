@@ -90,6 +90,8 @@ type AppModalsProps = {
   setAboutUser: (value: string) => void;
   aboutResponse: string;
   setAboutResponse: (value: string) => void;
+  systemPrompt: string;
+  setSystemPrompt: (value: string) => void;
   // Model Settings
   temperature: number;
   setTemperature: (value: number) => void;
@@ -192,6 +194,8 @@ export const AppModals: React.FC<AppModalsProps> = (props) => {
           setAboutUser={props.setAboutUser}
           aboutResponse={props.aboutResponse}
           setAboutResponse={props.setAboutResponse}
+          systemPrompt={props.systemPrompt}
+          setSystemPrompt={props.setSystemPrompt}
           temperature={props.temperature}
           setTemperature={props.setTemperature}
           maxTokens={props.maxTokens}

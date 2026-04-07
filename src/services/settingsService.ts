@@ -15,6 +15,7 @@ export type AppSettings = {
     ollamaHost: string;
     aboutUser: string;
     aboutResponse: string;
+    systemPrompt: string;
     temperature: number;
     maxTokens: number;
     imageModel: string;

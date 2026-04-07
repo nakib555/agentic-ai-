@@ -29,6 +29,7 @@ interface SettingsState {
   // Personalization
   aboutUser: string;
   aboutResponse: string;
+  systemPrompt: string;
   ttsVoice: string;
   isMemoryEnabled: boolean;
   
@@ -56,6 +57,7 @@ interface SettingsState {
   
   setAboutUser: (text: string) => void;
   setAboutResponse: (text: string) => void;
+  setSystemPrompt: (text: string) => void;
   setTtsVoice: (voice: string) => void;
   setIsMemoryEnabled: (enabled: boolean) => void;
   
@@ -84,6 +86,7 @@ export const useSettingsStore = create<SettingsState>()(
       
       aboutUser: DEFAULT_ABOUT_USER,
       aboutResponse: DEFAULT_ABOUT_RESPONSE,
+      systemPrompt: '',
       ttsVoice: DEFAULT_TTS_VOICE,
       isMemoryEnabled: false,
       
@@ -109,6 +112,7 @@ export const useSettingsStore = create<SettingsState>()(
       
       setAboutUser: (aboutUser) => set({ aboutUser }),
       setAboutResponse: (aboutResponse) => set({ aboutResponse }),
+      setSystemPrompt: (systemPrompt) => set({ systemPrompt }),
       setTtsVoice: (ttsVoice) => set({ ttsVoice }),
       setIsMemoryEnabled: (isMemoryEnabled) => set({ isMemoryEnabled }),
       
@@ -134,6 +138,7 @@ export const useSettingsStore = create<SettingsState>()(
         maxTokens: state.maxTokens,
         aboutUser: state.aboutUser,
         aboutResponse: state.aboutResponse,
+        systemPrompt: state.systemPrompt,
         ttsVoice: state.ttsVoice,
         isMemoryEnabled: state.isMemoryEnabled
       }),
