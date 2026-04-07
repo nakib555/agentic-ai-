@@ -91,7 +91,7 @@ export const UserMessage = ({
             <div className="w-full max-w-[85%] sm:max-w-[80%] bg-layer-2 rounded-2xl border border-primary-main shadow-md p-3 flex flex-col gap-2">
                <div className="grid w-full">
                    <div 
-                       className="w-full bg-transparent text-content-primary text-base leading-relaxed p-1 invisible whitespace-pre-wrap break-words col-start-1 row-start-1"
+                       className="w-full bg-transparent text-content-primary text-[1.125rem] leading-[1.75] p-1 invisible whitespace-pre-wrap break-words col-start-1 row-start-1"
                        aria-hidden="true"
                    >
                        {editText + ' '}
@@ -101,15 +101,13 @@ export const UserMessage = ({
                         value={editText}
                         onChange={(e) => setEditedText(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        aria-label="Edit message text"
-                        className="w-full bg-transparent text-content-primary resize-none focus:outline-none text-base leading-relaxed p-1 col-start-1 row-start-1 h-full overflow-hidden"
+                        className="w-full bg-transparent text-content-primary resize-none focus:outline-none text-[1.125rem] leading-[1.75] p-1 col-start-1 row-start-1 h-full overflow-hidden"
                         rows={1}
                    />
                </div>
                <div className="flex justify-end gap-2 mt-1">
                    <button 
                         onClick={handleEditCancel}
-                        aria-label="Cancel edit"
                         className="px-3 py-1.5 text-xs font-semibold text-content-secondary hover:text-content-primary hover:bg-layer-3 rounded-lg transition-colors border border-border-default"
                    >
                        Cancel
@@ -117,7 +115,6 @@ export const UserMessage = ({
                    <button 
                         onClick={handleEditSave}
                         disabled={editText.trim().length === 0}
-                        aria-label="Save and submit edit"
                         className="px-3 py-1.5 text-xs font-semibold text-text-inverted bg-primary-main hover:bg-primary-hover rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                    >
                        Save & Submit
@@ -172,7 +169,7 @@ export const UserMessage = ({
                         </div>
                     )}
                     {text && (
-                        <div className="markdown-content markdown-content-user text-base leading-relaxed text-content-primary break-words whitespace-pre-wrap min-w-0">
+                        <div className="markdown-content markdown-content-user text-content-primary break-words whitespace-pre-wrap min-w-0">
                             <ManualCodeRenderer text={text} components={MarkdownComponents} isStreaming={false} />
                         </div>
                     )}

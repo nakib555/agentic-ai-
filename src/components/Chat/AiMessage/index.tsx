@@ -267,7 +267,7 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
           )}
           
           {/* Main Content Area */}
-          <div className="markdown-content max-w-none w-full text-slate-800 dark:text-gray-100 leading-relaxed break-words min-w-0">
+          <div className="markdown-content max-w-none w-full text-slate-800 dark:text-gray-100 break-words min-w-0">
             {(!finalAnswerText && !msg.isThinking && !activeResponse?.error && logic.hasThinkingText) ? (
                  <div className="text-sm text-slate-500 italic p-2 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg">
                     No final answer generated. Please check the reasoning logs.
