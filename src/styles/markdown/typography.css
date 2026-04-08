@@ -5,10 +5,14 @@
   word-wrap: break-word;
   line-height: 1.75;
   color: var(--text-primary);
-  font-size: 1.25rem; /* 20px */
+  font-size: 1.25rem; /* 20px default */
   letter-spacing: -0.015em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.markdown-content.ai-response {
+  font-size: 18.5px;
 }
 
 .markdown-content * {
@@ -42,21 +46,36 @@
   padding-bottom: 0.3em; 
 }
 
+.markdown-content.ai-response h1 {
+  font-size: 1.89em; /* ~35px based on 18.5px base */
+}
+
 .markdown-content h2 { 
   font-size: 1.5em; 
+}
+
+.markdown-content.ai-response h2 {
+  font-size: 1.62em; /* ~30px based on 18.5px base */
 }
 
 .markdown-content h3 { 
   font-size: 1.25em; 
 }
 
+.markdown-content.ai-response h3 {
+  font-size: 1.35em; /* ~25px based on 18.5px base */
+}
+
 .markdown-content h4 { 
-  font-size: 1em; 
   text-transform: uppercase; 
   color: var(--text-secondary); 
   font-size: 0.85em; 
   letter-spacing: 0.05em; 
   margin-top: 1.5em; 
+}
+
+.markdown-content.ai-response h4 {
+  font-size: 0.92em; /* ~17px based on 18.5px base */
 }
 
 .markdown-content ul, 
