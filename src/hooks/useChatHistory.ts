@@ -144,6 +144,7 @@ export const useChatHistory = () => {
         }
     } catch (error) {
         console.error("Import failed:", error);
+        throw error;
     }
   }, [updateLocalAndCache]);
   

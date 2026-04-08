@@ -131,6 +131,7 @@ export const ImportChatModal: React.FC<ImportChatModalProps> = ({ isOpen, onClos
       onFileUpload(file);
       onClose();
     }
+    event.target.value = '';
   };
 
   const handleDragOver = (e: React.DragEvent) => {

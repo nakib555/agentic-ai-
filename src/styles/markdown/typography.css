@@ -20,7 +20,7 @@
 .markdown-content > *:last-child { margin-bottom: 0; }
 
 .markdown-content p {
-  margin-bottom: 1.25em;
+  margin-bottom: 0.6rem;
   color: var(--text-primary);
 }
 

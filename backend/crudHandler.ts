@@ -126,11 +126,26 @@ export const importChat = async (req: any, res: any) => {
                 return null;
             }
             
-            // Deep check a few messages to ensure structure if possible
-            // We'll be lenient to allow partial data imports
+            // Transform messages if they are in the simplified export format
+            const transformedMessages = data.messages.map((m: any) => {
+                if (m.role === 'model' && !m.responses && typeof m.text === 'string') {
+                    return {
+                        ...m,
+                        responses: [{
+                            text: m.text,
+                            toolCallEvents: [],
+                            startTime: Date.now(),
+                            endTime: Date.now()
+                        }],
+                        activeResponseIndex: 0
+                    };
+                }
+                return m;
+            });
             
             const newChat: ChatSession = {
                 ...data,
+                messages: transformedMessages,
                 id: generateId(), // Always regenerate ID to avoid collision
                 title: typeof data.title === 'string' ? data.title : "Imported Chat",
                 createdAt: typeof data.createdAt === 'number' ? data.createdAt : Date.now(),

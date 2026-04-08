@@ -366,11 +366,11 @@ export const useAppLogic = () => {
 
     const handleFileUploadForImport = useCallback((file: File) => {
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             try {
                 const content = e.target?.result as string;
                 const importedChat = JSON.parse(content);
-                chat.importChat(importedChat);
+                await chat.importChat(importedChat);
                 toast.success('Chat imported successfully.');
             } catch (err) {
                 console.error("Import failed:", err);

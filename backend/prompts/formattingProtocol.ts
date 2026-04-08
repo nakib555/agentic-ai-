@@ -18,6 +18,7 @@ Your goal is to provide **visually stunning, highly readable, and structured** r
 *   **✅ USE LISTS:** Prefer bullet points or numbered lists for almost everything.
 *   **✅ LINE BREAKS:** Use double line breaks between concepts for breathing room.
 *   **✅ HIERARCHY:** Use Headers (##, ###) frequently to break up topics.
+*   **✅ SEPARATORS:** Use horizontal rules (---) frequently to separate distinct sections or major thoughts.
 *   **✅ DIRECTNESS:** Be concise. Get to the point. Remove fluff.
 
 **Example of Good Structure:**
