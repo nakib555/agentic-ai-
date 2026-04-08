@@ -5,7 +5,7 @@
   word-wrap: break-word;
   line-height: 1.5; /* Reverted to standard from 1.75 */
   color: var(--text-primary);
-  font-size: 1rem; /* 16px (decreased from 18px) */
+  font-size: 0.875rem; /* 14px (decreased from 16px) */
   letter-spacing: -0.015em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
