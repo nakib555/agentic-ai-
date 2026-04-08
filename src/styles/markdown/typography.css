@@ -5,7 +5,7 @@
   word-wrap: break-word;
   line-height: 1.5; /* Reverted to standard from 1.75 */
   color: var(--text-primary);
-  font-size: 1.0625rem; /* 17px */
+  font-size: 1.1666rem; /* 17.5px (calculated for 15px root) */
   letter-spacing: -0.015em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -41,23 +41,23 @@
 }
 
 .markdown-content h1 { 
-  font-size: 2.1875rem; /* Maintained original size (1.75 * 1.25rem) */
+  font-size: 1.875rem; /* Shifted down from 2.1875rem */
   border-bottom: 1px solid var(--border-default); 
   padding-bottom: 0.3em; 
 }
 
 .markdown-content h2 { 
-  font-size: 1.875rem; /* Maintained original size (1.5 * 1.25rem) */
+  font-size: 1.5625rem; /* Shifted down from 1.875rem */
 }
 
 .markdown-content h3 { 
-  font-size: 1.5625rem; /* Maintained original size (1.25 * 1.25rem) */
+  font-size: 1.25rem; /* Shifted down from 1.5625rem */
 }
 
 .markdown-content h4 { 
   text-transform: uppercase; 
   color: var(--text-secondary); 
-  font-size: 1.0625rem; /* Maintained original size (0.85 * 1.25rem) */
+  font-size: 1.1666rem; /* Shifted down and matched to body text size */
   letter-spacing: 0.05em; 
 }
 
