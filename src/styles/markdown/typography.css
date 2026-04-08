@@ -37,23 +37,23 @@
 }
 
 .markdown-content h1 { 
-  font-size: 2.1875rem; /* Maintained original size (1.75 * 1.25rem) */
+  font-size: 1.875rem; /* Decreased from 2.1875rem */
   border-bottom: 1px solid var(--border-default); 
   padding-bottom: 0.3em; 
 }
 
 .markdown-content h2 { 
-  font-size: 1.875rem; /* Maintained original size (1.5 * 1.25rem) */
+  font-size: 1.5625rem; /* Decreased from 1.875rem */
 }
 
 .markdown-content h3 { 
-  font-size: 1.5625rem; /* Maintained original size (1.25 * 1.25rem) */
+  font-size: 1.25rem; /* Decreased from 1.5625rem */
 }
 
 .markdown-content h4 { 
   text-transform: uppercase; 
   color: var(--text-secondary); 
-  font-size: 1.0625rem; /* Maintained original size (0.85 * 1.25rem) */
+  font-size: 0.875rem; /* Decreased from 1.0625rem */
   letter-spacing: 0.05em; 
 }
 
