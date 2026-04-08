@@ -130,7 +130,7 @@ export const UserMessage = ({
         <div className="w-fit max-w-[85%] sm:max-w-[80%] flex flex-col items-end min-w-0">
             <motion.div 
                 {...animationProps} 
-                className="bg-message-user text-content-primary rounded-2xl rounded-tr-md shadow-sm border border-border-default origin-bottom-right overflow-hidden relative z-0 max-w-full"
+                className="bg-primary-main/10 dark:bg-primary-main/20 backdrop-blur-md text-content-primary rounded-2xl rounded-tr-md shadow-[0_2px_10px_rgba(0,0,0,0.05)] border border-primary-main/20 origin-bottom-right overflow-hidden relative z-0 max-w-full"
             >
                 {/* Content Section */}
                 <div className="px-5 py-3.5 flex flex-col gap-3 min-w-0">

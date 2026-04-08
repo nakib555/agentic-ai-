@@ -21,12 +21,14 @@
 
 .markdown-content table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
   border-spacing: 0;
-  margin: 0;
+  margin: 1.5em 0;
   font-size: 0.9em;
-  white-space: normal; /* Enable wrapping */
-  /* Remove conflicting display/overflow properties to allow table layout */
+  white-space: normal;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  overflow: hidden;
 }
 
 .markdown-content thead {
@@ -36,20 +38,29 @@
 .markdown-content th {
   font-weight: 600;
   text-align: left;
-  padding: 0.75em 1em;
+  padding: 0.875em 1em;
   color: var(--text-primary);
-  border-bottom: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .markdown-content td {
-  padding: 0.75em 1em;
+  padding: 0.875em 1em;
   border-bottom: 1px solid var(--border-subtle);
   color: var(--text-secondary);
   vertical-align: top;
+  transition: background-color 0.2s ease;
 }
 
 .markdown-content tr:last-child td {
   border-bottom: none;
+}
+
+.markdown-content tr:nth-child(even) {
+  background-color: var(--bg-layer-1);
+}
+
+.markdown-content tr:hover td {
+  background-color: var(--bg-layer-2);
 }
 
 .markdown-content pre {

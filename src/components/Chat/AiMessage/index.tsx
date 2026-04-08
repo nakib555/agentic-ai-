@@ -275,54 +275,63 @@ const AiMessageRaw: React.FC<AiMessageProps> = (props) => {
             ) : (
                 displaySegments.map((segment: any, index: number) => {
                     const key = `${id}-${index}`;
-                    if (segment.type === 'component') {
-                        const { componentType, data } = segment;
-                        switch (componentType) {
-                            case 'VIDEO': return <VideoDisplay key={key} {...data} />;
-                            case 'ONLINE_VIDEO': return <VideoDisplay key={key} srcUrl={data.url} prompt={data.title} />;
-                            case 'IMAGE':
-                            case 'ONLINE_IMAGE': return <ImageDisplay key={key} onEdit={handleEditImage} {...data} />;
-                            case 'MCQ': return <McqComponent key={key} {...data} />;
-                            case 'MAP': return (
-                                <Suspense fallback={<ChartLoadingPlaceholder type="map" />}>
-                                    <motion.div key={key} initial={{ opacity: 0 }} animate={{ opacity: 1 }}><MapDisplay {...data} /></motion.div>
+                    return (
+                        <motion.div
+                            key={key}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.4, delay: index * 0.05, ease: "easeOut" }}
+                            className="w-full"
+                        >
+                            {segment.type === 'component' ? (
+                                (() => {
+                                    const { componentType, data } = segment;
+                                    switch (componentType) {
+                                        case 'VIDEO': return <VideoDisplay {...data} />;
+                                        case 'ONLINE_VIDEO': return <VideoDisplay srcUrl={data.url} prompt={data.title} />;
+                                        case 'IMAGE':
+                                        case 'ONLINE_IMAGE': return <ImageDisplay onEdit={handleEditImage} {...data} />;
+                                        case 'MCQ': return <McqComponent {...data} />;
+                                        case 'MAP': return (
+                                            <Suspense fallback={<ChartLoadingPlaceholder type="map" />}>
+                                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}><MapDisplay {...data} /></motion.div>
+                                            </Suspense>
+                                        );
+                                        case 'FILE': return <FileAttachment {...data} />;
+                                        case 'BROWSER': return <BrowserSessionDisplay {...data} />;
+                                        case 'CODE_OUTPUT': return <CodeExecutionResult {...data} />;
+                                        case 'CHART': return (
+                                            <Suspense fallback={<ChartLoadingPlaceholder type="chart" />}>
+                                                <UniversalChart engine={data.engine} code={data.content} onFixCode={handleFixCode} isStreaming={msg.isThinking} />
+                                            </Suspense>
+                                        );
+                                        case 'LOADING_CHART': return <ChartLoadingPlaceholder type={data.type} />;
+                                        case 'LOADING_ARTIFACT': return <ChartLoadingPlaceholder type={data.type} />;
+                                        case 'ARTIFACT_CODE': return (
+                                            <Suspense fallback={<div className="h-64 w-full bg-gray-100 dark:bg-white/5 rounded-xl animate-pulse my-4" />}>
+                                                <ArtifactRenderer type="code" content={data.code} language={data.language} title={data.title} />
+                                            </Suspense>
+                                        );
+                                        case 'ARTIFACT_DATA': return (
+                                            <Suspense fallback={<div className="h-64 w-full bg-gray-100 dark:bg-white/5 rounded-xl animate-pulse my-4" />}>
+                                                <ArtifactRenderer type="data" content={data.content} title={data.title} />
+                                            </Suspense>
+                                        );
+                                        default: return <ErrorDisplay error={{ message: `Unknown component: ${componentType}`, details: JSON.stringify(data) }} />;
+                                    }
+                                })()
+                            ) : (
+                                <Suspense fallback={<div className="h-4 bg-gray-100 dark:bg-white/5 rounded w-1/2 animate-pulse" />}>
+                                    <ManualCodeRenderer 
+                                        text={segment.content!} 
+                                        components={MarkdownComponents} 
+                                        isStreaming={msg.isThinking ?? false} 
+                                        onFixCode={handleFixCode}
+                                    />
                                 </Suspense>
-                            );
-                            case 'FILE': return <FileAttachment key={key} {...data} />;
-                            case 'BROWSER': return <BrowserSessionDisplay key={key} {...data} />;
-                            case 'CODE_OUTPUT': return <CodeExecutionResult key={key} {...data} />;
-                            case 'CHART': return (
-                                <Suspense fallback={<ChartLoadingPlaceholder type="chart" />}>
-                                    <UniversalChart key={key} engine={data.engine} code={data.content} onFixCode={handleFixCode} isStreaming={msg.isThinking} />
-                                </Suspense>
-                            );
-                            case 'LOADING_CHART': return <ChartLoadingPlaceholder key={key} type={data.type} />;
-                            case 'LOADING_ARTIFACT': return <ChartLoadingPlaceholder key={key} type={data.type} />;
-                            case 'ARTIFACT_CODE': return (
-                                <Suspense fallback={<div className="h-64 w-full bg-gray-100 dark:bg-white/5 rounded-xl animate-pulse my-4" />}>
-                                    <ArtifactRenderer key={key} type="code" content={data.code} language={data.language} title={data.title} />
-                                </Suspense>
-                            );
-                            case 'ARTIFACT_DATA': return (
-                                <Suspense fallback={<div className="h-64 w-full bg-gray-100 dark:bg-white/5 rounded-xl animate-pulse my-4" />}>
-                                    <ArtifactRenderer key={key} type="data" content={data.content} title={data.title} />
-                                </Suspense>
-                            );
-                            default: return <ErrorDisplay key={key} error={{ message: `Unknown component: ${componentType}`, details: JSON.stringify(data) }} />;
-                        }
-                    } else {
-                        return (
-                            <Suspense fallback={<div className="h-4 bg-gray-100 dark:bg-white/5 rounded w-1/2 animate-pulse" />}>
-                                <ManualCodeRenderer 
-                                    key={key} 
-                                    text={segment.content!} 
-                                    components={MarkdownComponents} 
-                                    isStreaming={msg.isThinking ?? false} 
-                                    onFixCode={handleFixCode}
-                                />
-                            </Suspense>
-                        );
-                    }
+                            )}
+                        </motion.div>
+                    );
                 })
             )}
           </div>

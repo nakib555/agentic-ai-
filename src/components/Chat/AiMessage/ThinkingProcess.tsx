@@ -70,66 +70,60 @@ export const ThinkingProcess: React.FC<ThinkingProcessProps> = ({ thinkingText, 
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className={`
-                    w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all duration-200
+                    w-full flex items-center justify-between px-4 py-2.5 rounded-xl border transition-all duration-300
                     ${isOpen 
-                        ? 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10' 
-                        : 'bg-slate-50 dark:bg-black/20 border-transparent hover:bg-slate-100 dark:hover:bg-white/5'
+                        ? 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 shadow-sm' 
+                        : 'bg-slate-50/50 dark:bg-black/20 border-transparent hover:border-slate-200 dark:hover:border-white/10 hover:bg-white dark:hover:bg-white/5'
                     }
                 `}
             >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
                     <div className={`
-                        flex items-center justify-center w-6 h-6 rounded-md transition-colors
+                        flex items-center justify-center w-7 h-7 rounded-lg transition-all duration-300
                         ${isThinking 
-                            ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400' 
-                            : 'bg-slate-200 text-slate-500 dark:bg-white/10 dark:text-slate-400'
+                            ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.2)]' 
+                            : 'bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400'
                         }
                     `}>
                         {isThinking ? (
-                            <svg className="w-3.5 h-3.5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
                         ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
                                 <path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z" />
                                 <path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z" />
                                 <path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4" />
-                                <path d="M17.599 6.5a3 3 0 0 0 .399-1.375" />
-                                <path d="M6.003 5.125A3 3 0 0 0 6.401 6.5" />
-                                <path d="M3.477 10.896a4 4 0 0 1 .585-.396" />
-                                <path d="M19.938 10.5a4 4 0 0 1 .585.396" />
-                                <path d="M6 18a4 4 0 0 1-1.97-1.375" />
-                                <path d="M19.97 16.625A4.002 4.002 0 0 1 18 18" />
                             </svg>
                         )}
                     </div>
-                    <div className="flex flex-col items-start">
-                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center">
-                            {isThinking ? (
-                                <>
-                                    Reasoning
-                                    <span className="flex ml-0.5 space-x-[1px]">
-                                        <motion.span animate={{ y: [0, -3, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0, ease: "easeInOut" }}>.</motion.span>
-                                        <motion.span animate={{ y: [0, -3, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.15, ease: "easeInOut" }}>.</motion.span>
-                                        <motion.span animate={{ y: [0, -3, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.3, ease: "easeInOut" }}>.</motion.span>
-                                    </span>
-                                </>
-                            ) : 'Reasoning Process'}
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200 tracking-tight">
+                            {isThinking ? 'Thinking' : 'Reasoning Process'}
                         </span>
+                        {isThinking && (
+                            <span className="flex space-x-[2px]">
+                                <motion.span animate={{ opacity: [0, 1, 0] }} transition={{ duration: 1.5, repeat: Infinity, delay: 0 }}>.</motion.span>
+                                <motion.span animate={{ opacity: [0, 1, 0] }} transition={{ duration: 1.5, repeat: Infinity, delay: 0.3 }}>.</motion.span>
+                                <motion.span animate={{ opacity: [0, 1, 0] }} transition={{ duration: 1.5, repeat: Infinity, delay: 0.6 }}>.</motion.span>
+                            </span>
+                        )}
                     </div>
                 </div>
                 
                 <div className="flex items-center gap-3">
                     <DurationTimer startTime={startTime} endTime={endTime} isThinking={isThinking} />
-                    <svg 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        viewBox="0 0 20 20" 
-                        fill="currentColor" 
-                        className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-                    >
-                        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-                    </svg>
+                    <div className={`p-1 rounded-md transition-colors ${isOpen ? 'bg-slate-100 dark:bg-white/10' : ''}`}>
+                        <svg 
+                            xmlns="http://www.w3.org/2000/svg" 
+                            viewBox="0 0 20 20" 
+                            fill="currentColor" 
+                            className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
+                        >
+                            <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                        </svg>
+                    </div>
                 </div>
             </button>
 
