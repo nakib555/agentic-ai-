@@ -32,7 +32,7 @@
     color: var(--text-primary);
     letter-spacing: -0.02em;
     line-height: 1.3;
-    margin-top: 2em;
+    margin-top: 1.5em; /* Reduced from 2em for better vertical rhythm in chat */
     margin-bottom: 0.75em;
 }
 
@@ -55,7 +55,7 @@
   color: var(--text-secondary); 
   font-size: 1.0625rem; /* Maintained original size (0.85 * 1.25rem) */
   letter-spacing: 0.05em; 
-  margin-top: 1.5em; 
+  margin-top: 1.25em; /* Reduced from 1.5em */
 }
 
 .markdown-content ul, 
