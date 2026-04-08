@@ -204,6 +204,7 @@ export const navigateBranch = (
     } else {
         const targetResponse = targetMessage.responses![newIdx];
         if (targetResponse) {
+            targetMessage.text = targetResponse.text;
             targetMessage.activeResponseIndex = newIdx;
             // Also restore the main text display properties for legacy views if needed, 
             // though AiMessage component mostly reads from responses[index]
