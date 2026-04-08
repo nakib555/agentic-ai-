@@ -99,11 +99,11 @@ export const ThinkingProcess: React.FC<ThinkingProcessProps> = ({ thinkingText, 
                         )}
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200 tracking-tight">
+                        <span className="text-base font-bold text-slate-700 dark:text-slate-200 tracking-tight">
                             {isThinking ? 'Thinking' : 'Reasoning Process'}
                         </span>
                         {isThinking && (
-                            <span className="flex space-x-[2px]">
+                            <span className="flex space-x-[2px] text-base">
                                 <motion.span animate={{ opacity: [0, 1, 0] }} transition={{ duration: 1.5, repeat: Infinity, delay: 0 }}>.</motion.span>
                                 <motion.span animate={{ opacity: [0, 1, 0] }} transition={{ duration: 1.5, repeat: Infinity, delay: 0.3 }}>.</motion.span>
                                 <motion.span animate={{ opacity: [0, 1, 0] }} transition={{ duration: 1.5, repeat: Infinity, delay: 0.6 }}>.</motion.span>
