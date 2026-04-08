@@ -11,10 +11,6 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-.markdown-content-user {
-  font-size: 1.25rem !important; /* Preserve user message size */
-}
-
 .markdown-content * {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
