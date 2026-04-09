@@ -185,23 +185,21 @@ export const useAppLogic = () => {
             prompt: "Are you sure you want to delete all chat history? This cannot be undone.",
             destructive: true,
             onConfirm: () => {
-                if (chat.isLoading) {
-                    chat.cancelGeneration();
-                }
+                chat.cancelGeneration();
                 chat.clearAllChats();
                 setConfirmation(null);
                 toast.info("All chats cleared.");
             },
             onCancel: () => setConfirmation(null)
         });
-    }, [chat.clearAllChats, chat.isLoading, chat.cancelGeneration]);
+    }, [chat.clearAllChats, chat.cancelGeneration]);
 
     const handleDeleteChatRequest = useCallback((id: string) => {
         setConfirmation({
             prompt: "Delete this conversation?",
             destructive: true,
             onConfirm: () => {
-                if (chat.currentChatId === id && chat.isLoading) {
+                if (chat.currentChatId === id) {
                     chat.cancelGeneration();
                 }
                 chat.deleteChat(id);
@@ -209,7 +207,7 @@ export const useAppLogic = () => {
             },
             onCancel: () => setConfirmation(null)
         });
-    }, [chat.deleteChat, chat.currentChatId, chat.isLoading, chat.cancelGeneration]);
+    }, [chat.deleteChat, chat.currentChatId, chat.cancelGeneration]);
 
     const handleConfirm = useCallback(() => {
         confirmation?.onConfirm();
