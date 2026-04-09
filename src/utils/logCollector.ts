@@ -89,7 +89,14 @@ class LogCollector {
     const metaHeader = `User Agent: ${navigator.userAgent}\nScreen: ${window.screen.width}x${window.screen.height}\nDPR: ${window.devicePixelRatio}\nTime: ${new Date().toISOString()}\n\n`;
 
     const logLines = this.logs.map(entry => {
-      const messages = entry.messages.join(' ');
+      const messages = entry.messages.map(m => {
+        if (typeof m === 'string') return m;
+        try {
+          return JSON.stringify(m, null, 2);
+        } catch (e) {
+          return String(m);
+        }
+      }).join(' ');
       return `[${entry.timestamp}] [${entry.level}] ${messages}`;
     }).join('\n');
 

@@ -106,9 +106,6 @@ async function startServer() {
   if (appVersion) {
     app.use('/api', ((req: any, res: any, next: any) => {
       const clientVersion = req.header('X-Client-Version');
-      if (clientVersion && clientVersion !== appVersion) {
-         // console.warn(`[VERSION_MISMATCH] Client: ${clientVersion}, Server: ${appVersion}.`);
-      }
       next();
     }) as any);
     console.log(`[SERVER] Running version: ${appVersion}`);

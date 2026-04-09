@@ -32,7 +32,7 @@ export const useSystemStatus = () => {
       setBackendStatus('online');
       setBackendError(null);
     } catch (e: any) {
-      console.error("Failed to fetch models:", e);
+      console.error("Failed to fetch models:", e.message || e);
       setBackendStatus('offline');
       setBackendError(e.message || "Could not connect to backend server.");
     } finally {
@@ -55,8 +55,8 @@ export const useSystemStatus = () => {
             setBackendStatus('online');
           }
         }
-      } catch (e) {
-        console.error("Failed to load settings:", e);
+      } catch (e: any) {
+        console.error("Failed to load settings:", e.message || e);
         setBackendStatus('offline');
         setBackendError("Could not connect to backend server.");
       }

@@ -109,7 +109,7 @@ export const useAppLogic = () => {
         settings.setIsMemoryEnabled(enabled);
         try {
             await apiClient.put('/api/settings', { isMemoryEnabled: enabled });
-        } catch (e) { console.error(e); }
+        } catch (e: any) { console.error("Failed to update memory enabled status:", e.message || e); }
     }, [settings]);
 
     const onSaveOllamaHost = useCallback(async (host: string) => {
@@ -122,8 +122,8 @@ export const useAppLogic = () => {
                 await fetchModels();
             }
             toast.success('Ollama host updated.');
-        } catch (error) {
-            console.error("Failed to update Ollama host:", error);
+        } catch (error: any) {
+            console.error("Failed to update Ollama host:", error.message || error);
         }
     }, [fetchModels, settings]);
 
@@ -142,8 +142,8 @@ export const useAppLogic = () => {
                 const importedChat = JSON.parse(content);
                 chat.importChat(importedChat);
                 toast.success('Chat imported successfully.');
-            } catch (err) {
-                console.error("Import failed:", err);
+            } catch (err: any) {
+                console.error("Import failed:", err.message || err);
                 toast.error('Failed to import chat.');
             }
         };

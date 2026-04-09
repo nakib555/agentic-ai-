@@ -21,7 +21,7 @@ export const useChatActions = (chat: any, fetchModels: () => Promise<void>) => {
     }
     try {
       await apiClient.put('/api/settings', { activeModel: modelId });
-    } catch (e) { console.error(e); }
+    } catch (e: any) { console.error("Failed to update active model:", e.message || e); }
   }, [chat.updateChatModel, chat.currentChatId, settings]);
 
   const onProviderChange = useCallback(async (newProvider: 'gemini' | 'openrouter' | 'ollama') => {
@@ -52,8 +52,8 @@ export const useChatActions = (chat: any, fetchModels: () => Promise<void>) => {
         }
       }
       toast.success(`Switched provider to ${newProvider}.`);
-    } catch (error) {
-      console.error("Failed to update provider:", error);
+    } catch (error: any) {
+      console.error("Failed to update provider:", error.message || error);
       toast.error("Failed to switch provider.");
     }
   }, [fetchModels, settings, chat.currentChatId, chat.updateChatModel]);
@@ -81,8 +81,8 @@ export const useChatActions = (chat: any, fetchModels: () => Promise<void>) => {
         await fetchModels();
       }
       toast.success('API Key saved.');
-    } catch (error) {
-      console.error("Failed to save API key:", error);
+    } catch (error: any) {
+      console.error("Failed to save API key:", error.message || error);
       toast.error('Failed to save API Key.');
     }
   }, [fetchModels, settings]);
