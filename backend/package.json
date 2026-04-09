@@ -10,7 +10,7 @@
   "scripts": {
     "start": "node dist/server.cjs",
     "dev": "nodemon --watch . --ext ts --exec node --loader ts-node/esm server.ts",
-    "build": "npx playwright install chromium && esbuild server.ts --bundle --platform=node --format=cjs --outfile=dist/server.cjs --packages=external",
+    "build": "npx playwright install chromium && esbuild server.ts --bundle --platform=node --format=cjs --outfile=dist/server.cjs --external:playwright",
     "build:server": "npm run build"
   },
   "dependencies": {
@@ -22,8 +22,11 @@
     "express": "^4.19.2",
     "express-rate-limit": "^8.3.2",
     "helmet": "^8.1.0",
+    "lru-cache": "^10.2.2",
     "playwright": "^1.49.0",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "zod": "^3.25.76",
+    "zod-validation-error": "^5.0.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

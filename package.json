@@ -64,7 +64,7 @@
     "katex": "^0.16.9",
     "leaflet": "^1.9.4",
     "leaflet-control-geocoder": "^2.4.0",
-    "lru-cache": "^11.3.3",
+    "lru-cache": "^10.2.2",
     "lucide-react": "^0.363.0",
     "motion": "^12.38.0",
     "playwright": "^1.49.0",
