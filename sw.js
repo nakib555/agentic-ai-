@@ -49,6 +49,10 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
+  if (event.request.cache === 'only-if-cached' && event.request.mode !== 'same-origin') {
+    return;
+  }
+
   // Skip non-GET, API calls, extensions, and map tiles
   // Excluding OSM tiles prevents CORS/Opaque response issues that cause map loading failures
   if (
@@ -99,6 +103,15 @@ self.addEventListener('fetch', event => {
           cache.put(event.request, responseToCache);
         });
         return networkResponse;
+      }).catch(async (error) => {
+        console.warn('[SW] Fetch failed for', event.request.url, error);
+        // Fallback: try fetching without the original request's strict mode/credentials
+        try {
+            return await fetch(event.request.url);
+        } catch (fallbackError) {
+            console.error('[SW] Fallback fetch also failed', fallbackError);
+            throw error;
+        }
       });
     })
   );

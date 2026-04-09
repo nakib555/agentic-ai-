@@ -62,6 +62,11 @@ const staticAssetsPlugin = (appVersion: string) => ({
 
 /assets/*.js
   Cache-Control: public, max-age=31536000, immutable
+  Access-Control-Allow-Origin: *
+
+/assets/*.css
+  Cache-Control: public, max-age=31536000, immutable
+  Access-Control-Allow-Origin: *
 `;
     fs.writeFileSync(path.join(distDir, '_headers'), headersContent);
     console.log(`[Vite] Generated _headers file in dist`);

@@ -141,15 +141,22 @@ async function startServer() {
   app.delete('/api/memory', clearMemory as any);
 
   // Mount the HISTORY_PATH to /uploads so that files in data/history/{folder}/file/ are accessible.
-  app.use('/uploads', express.static(HISTORY_PATH) as any);
+  app.use('/uploads', express.static(HISTORY_PATH, {
+    setHeaders: (res) => {
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    }
+  }) as any);
 
   // Serve static files from the current directory (dist) if they exist
   const indexHtmlPath = path.join(serverDir, 'index.html');
   if (fs.existsSync(indexHtmlPath)) {
       app.use(express.static(serverDir, {
         setHeaders: (res, filePath) => {
+           res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
            if (filePath.endsWith('index.html') || filePath.endsWith('sw.js')) {
                res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+           } else if (filePath.match(/\.(js|css|png|jpg|jpeg|svg|ico|woff|woff2|ttf|eot)$/)) {
+               res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
            }
         }
       }));
