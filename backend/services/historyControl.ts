@@ -5,7 +5,7 @@
 
 import { promises as fs } from 'fs';
 import path from 'path';
-import { HISTORY_PATH, HISTORY_INDEX_PATH, TIME_GROUPS_PATH, readData, writeData } from '../data-store';
+import { HISTORY_PATH, HISTORY_INDEX_PATH, TIME_GROUPS_PATH, readData, writeData, clearDataCache } from '../data-store';
 import type { ChatSession } from '../../src/types';
 import { isToday, isYesterday, isThisWeek } from 'date-fns';
 
@@ -354,6 +354,7 @@ class HistoryControlService {
         return this.indexLock.dispatch(async () => {
             // 1. Clear In-Memory Cache
             this.indexCache = [];
+            clearDataCache();
 
             // 2. Physically Wipe the History Directory
             try {
@@ -375,7 +376,7 @@ class HistoryControlService {
                 }
             } catch (error) {
                 console.error("[HistoryControl] Failed to wipe history directory:", error);
-                throw error;
+                // Don't throw here, we still want to clear the index
             }
 
             // 3. Re-initialize empty Index and TimeGroups files

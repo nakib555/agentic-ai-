@@ -23,6 +23,10 @@ const dataCache = new LRUCache<string, any>({
     ttl: 1000 * 60 * 5, // 5 minutes TTL
 });
 
+export function clearDataCache() {
+    dataCache.clear();
+}
+
 export async function readData<T>(filePath: string): Promise<T> {
     const cached = dataCache.get(filePath);
     if (cached) return cached as T;
