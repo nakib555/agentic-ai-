@@ -292,7 +292,7 @@ export const useAppLogic = () => {
         versionMismatch,
         isAnyResizing: false,
         isNewChatDisabled: modelsLoading || chat.isLoading,
-        handleToggleSidebar: () => ui.toggleSidebar(),
+        handleToggleSidebar: sidebar.toggleSidebar,
         handleShowSources,
 
         modelsLoading, 

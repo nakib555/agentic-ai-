@@ -131,11 +131,7 @@ export const App = () => {
 
   // Handler for toggle button in ChatHeader
   const handleToggleSidebar = () => {
-      if (logic.isDesktop) {
-          logic.handleSetSidebarCollapsed(!logic.isSidebarCollapsed);
-      } else {
-          logic.handleToggleSidebar();
-      }
+      logic.handleToggleSidebar();
   };
 
   const renderMainContent = () => (

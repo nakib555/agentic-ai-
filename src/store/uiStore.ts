@@ -27,7 +27,6 @@ interface UIState {
   setMemoryModalOpen: (isOpen: boolean) => void;
   setImportModalOpen: (isOpen: boolean) => void;
   setTestMode: (isOpen: boolean) => void;
-  toggleSidebar: () => void;
 
   setArtifactOpen: (isOpen: boolean) => void;
   setArtifactContent: (content: string) => void;
@@ -56,7 +55,6 @@ export const useUIStore = create<UIState>((set) => ({
   setMemoryModalOpen: (isMemoryModalOpen) => set({ isMemoryModalOpen }),
   setImportModalOpen: (isImportModalOpen) => set({ isImportModalOpen }),
   setTestMode: (isTestMode) => set({ isTestMode }),
-  toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
 
   setArtifactOpen: (isArtifactOpen) => set({ isArtifactOpen }),
   setArtifactContent: (artifactContent) => set({ artifactContent }),

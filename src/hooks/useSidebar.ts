@@ -4,49 +4,49 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useViewport } from './useViewport';
+import { useUIStore } from '../store/uiStore';
 
 export const useSidebar = () => {
   const { isDesktop } = useViewport();
+  const ui = useUIStore();
   
-  // Mobile: Sidebar is an overlay, defaulting to closed
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
   // Desktop: Sidebar is a panel, defaulting to open (expanded)
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+  // We initialize from localStorage in a one-time effect or use the store's default
+  useEffect(() => {
     try {
         const saved = localStorage.getItem('sidebarCollapsed');
-        return saved ? JSON.parse(saved) : false;
-    } catch {
-        return false;
-    }
-  });
+        if (saved !== null) {
+            ui.setSidebarCollapsed(JSON.parse(saved));
+        }
+    } catch (e) { /* ignore */ }
+  }, []);
 
   // Persist desktop preference
   useEffect(() => {
     try {
-        localStorage.setItem('sidebarCollapsed', JSON.stringify(isSidebarCollapsed));
+        localStorage.setItem('sidebarCollapsed', JSON.stringify(ui.isSidebarCollapsed));
     } catch (e) { /* ignore */ }
-  }, [isSidebarCollapsed]);
+  }, [ui.isSidebarCollapsed]);
 
   const toggleSidebar = useCallback(() => {
       if (isDesktop) {
-          setIsSidebarCollapsed((prev: boolean) => !prev);
+          ui.setSidebarCollapsed(!ui.isSidebarCollapsed);
       } else {
-          setIsSidebarOpen((prev: boolean) => !prev);
+          ui.setSidebarOpen(!ui.isSidebarOpen);
       }
-  }, [isDesktop]);
+  }, [isDesktop, ui.isSidebarCollapsed, ui.isSidebarOpen, ui.setSidebarCollapsed, ui.setSidebarOpen]);
 
   // Helper to force specific state (used by resize handles)
   const handleSetSidebarCollapsed = useCallback((collapsed: boolean) => {
-      setIsSidebarCollapsed(collapsed);
-  }, []);
+      ui.setSidebarCollapsed(collapsed);
+  }, [ui.setSidebarCollapsed]);
 
   return {
-    isSidebarOpen,
-    setIsSidebarOpen,
-    isSidebarCollapsed,
+    isSidebarOpen: ui.isSidebarOpen,
+    setIsSidebarOpen: ui.setSidebarOpen,
+    isSidebarCollapsed: ui.isSidebarCollapsed,
     handleSetSidebarCollapsed,
     toggleSidebar
   };
