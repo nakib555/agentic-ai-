@@ -4,6 +4,7 @@
  */
 
 import { toast } from 'sonner';
+import { getApiBaseUrl } from '../utils/api';
 
 export interface ApiRequestOptions extends RequestInit {
   silent?: boolean;
@@ -11,11 +12,9 @@ export interface ApiRequestOptions extends RequestInit {
 }
 
 class ApiClient {
-  private baseUrl: string = '';
   private onVersionMismatch?: () => void;
 
   constructor() {
-    this.baseUrl = localStorage.getItem('custom_server_url') || '';
   }
 
   setVersionMismatchHandler(handler: () => void) {
@@ -25,7 +24,8 @@ class ApiClient {
   private async request<T>(endpoint: string, options: ApiRequestOptions = {}): Promise<T> {
     const { silent, params, ...fetchOptions } = options;
     
-    let url = `${this.baseUrl}${endpoint}`;
+    const baseUrl = getApiBaseUrl();
+    let url = `${baseUrl}${endpoint}`;
     if (params) {
       const searchParams = new URLSearchParams(params);
       url += `?${searchParams.toString()}`;
