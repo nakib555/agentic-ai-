@@ -9,8 +9,14 @@ import { useSettingsStore } from '../store/settingsStore';
 import { useUIStore } from '../store/uiStore';
 
 export const useSystemStatus = () => {
-  const settings = useSettingsStore();
-  const ui = useUIStore();
+  const provider = useSettingsStore(state => state.provider);
+  const apiKey = useSettingsStore(state => state.apiKey);
+  const openRouterApiKey = useSettingsStore(state => state.openRouterApiKey);
+  
+  const setAvailableModels = useSettingsStore(state => state.setAvailableModels);
+  const setAvailableImageModels = useSettingsStore(state => state.setAvailableImageModels);
+  const setAvailableVideoModels = useSettingsStore(state => state.setAvailableVideoModels);
+  const setAvailableTtsModels = useSettingsStore(state => state.setAvailableTtsModels);
   
   const [backendStatus, setBackendStatus] = useState<'online' | 'offline' | 'checking'>('checking');
   const [backendError, setBackendError] = useState<string | null>(null);
@@ -24,10 +30,10 @@ export const useSystemStatus = () => {
         params: { _t: Date.now().toString() } 
       });
       
-      if (data.models) settings.setAvailableModels(data.models);
-      if (data.imageModels) settings.setAvailableImageModels(data.imageModels);
-      if (data.videoModels) settings.setAvailableVideoModels(data.videoModels);
-      if (data.ttsModels) settings.setAvailableTtsModels(data.ttsModels);
+      if (data.models) setAvailableModels(data.models);
+      if (data.imageModels) setAvailableImageModels(data.imageModels);
+      if (data.videoModels) setAvailableVideoModels(data.videoModels);
+      if (data.ttsModels) setAvailableTtsModels(data.ttsModels);
       
       setBackendStatus('online');
       setBackendError(null);
@@ -38,7 +44,7 @@ export const useSystemStatus = () => {
     } finally {
       setModelsLoading(false);
     }
-  }, [settings]);
+  }, [setAvailableModels, setAvailableImageModels, setAvailableVideoModels, setAvailableTtsModels]);
 
   useEffect(() => {
     apiClient.setVersionMismatchHandler(() => setVersionMismatch(true));
@@ -47,9 +53,9 @@ export const useSystemStatus = () => {
       try {
         const serverSettings: any = await apiClient.get('/api/settings');
         if (serverSettings) {
-          if ((settings.provider === 'gemini' && settings.apiKey) || 
-              (settings.provider === 'openrouter' && settings.openRouterApiKey) ||
-              (settings.provider === 'ollama')) {
+          if ((provider === 'gemini' && apiKey) || 
+              (provider === 'openrouter' && openRouterApiKey) ||
+              (provider === 'ollama')) {
             await fetchModels();
           } else {
             setBackendStatus('online');
@@ -62,7 +68,7 @@ export const useSystemStatus = () => {
       }
     };
     init();
-  }, [settings.provider, settings.apiKey, settings.openRouterApiKey, fetchModels]);
+  }, [provider, apiKey, openRouterApiKey, fetchModels]);
 
   const retryConnection = useCallback(() => {
     setBackendStatus('checking');
