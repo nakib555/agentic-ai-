@@ -152,19 +152,28 @@ export const useChatHistory = () => {
   // We modify the RQ cache directly for performance during generation
   const updateChatMessages = useCallback((chatId: string, messages: Message[]) => {
       // Update Cache
-      updateLocalAndCache(old => (old || []).map(c => 
-          c.id === chatId ? { ...c, messages } : c
-      ));
+      queryClient.setQueryData<ChatSession[]>(['chatHistory'], (old: ChatSession[] | undefined) => {
+          if (!old) return [];
+          const index = old.findIndex(c => c.id === chatId);
+          if (index === -1) return old;
+          
+          // Only create a new array and object if something actually changed
+          if (old[index].messages === messages) return old;
+          
+          const newHistory = [...old];
+          newHistory[index] = { ...old[index], messages };
+          return newHistory;
+      });
 
       // Update Local State if it matches
-      // Use functional update to avoid dependency on 'currentChatId' which might be stale in async closures
       setActiveChat(prev => {
           if (prev && prev.id === chatId) {
+              if (prev.messages === messages) return prev;
               return { ...prev, messages };
           }
           return prev;
       });
-  }, [updateLocalAndCache]);
+  }, [queryClient]);
 
   // Specific helpers to avoid full list traversals in UI components
   const addMessagesToChat = useCallback((chatId: string, newMessages: Message[]) => {
@@ -195,15 +204,25 @@ export const useChatHistory = () => {
       const chat = cache.find(c => c.id === chatId);
       
       if (chat && chat.messages) {
-          const updatedMessages = chat.messages.map(m => {
-              if (m.id !== messageId || m.role !== 'model' || !m.responses) return m;
-              const idx = m.activeResponseIndex;
-              const currentResp = m.responses[idx];
-              const updatedResp = { ...currentResp, ...updateFn(currentResp) };
-              const newResponses = [...m.responses];
-              newResponses[idx] = updatedResp;
-              return { ...m, responses: newResponses };
-          });
+          const messageIndex = chat.messages.findIndex(m => m.id === messageId);
+          if (messageIndex === -1) return;
+          
+          const m = chat.messages[messageIndex];
+          if (m.role !== 'model' || !m.responses) return;
+          
+          const idx = m.activeResponseIndex;
+          const currentResp = m.responses[idx];
+          const updatedResp = { ...currentResp, ...updateFn(currentResp) };
+          
+          // Avoid update if no change
+          if (JSON.stringify(currentResp) === JSON.stringify(updatedResp)) return;
+
+          const newResponses = [...m.responses];
+          newResponses[idx] = updatedResp;
+          
+          const updatedMessages = [...chat.messages];
+          updatedMessages[messageIndex] = { ...m, responses: newResponses };
+          
           updateChatMessages(chatId, updatedMessages);
       }
   }, [queryClient, updateChatMessages]);

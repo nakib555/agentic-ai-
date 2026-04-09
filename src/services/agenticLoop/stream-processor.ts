@@ -32,28 +32,37 @@ export const processBackendStream = async (response: Response, callbacks: Stream
     let buffer = '';
 
     // --- Performance Optimization: Adaptive Buffered State Updates ---
-    // Fine-grained refinement: We use a tight interval but flush immediately 
-    // upon detecting structural markers (newlines, code blocks, UI components).
-    // This ensures layout shifts happen instantly while bulk text is smoothed out.
-    // Adjusted to 50ms to reduce React Render Cycle pressure (20fps updates for data is sufficient since typewriter handles visuals).
-    const FLUSH_INTERVAL_MS = 50; 
-    const MAX_BUFFER_SIZE = 50; // Buffer more chars before forcing flush
-    // Increased timeout to 2 minutes to handle "Thinking" models which may pause for long periods
+    // We use a time-based and size-based buffer to batch rapid text chunks.
+    // Structural markers (newlines, code blocks) trigger an immediate flush
+    // to keep the UI feeling responsive and "real-time".
+    const FLUSH_THRESHOLD_MS = 32; // Batch for ~2 frames to reduce React render pressure
+    const MAX_BUFFER_CHARS = 120;  // Flush if we accumulate significant text
     const WATCHDOG_TIMEOUT_MS = 120000;
 
-    let pendingText: string | null = null;
+    let pendingText = '';
+    let lastFlushTime = performance.now();
     let flushTimeoutId: any = null;
 
     const flushTextUpdates = () => {
-        // Only flush if we actually have text content
-        if (pendingText !== null && pendingText.length > 0) {
+        if (pendingText.length > 0) {
             callbacks.onTextChunk(pendingText);
-            pendingText = null;
+            pendingText = '';
+            lastFlushTime = performance.now();
         }
         if (flushTimeoutId !== null) {
             clearTimeout(flushTimeoutId);
             flushTimeoutId = null;
         }
+    };
+
+    const scheduleFlush = () => {
+        if (flushTimeoutId !== null) return;
+        
+        const now = performance.now();
+        const timeSinceLastFlush = now - lastFlushTime;
+        const remainingTime = Math.max(0, FLUSH_THRESHOLD_MS - timeSinceLastFlush);
+        
+        flushTimeoutId = setTimeout(flushTextUpdates, remainingTime);
     };
 
     // Helper to read with a timeout to prevent infinite hanging
@@ -92,23 +101,22 @@ export const processBackendStream = async (response: Response, callbacks: Stream
                     
                     // Prioritize text chunks for the buffering optimization
                     if (event.type === 'text-chunk') {
-                        // ACCUMULATE deltas instead of replacing
-                        pendingText = (pendingText || '') + event.payload; 
+                        const chunk = event.payload || '';
+                        pendingText += chunk; 
                         
-                        const isBufferFull = pendingText!.length >= MAX_BUFFER_SIZE;
+                        const isBufferFull = pendingText.length >= MAX_BUFFER_CHARS;
                         
-                        // Fine-grain Check: Flush immediately on structural tokens
-                        // This prevents "jumping" UI by ensuring newlines and markdown blocks render ASAP
-                        const hasPriorityToken = /[\n`\[\]{};:]/.test(event.payload);
+                        // Structural markers: Flush immediately to ensure layout/markdown renders correctly
+                        // We check for newlines, code blocks, list markers, and common punctuation that ends a "thought"
+                        const hasStructuralMarker = /[\n\r`\[\]{};:*#?]/.test(chunk);
                         
-                        // Check for component tags
-                        const hasArtifactTag = pendingText!.includes('[ARTIFACT') || pendingText!.includes('[/ARTIFACT') || pendingText!.includes('[STEP]');
+                        // Component tags also force an immediate flush
+                        const hasComponentTag = chunk.includes('[') || chunk.includes(']');
 
-                        // Flush if buffer is full or we hit a special tag
-                        if (isBufferFull || hasArtifactTag || hasPriorityToken) {
+                        if (isBufferFull || hasStructuralMarker || hasComponentTag) {
                             flushTextUpdates();
-                        } else if (flushTimeoutId === null) {
-                            flushTimeoutId = setTimeout(flushTextUpdates, FLUSH_INTERVAL_MS);
+                        } else {
+                            scheduleFlush();
                         }
                         continue;
                     }

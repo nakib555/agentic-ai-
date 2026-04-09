@@ -123,6 +123,11 @@ export const App = () => {
   }, []);
 
   const isKeyboardOpen = !logic.isDesktop && logic.visualViewportHeight < (stableHeight * 0.85);
+  
+  const hasApiKey = 
+      (logic.provider === 'gemini' && !!logic.apiKey) || 
+      (logic.provider === 'openrouter' && !!logic.openRouterApiKey) || 
+      (logic.provider === 'ollama'); 
 
   // Handler for toggle button in ChatHeader
   const handleToggleSidebar = () => {
@@ -163,6 +168,7 @@ export const App = () => {
                 backendStatus={logic.backendStatus}
                 backendError={logic.backendError}
                 onRetryConnection={logic.retryConnection}
+                hasApiKey={hasApiKey}
                 onEditMessage={logic.editMessage}
                 onNavigateBranch={logic.navigateBranch}
             />
