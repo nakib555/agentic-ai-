@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { v4 as uuidv4 } from 'uuid';
 import type { ChatSession, Message, ModelResponse } from '../types';
 import { fetchFromApi } from '../utils/api';
 
@@ -73,7 +74,7 @@ export const useChatHistory = () => {
   }, [queryClient]);
 
   const startNewChat = useCallback(async (model: string, settings: any, optimisticId?: string): Promise<ChatSession> => {
-    const newId = optimisticId || Math.random().toString(36).substring(2, 9);
+    const newId = optimisticId || uuidv4();
     const newChat: ChatSession = {
         id: newId,
         title: "New Chat",
