@@ -55,6 +55,7 @@ function lazyLoad<T extends React.ComponentType<any>>(
 import { Sidebar } from '../Sidebar/Sidebar';
 import { ChatArea } from '../Chat/ChatArea';
 import { ChatHeader } from '../Chat/ChatHeader';
+import { CommandPalette } from '../UI/CommandPalette';
 
 // Lazy Load Secondary UI Blocks
 const SourcesSidebar = lazyLoad(() => import('../AI/SourcesSidebar'), 'SourcesSidebar');
@@ -64,6 +65,29 @@ const TestRunner = lazyLoad(() => import('../Testing'), 'TestRunner');
 
 export const App = () => {
   const logic = useAppLogic();
+
+  // --- Command Palette & Global Shortcuts ---
+  useEffect(() => {
+    const handleNewChat = () => logic.handleNewChat();
+    const handleToggleTheme = () => logic.setTheme(logic.theme === 'dark' ? 'light' : 'dark');
+    
+    window.addEventListener('new-chat', handleNewChat);
+    window.addEventListener('toggle-theme', handleToggleTheme);
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
+        e.preventDefault();
+        logic.handleNewChat();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('new-chat', handleNewChat);
+      window.removeEventListener('toggle-theme', handleToggleTheme);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [logic]);
 
   const currentChat = logic.currentChatId
     ? logic.chatHistory.find((c: ChatSession) => c.id === logic.currentChatId)
@@ -167,6 +191,7 @@ export const App = () => {
         }}
     >
       {logic.versionMismatch && <VersionMismatchOverlay />}
+      <CommandPalette />
       
       <Suspense fallback={<AppSkeleton />}>
         {logic.isDesktop ? (

@@ -102,6 +102,36 @@ class HistoryControlService {
         await this.updateTimeGroups(index);
     }
 
+    async validateAndRepair() {
+        console.log("[HistoryControl] Running self-healing check...");
+        try {
+            const index = await this.loadIndex();
+            let repaired = false;
+
+            // Check if all chats in index actually exist
+            const validIndex = [];
+            for (const entry of index) {
+                const chatPath = path.join(HISTORY_PATH, entry.id, 'conversation.json');
+                try {
+                    await fs.access(chatPath);
+                    validIndex.push(entry);
+                } catch {
+                    console.warn(`[HistoryControl] Chat ${entry.id} missing conversation file. Removing from index.`);
+                    repaired = true;
+                }
+            }
+
+            if (repaired) {
+                await this.saveIndex(validIndex);
+                console.log("[HistoryControl] Index repaired.");
+            } else {
+                console.log("[HistoryControl] Index is healthy.");
+            }
+        } catch (error) {
+            console.error("[HistoryControl] Self-healing failed:", error);
+        }
+    }
+
     private sanitizeTitle(title: string): string {
         // Improved to support Unicode characters for international titles
         // while maintaining filesystem safety.

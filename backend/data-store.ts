@@ -8,6 +8,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { Buffer } from 'buffer';
+import { LRUCache } from 'lru-cache';
 
 export const DATA_DIR = process.env.DATA_DIR || path.join((process as any).cwd(), 'data');
 export const HISTORY_PATH = path.join(DATA_DIR, 'history');
@@ -17,24 +18,19 @@ export const SETTINGS_FILE_PATH = path.join(DATA_DIR, 'settings.json');
 export const MEMORY_CONTENT_PATH = path.join(DATA_DIR, 'memory.txt');
 export const MEMORY_FILES_DIR = path.join(DATA_DIR, 'memory_files');
 
-let settingsCache: any = null;
-let historyIndexCache: any = null;
+const dataCache = new LRUCache<string, any>({
+    max: 100, // Cache up to 100 files
+    ttl: 1000 * 60 * 5, // 5 minutes TTL
+});
 
 export async function readData<T>(filePath: string): Promise<T> {
-    if (filePath === SETTINGS_FILE_PATH && settingsCache) {
-        return settingsCache as T;
-    }
-    if (filePath === HISTORY_INDEX_PATH && historyIndexCache) {
-        return historyIndexCache as T;
-    }
+    const cached = dataCache.get(filePath);
+    if (cached) return cached as T;
+
     const data = await fs.readFile(filePath, 'utf-8');
     const parsed = JSON.parse(data);
-    if (filePath === SETTINGS_FILE_PATH) {
-        settingsCache = parsed;
-    }
-    if (filePath === HISTORY_INDEX_PATH) {
-        historyIndexCache = parsed;
-    }
+    
+    dataCache.set(filePath, parsed);
     return parsed as T;
 }
 
@@ -57,13 +53,16 @@ export async function writeFileAtomic(filePath: string, data: string | Buffer): 
         // Atomic rename (replace)
         await fs.rename(tempPath, filePath);
 
-        // Update cache if it's the settings file or history index
+        // Update cache if it's a string (JSON)
         if (typeof data === 'string') {
-            if (filePath === SETTINGS_FILE_PATH) {
-                try { settingsCache = JSON.parse(data); } catch (e) {}
-            } else if (filePath === HISTORY_INDEX_PATH) {
-                try { historyIndexCache = JSON.parse(data); } catch (e) {}
+            try {
+                dataCache.set(filePath, JSON.parse(data));
+            } catch (e) {
+                // Not JSON, clear cache for this path
+                dataCache.delete(filePath);
             }
+        } else {
+            dataCache.delete(filePath);
         }
     };
 

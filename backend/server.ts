@@ -15,6 +15,18 @@ import { getAvailableModelsHandler } from './modelsHandler';
 import { initDataStore, HISTORY_PATH } from './data-store';
 
 import { initWebSocket } from './websocketHandler';
+import { historyControl } from './services/historyControl';
+import { z } from 'zod';
+
+// Validation Schemas
+const NewChatSchema = z.object({
+  id: z.string().uuid().optional(),
+  model: z.string().min(1),
+  temperature: z.number().min(0).max(2).optional(),
+  maxOutputTokens: z.number().int().positive().optional(),
+  imageModel: z.string().optional(),
+  videoModel: z.string().optional(),
+});
 
 // Determine directory for static files safely across ESM (Dev) and CJS (Prod)
 let serverDir: string;
@@ -35,6 +47,9 @@ try {
 async function startServer() {
   // --- Initialize Data Store ---
   await initDataStore();
+  
+  // --- Run Self-Healing ---
+  await historyControl.validateAndRepair();
 
   const app = express();
   const PORT = process.env.PORT || 3001;
@@ -110,7 +125,13 @@ async function startServer() {
   app.get('/api/history', crudHandler.getHistory as any);
   app.delete('/api/history', crudHandler.deleteAllHistory as any);
   app.get('/api/chats/:chatId', crudHandler.getChat as any);
-  app.post('/api/chats/new', crudHandler.createNewChat as any);
+  app.post('/api/chats/new', (req: any, res: any, next: any) => {
+    const result = NewChatSchema.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({ error: 'Invalid request body', details: result.error.format() });
+    }
+    next();
+  }, crudHandler.createNewChat as any);
   app.put('/api/chats/:chatId', crudHandler.updateChat as any);
   app.delete('/api/chats/:chatId', crudHandler.deleteChat as any);
   app.post('/api/import', crudHandler.importChat as any);
